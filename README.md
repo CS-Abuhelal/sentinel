@@ -41,7 +41,7 @@ pytest                            # 22 contract tests should pass
 Regenerate fixtures and JSON schemas after any change to `contracts/models.py`:
 
 ```bash
-python contracts/generate_fixtures.py
+python -m contracts.generate_fixtures
 ```
 
 ---
