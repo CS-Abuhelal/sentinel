@@ -1,0 +1,19 @@
+{
+  "alert_id": "alr_44dd55ee66ff",
+  "rule_id": "SIG-PROC-0021",
+  "rule_name": "Encoded PowerShell Command Line",
+  "rule_severity": "high",
+  "timestamp": "2026-03-14T02:19:20Z",
+  "host": "WIN-FIN-07",
+  "user": "m.alharbi",
+  "src_ip": null,
+  "description": "powershell.exe launched with -enc and hidden window from an interactive session.",
+  "event_ids": [
+    "evt_9988776655aa"
+  ],
+  "suggested_techniques": [
+    "T1059.001",
+    "T1027"
+  ],
+  "case_id": "S1_dev_004"
+}

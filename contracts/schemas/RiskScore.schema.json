@@ -1,0 +1,52 @@
+{
+  "$defs": {
+    "Severity": {
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Deterministic. Computed in Python from evidence-derived factors. Never by an LLM.",
+  "properties": {
+    "incident_id": {
+      "title": "Incident Id",
+      "type": "string"
+    },
+    "score": {
+      "maximum": 100,
+      "minimum": 0,
+      "title": "Score",
+      "type": "integer"
+    },
+    "severity": {
+      "$ref": "#/$defs/Severity"
+    },
+    "factors": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Factors",
+      "type": "object"
+    },
+    "computed_at": {
+      "format": "date-time",
+      "title": "Computed At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "incident_id",
+    "score",
+    "severity",
+    "computed_at"
+  ],
+  "title": "RiskScore",
+  "type": "object"
+}

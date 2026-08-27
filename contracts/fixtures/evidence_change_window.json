@@ -1,0 +1,18 @@
+{
+  "evidence_id": "evd_77aa88bb99cc",
+  "incident_id": "inc_7c3e9f1a2b4d",
+  "evidence_class": "change_window",
+  "tool_name": "get_change_window",
+  "tool_query": {
+    "host": "WIN-FIN-07",
+    "at": "2026-03-14T02:17:00+00:00"
+  },
+  "retrieved_at": "2026-03-14T02:21:00Z",
+  "summary": "No scheduled maintenance or approved change covered this host at the time of the activity.",
+  "content": {
+    "in_change_window": false,
+    "nearest_window": null
+  },
+  "source_event_ids": [],
+  "was_productive": true
+}

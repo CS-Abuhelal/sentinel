@@ -1,0 +1,70 @@
+{
+  "$defs": {
+    "ActionType": {
+      "description": "The complete response catalog. The executor runs nothing outside this list.",
+      "enum": [
+        "block_ip",
+        "disable_account",
+        "isolate_host",
+        "kill_process",
+        "force_password_reset",
+        "no_action"
+      ],
+      "title": "ActionType",
+      "type": "string"
+    },
+    "EntityType": {
+      "enum": [
+        "host",
+        "account",
+        "ip_address",
+        "process",
+        "file"
+      ],
+      "title": "EntityType",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "An action the agent recommends. The agent NEVER executes this itself.",
+  "properties": {
+    "action_id": {
+      "title": "Action Id",
+      "type": "string"
+    },
+    "action_type": {
+      "$ref": "#/$defs/ActionType"
+    },
+    "target_type": {
+      "$ref": "#/$defs/EntityType"
+    },
+    "target_value": {
+      "title": "Target Value",
+      "type": "string"
+    },
+    "justification": {
+      "title": "Justification",
+      "type": "string"
+    },
+    "reversible": {
+      "default": true,
+      "title": "Reversible",
+      "type": "boolean"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "action_type",
+    "target_type",
+    "target_value",
+    "justification"
+  ],
+  "title": "ProposedAction",
+  "type": "object"
+}

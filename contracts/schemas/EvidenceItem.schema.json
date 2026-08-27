@@ -1,0 +1,86 @@
+{
+  "$defs": {
+    "EvidenceClass": {
+      "description": "Ground-truth evidence categories. Drives Evidence Coverage and Utilization metrics.",
+      "enum": [
+        "auth_history",
+        "entity_context",
+        "process_lineage",
+        "network_activity",
+        "file_activity",
+        "change_window",
+        "related_alerts",
+        "threat_intel",
+        "baseline_comparison"
+      ],
+      "title": "EvidenceClass",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One piece of evidence a tool retrieved. Carries provenance so an analyst can verify it.",
+  "properties": {
+    "evidence_id": {
+      "title": "Evidence Id",
+      "type": "string"
+    },
+    "incident_id": {
+      "title": "Incident Id",
+      "type": "string"
+    },
+    "evidence_class": {
+      "$ref": "#/$defs/EvidenceClass"
+    },
+    "tool_name": {
+      "title": "Tool Name",
+      "type": "string"
+    },
+    "tool_query": {
+      "additionalProperties": true,
+      "title": "Tool Query",
+      "type": "object"
+    },
+    "retrieved_at": {
+      "format": "date-time",
+      "title": "Retrieved At",
+      "type": "string"
+    },
+    "summary": {
+      "title": "Summary",
+      "type": "string"
+    },
+    "content": {
+      "additionalProperties": true,
+      "title": "Content",
+      "type": "object"
+    },
+    "source_event_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Event Ids",
+      "type": "array"
+    },
+    "was_productive": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Was Productive"
+    }
+  },
+  "required": [
+    "incident_id",
+    "evidence_class",
+    "tool_name",
+    "retrieved_at",
+    "summary"
+  ],
+  "title": "EvidenceItem",
+  "type": "object"
+}

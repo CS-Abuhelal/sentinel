@@ -1,0 +1,106 @@
+{
+  "$defs": {
+    "AutonomyLevel": {
+      "enum": [
+        "observe_only",
+        "suggest",
+        "act_with_approval",
+        "act_autonomously"
+      ],
+      "title": "AutonomyLevel",
+      "type": "string"
+    },
+    "PolicyOutcome": {
+      "enum": [
+        "allow",
+        "require_approval",
+        "deny"
+      ],
+      "title": "PolicyOutcome",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Deterministic authorization result. This, not the agent, decides what may run.",
+  "properties": {
+    "decision_id": {
+      "title": "Decision Id",
+      "type": "string"
+    },
+    "action_id": {
+      "title": "Action Id",
+      "type": "string"
+    },
+    "incident_id": {
+      "title": "Incident Id",
+      "type": "string"
+    },
+    "outcome": {
+      "$ref": "#/$defs/PolicyOutcome"
+    },
+    "autonomy_level": {
+      "$ref": "#/$defs/AutonomyLevel"
+    },
+    "risk_score": {
+      "maximum": 100,
+      "minimum": 0,
+      "title": "Risk Score",
+      "type": "integer"
+    },
+    "matched_rule": {
+      "title": "Matched Rule",
+      "type": "string"
+    },
+    "reason": {
+      "title": "Reason",
+      "type": "string"
+    },
+    "target_is_protected": {
+      "default": false,
+      "title": "Target Is Protected",
+      "type": "boolean"
+    },
+    "decided_at": {
+      "format": "date-time",
+      "title": "Decided At",
+      "type": "string"
+    },
+    "approved_by": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Approved By"
+    },
+    "approved_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Approved At"
+    }
+  },
+  "required": [
+    "action_id",
+    "incident_id",
+    "outcome",
+    "autonomy_level",
+    "risk_score",
+    "matched_rule",
+    "reason",
+    "decided_at"
+  ],
+  "title": "PolicyDecision",
+  "type": "object"
+}

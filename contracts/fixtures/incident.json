@@ -1,0 +1,31 @@
+{
+  "incident_id": "inc_7c3e9f1a2b4d",
+  "title": "Possible account compromise on WIN-FIN-07 (m.alharbi)",
+  "status": "investigating",
+  "created_at": "2026-03-14T02:18:00Z",
+  "updated_at": "2026-03-14T02:20:00Z",
+  "window_start": "2026-03-14T02:11:00Z",
+  "window_end": "2026-03-14T02:21:00Z",
+  "alert_ids": [
+    "alr_11aa22bb33cc",
+    "alr_44dd55ee66ff"
+  ],
+  "entities": [
+    {
+      "entity_type": "host",
+      "value": "WIN-FIN-07",
+      "is_protected": false
+    },
+    {
+      "entity_type": "account",
+      "value": "m.alharbi",
+      "is_protected": false
+    },
+    {
+      "entity_type": "ip_address",
+      "value": "10.13.37.24",
+      "is_protected": false
+    }
+  ],
+  "case_id": "S1_dev_004"
+}

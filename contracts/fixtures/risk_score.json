@@ -1,0 +1,13 @@
+{
+  "incident_id": "inc_7c3e9f1a2b4d",
+  "score": 82,
+  "severity": "high",
+  "factors": {
+    "credential_attack_confirmed": 25,
+    "novel_source_subnet": 20,
+    "post_compromise_execution": 25,
+    "outside_change_window": 7,
+    "non_privileged_target": 5
+  },
+  "computed_at": "2026-03-14T02:21:05Z"
+}

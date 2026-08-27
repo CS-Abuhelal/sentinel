@@ -1,0 +1,25 @@
+{
+  "event_id": "evt_9988776655aa",
+  "timestamp": "2026-03-14T02:19:15Z",
+  "ingested_at": null,
+  "source": "windows_sysmon",
+  "category": "process",
+  "event_type": "sysmon_1_process_create",
+  "host": "WIN-FIN-07",
+  "user": "m.alharbi",
+  "outcome": "success",
+  "process": {
+    "pid": 6612,
+    "name": "powershell.exe",
+    "command_line": "powershell.exe -nop -w hidden -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBi",
+    "parent_pid": 884,
+    "parent_name": "services.exe",
+    "user": "m.alharbi",
+    "hash_sha256": "9f2b1c0e4a7d8e3f5b6c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a"
+  },
+  "network": null,
+  "file_path": null,
+  "message": "Process created with encoded command line.",
+  "raw": {},
+  "case_id": "S1_dev_004"
+}

@@ -1,0 +1,11 @@
+{
+  "action_id": "act_bb11cc22dd33",
+  "action_type": "block_ip",
+  "target_type": "ip_address",
+  "target_value": "10.13.37.24",
+  "justification": "Source of a successful credential attack with no legitimate history for this account.",
+  "reversible": true,
+  "evidence_ids": [
+    "evd_aa11bb22cc33"
+  ]
+}

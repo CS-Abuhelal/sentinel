@@ -1,0 +1,14 @@
+{
+  "decision_id": "pol_6f5e4d3c2b1a",
+  "action_id": "act_ee44ff55aa66",
+  "incident_id": "inc_7c3e9f1a2b4d",
+  "outcome": "require_approval",
+  "autonomy_level": "act_with_approval",
+  "risk_score": 82,
+  "matched_rule": "POL-012: account disable always requires human approval",
+  "reason": "Disabling a user account is disruptive to a real person and is never taken autonomously.",
+  "target_is_protected": false,
+  "decided_at": "2026-03-14T02:21:41Z",
+  "approved_by": null,
+  "approved_at": null
+}

@@ -1,0 +1,128 @@
+{
+  "$defs": {
+    "Entity": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_type": {
+          "$ref": "#/$defs/EntityType"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        },
+        "is_protected": {
+          "default": false,
+          "title": "Is Protected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "entity_type",
+        "value"
+      ],
+      "title": "Entity",
+      "type": "object"
+    },
+    "EntityType": {
+      "enum": [
+        "host",
+        "account",
+        "ip_address",
+        "process",
+        "file"
+      ],
+      "title": "EntityType",
+      "type": "string"
+    },
+    "IncidentStatus": {
+      "enum": [
+        "new",
+        "investigating",
+        "awaiting_approval",
+        "resolved",
+        "closed_benign"
+      ],
+      "title": "IncidentStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Correlated group of alerts. The unit the agent investigates.",
+  "properties": {
+    "incident_id": {
+      "title": "Incident Id",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/IncidentStatus",
+      "default": "new"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "updated_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Updated At"
+    },
+    "window_start": {
+      "format": "date-time",
+      "title": "Window Start",
+      "type": "string"
+    },
+    "window_end": {
+      "format": "date-time",
+      "title": "Window End",
+      "type": "string"
+    },
+    "alert_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Alert Ids",
+      "type": "array"
+    },
+    "entities": {
+      "items": {
+        "$ref": "#/$defs/Entity"
+      },
+      "title": "Entities",
+      "type": "array"
+    },
+    "case_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Case Id"
+    }
+  },
+  "required": [
+    "title",
+    "created_at",
+    "window_start",
+    "window_end"
+  ],
+  "title": "Incident",
+  "type": "object"
+}

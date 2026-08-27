@@ -1,0 +1,88 @@
+{
+  "verdict_id": "vrd_5f6a7b8c9d0e",
+  "incident_id": "inc_7c3e9f1a2b4d",
+  "arm": "a3_tool_using_agent",
+  "classification": "malicious",
+  "confidence": 0.88,
+  "summary": "A password-guessing attack from 10.13.37.24 succeeded against m.alharbi at 02:17 UTC. The source subnet has no authentication history for this account across 30 days, the activity falls outside any approved change window, and an encoded PowerShell process launched under the session 90 seconds after logon. This is a genuine account compromise with post-access execution.",
+  "attack_chain": [
+    {
+      "order": 1,
+      "tactic": "Credential Access",
+      "technique_id": "T1110.001",
+      "technique_name": "Password Guessing",
+      "description": "23 failed logons against m.alharbi from a previously unseen subnet.",
+      "evidence_ids": [
+        "evd_aa11bb22cc33"
+      ]
+    },
+    {
+      "order": 2,
+      "tactic": "Initial Access",
+      "technique_id": "T1078",
+      "technique_name": "Valid Accounts",
+      "description": "Successful network logon using the guessed credentials.",
+      "evidence_ids": [
+        "evd_aa11bb22cc33"
+      ]
+    },
+    {
+      "order": 3,
+      "tactic": "Execution",
+      "technique_id": "T1059.001",
+      "technique_name": "PowerShell",
+      "description": "Encoded, hidden-window PowerShell launched under the compromised session.",
+      "evidence_ids": [
+        "evd_77aa88bb99cc"
+      ]
+    }
+  ],
+  "techniques": [
+    "T1110.001",
+    "T1078",
+    "T1059.001",
+    "T1027"
+  ],
+  "cited_evidence_ids": [
+    "evd_aa11bb22cc33",
+    "evd_dd44ee55ff66",
+    "evd_77aa88bb99cc"
+  ],
+  "risk_factors": [
+    "Source subnet never seen for this account in 30 days",
+    "Successful logon directly after sustained failures",
+    "Encoded PowerShell execution post-logon",
+    "Activity outside any approved change window"
+  ],
+  "proposed_actions": [
+    {
+      "action_id": "act_bb11cc22dd33",
+      "action_type": "block_ip",
+      "target_type": "ip_address",
+      "target_value": "10.13.37.24",
+      "justification": "Source of a successful credential attack with no legitimate history for this account.",
+      "reversible": true,
+      "evidence_ids": [
+        "evd_aa11bb22cc33"
+      ]
+    },
+    {
+      "action_id": "act_ee44ff55aa66",
+      "action_type": "disable_account",
+      "target_type": "account",
+      "target_value": "m.alharbi",
+      "justification": "Account credentials are presumed compromised; encoded PowerShell ran under this session.",
+      "reversible": true,
+      "evidence_ids": [
+        "evd_aa11bb22cc33",
+        "evd_dd44ee55ff66"
+      ]
+    }
+  ],
+  "produced_at": "2026-03-14T02:21:30Z",
+  "model_name": "frontier-llm-v1",
+  "tool_calls_made": 4,
+  "input_tokens": 11420,
+  "output_tokens": 903,
+  "latency_ms": 18734
+}

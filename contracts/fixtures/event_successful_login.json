@@ -1,0 +1,29 @@
+{
+  "event_id": "evt_f6e5d4c3b2a1",
+  "timestamp": "2026-03-14T02:17:42Z",
+  "ingested_at": "2026-03-14T02:17:45Z",
+  "source": "windows_security",
+  "category": "authentication",
+  "event_type": "4624_successful_logon",
+  "host": "WIN-FIN-07",
+  "user": "m.alharbi",
+  "outcome": "success",
+  "process": null,
+  "network": {
+    "src_ip": "10.13.37.24",
+    "src_port": null,
+    "dst_ip": "10.20.0.7",
+    "dst_port": 445,
+    "protocol": "tcp",
+    "bytes_sent": null,
+    "bytes_received": null,
+    "domain": null
+  },
+  "file_path": null,
+  "message": "An account was successfully logged on. Logon type 3.",
+  "raw": {
+    "EventID": 4624,
+    "LogonType": 3
+  },
+  "case_id": "S1_dev_004"
+}

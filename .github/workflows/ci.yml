@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  contracts:
+    name: Contracts and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Contract tests
+        run: pytest -q
+
+      - name: Fixtures match the models
+        run: |
+          python contracts/generate_fixtures.py
+          git diff --exit-code contracts/fixtures contracts/schemas \
+            || (echo "::error::Fixtures are stale. Run: python contracts/generate_fixtures.py" && exit 1)
+
+      - name: Holdout benchmark must stay sealed
+        run: |
+          if git diff --name-only origin/main...HEAD | grep -q '^benchmark/holdout/[^R.]'; then
+            echo "::error::This PR touches benchmark/holdout/. That split is sealed until week 10."
+            exit 1
+          fi

@@ -1,0 +1,25 @@
+{
+  "evidence_id": "evd_aa11bb22cc33",
+  "incident_id": "inc_7c3e9f1a2b4d",
+  "evidence_class": "auth_history",
+  "tool_name": "get_auth_history",
+  "tool_query": {
+    "user": "m.alharbi",
+    "window_hours": 720
+  },
+  "retrieved_at": "2026-03-14T02:20:30Z",
+  "summary": "m.alharbi has never authenticated from 10.13.37.0/24 in the previous 30 days; all prior logons came from 10.20.4.0/24.",
+  "content": {
+    "total_logons_30d": 412,
+    "distinct_source_subnets": [
+      "10.20.4.0/24"
+    ],
+    "first_seen_from_source": null,
+    "failed_logons_30d_baseline": 3
+  },
+  "source_event_ids": [
+    "evt_a1b2c3d4e5f6",
+    "evt_f6e5d4c3b2a1"
+  ],
+  "was_productive": true
+}

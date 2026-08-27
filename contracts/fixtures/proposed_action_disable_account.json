@@ -1,0 +1,12 @@
+{
+  "action_id": "act_ee44ff55aa66",
+  "action_type": "disable_account",
+  "target_type": "account",
+  "target_value": "m.alharbi",
+  "justification": "Account credentials are presumed compromised; encoded PowerShell ran under this session.",
+  "reversible": true,
+  "evidence_ids": [
+    "evd_aa11bb22cc33",
+    "evd_dd44ee55ff66"
+  ]
+}
