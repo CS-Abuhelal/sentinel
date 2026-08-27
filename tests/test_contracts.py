@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from contracts.models import (
     Alert,
@@ -60,21 +61,21 @@ def test_fixture_round_trips(name: str, model: type) -> None:
 def test_extra_fields_are_rejected() -> None:
     payload = _load("alert_bruteforce")
     payload["invented_field"] = "this should not be allowed"
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         Alert.model_validate(payload)
 
 
 def test_confidence_bounds_enforced() -> None:
     payload = _load("verdict")
     payload["confidence"] = 1.7
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         Verdict.model_validate(payload)
 
 
 def test_alert_requires_at_least_one_event() -> None:
     payload = _load("alert_bruteforce")
     payload["event_ids"] = []
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         Alert.model_validate(payload)
 
 

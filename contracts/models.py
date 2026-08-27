@@ -7,7 +7,7 @@ of any shape declared here. Changes require a team decision logged in docs/decis
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -27,7 +27,7 @@ class SentinelModel(BaseModel):
     )
 
 
-class TelemetrySource(str, Enum):
+class TelemetrySource(StrEnum):
     WINDOWS_SECURITY = "windows_security"
     WINDOWS_SYSMON = "windows_sysmon"
     LINUX_AUTH = "linux_auth"
@@ -38,7 +38,7 @@ class TelemetrySource(str, Enum):
     ZEEK_HTTP = "zeek_http"
 
 
-class EventCategory(str, Enum):
+class EventCategory(StrEnum):
     AUTHENTICATION = "authentication"
     PROCESS = "process"
     NETWORK = "network"
@@ -49,7 +49,7 @@ class EventCategory(str, Enum):
     OTHER = "other"
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     INFO = "info"
     LOW = "low"
     MEDIUM = "medium"
@@ -57,7 +57,7 @@ class Severity(str, Enum):
     CRITICAL = "critical"
 
 
-class IncidentStatus(str, Enum):
+class IncidentStatus(StrEnum):
     NEW = "new"
     INVESTIGATING = "investigating"
     AWAITING_APPROVAL = "awaiting_approval"
@@ -65,7 +65,7 @@ class IncidentStatus(str, Enum):
     CLOSED_BENIGN = "closed_benign"
 
 
-class EntityType(str, Enum):
+class EntityType(StrEnum):
     HOST = "host"
     ACCOUNT = "account"
     IP_ADDRESS = "ip_address"
@@ -73,7 +73,7 @@ class EntityType(str, Enum):
     FILE = "file"
 
 
-class EvidenceClass(str, Enum):
+class EvidenceClass(StrEnum):
     """Ground-truth evidence categories. Drives Evidence Coverage and Utilization metrics."""
 
     AUTH_HISTORY = "auth_history"
@@ -87,13 +87,13 @@ class EvidenceClass(str, Enum):
     BASELINE_COMPARISON = "baseline_comparison"
 
 
-class Classification(str, Enum):
+class Classification(StrEnum):
     MALICIOUS = "malicious"
     BENIGN = "benign"
     INCONCLUSIVE = "inconclusive"
 
 
-class ActionType(str, Enum):
+class ActionType(StrEnum):
     """The complete response catalog. The executor runs nothing outside this list."""
 
     BLOCK_IP = "block_ip"
@@ -104,20 +104,20 @@ class ActionType(str, Enum):
     NO_ACTION = "no_action"
 
 
-class PolicyOutcome(str, Enum):
+class PolicyOutcome(StrEnum):
     ALLOW = "allow"
     REQUIRE_APPROVAL = "require_approval"
     DENY = "deny"
 
 
-class AutonomyLevel(str, Enum):
+class AutonomyLevel(StrEnum):
     OBSERVE_ONLY = "observe_only"
     SUGGEST = "suggest"
     ACT_WITH_APPROVAL = "act_with_approval"
     ACT_AUTONOMOUSLY = "act_autonomously"
 
 
-class EvaluationArm(str, Enum):
+class EvaluationArm(StrEnum):
     A1_RULES_ONLY = "a1_rules_only"
     A2A_RAW_SINGLE_SHOT = "a2a_raw_single_shot"
     A2B_FULL_CONTEXT = "a2b_full_context"

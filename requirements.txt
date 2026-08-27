@@ -9,4 +9,8 @@ httpx>=0.28
 
 pytest>=8.3
 pytest-asyncio>=0.24
-ruff>=0.8
+
+# Pinned exactly. A floating linter means CI and five laptops disagree about
+# what "clean" is, and a lint rule added upstream turns main red for no reason.
+# Bump this deliberately, as its own PR.
+ruff==0.16.4

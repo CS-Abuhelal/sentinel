@@ -1,6 +1,6 @@
 """Generate sample JSON for every contract model, plus JSON Schema.
 
-Run from the repo root:  python -m contracts.generate_fixtures
+Run from the repo root:  python contracts/generate_fixtures.py
 
 The fixtures describe one coherent S1 case (credential attack leading to account
 compromise) flowing through every stage of the pipeline. Build against these instead of
@@ -10,12 +10,14 @@ waiting for another team member's component.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from contracts.models import (
+    ActionType,
     Alert,
     AttackChainStep,
+    AutonomyLevel,
     Classification,
     Entity,
     EntityType,
@@ -31,8 +33,6 @@ from contracts.models import (
     PolicyOutcome,
     ProcessInfo,
     ProposedAction,
-    ActionType,
-    AutonomyLevel,
     RiskScore,
     Severity,
     TelemetrySource,
@@ -40,7 +40,7 @@ from contracts.models import (
 )
 
 OUT = Path(__file__).parent
-T0 = datetime(2026, 3, 14, 2, 11, 0, tzinfo=timezone.utc)
+T0 = datetime(2026, 3, 14, 2, 11, 0, tzinfo=UTC)
 CASE = "S1_dev_004"
 
 HOST = "WIN-FIN-07"
@@ -110,7 +110,10 @@ alert_bruteforce = Alert(
     host=HOST,
     user=USER,
     src_ip=ATTACKER_IP,
-    description="23 failed logons for m.alharbi from 10.13.37.24 followed by a successful logon within 7 minutes.",
+    description=(
+        "23 failed logons for m.alharbi from 10.13.37.24 followed by a successful logon "
+        "within 7 minutes."
+    ),
     event_ids=[failed_login.event_id, successful_login.event_id],
     suggested_techniques=["T1110.001"],
     case_id=CASE,
@@ -155,7 +158,10 @@ evidence_auth_history = EvidenceItem(
     tool_name="get_auth_history",
     tool_query={"user": USER, "window_hours": 720},
     retrieved_at=T0 + timedelta(minutes=9, seconds=30),
-    summary=f"{USER} has never authenticated from 10.13.37.0/24 in the previous 30 days; all prior logons came from 10.20.4.0/24.",
+    summary=(
+        f"{USER} has never authenticated from 10.13.37.0/24 in the previous 30 days; "
+        "all prior logons came from 10.20.4.0/24."
+    ),
     content={
         "total_logons_30d": 412,
         "distinct_source_subnets": ["10.20.4.0/24"],
@@ -173,7 +179,10 @@ evidence_entity_context = EvidenceItem(
     tool_name="get_entity_context",
     tool_query={"entity_type": "account", "value": USER},
     retrieved_at=T0 + timedelta(minutes=9, seconds=45),
-    summary="m.alharbi is a standard finance user, not a service account and not a member of any administrative group.",
+    summary=(
+        "m.alharbi is a standard finance user, not a service account and not a member of "
+        "any administrative group."
+    ),
     content={
         "account_type": "user",
         "department": "Finance",
@@ -192,7 +201,10 @@ evidence_change_window = EvidenceItem(
     tool_name="get_change_window",
     tool_query={"host": HOST, "at": (T0 + timedelta(minutes=6)).isoformat()},
     retrieved_at=T0 + timedelta(minutes=10),
-    summary="No scheduled maintenance or approved change covered this host at the time of the activity.",
+    summary=(
+        "No scheduled maintenance or approved change covered this host at the time of "
+        "the activity."
+    ),
     content={"in_change_window": False, "nearest_window": None},
     source_event_ids=[],
     was_productive=True,
@@ -217,7 +229,9 @@ action_block = ProposedAction(
     action_type=ActionType.BLOCK_IP,
     target_type=EntityType.IP_ADDRESS,
     target_value=ATTACKER_IP,
-    justification="Source of a successful credential attack with no legitimate history for this account.",
+    justification=(
+        "Source of a successful credential attack with no legitimate history for this account."
+    ),
     reversible=True,
     evidence_ids=[evidence_auth_history.evidence_id],
 )
@@ -227,7 +241,9 @@ action_disable = ProposedAction(
     action_type=ActionType.DISABLE_ACCOUNT,
     target_type=EntityType.ACCOUNT,
     target_value=USER,
-    justification="Account credentials are presumed compromised; encoded PowerShell ran under this session.",
+    justification=(
+        "Account credentials are presumed compromised; encoded PowerShell ran under this session."
+    ),
     reversible=True,
     evidence_ids=[evidence_auth_history.evidence_id, evidence_entity_context.evidence_id],
 )
@@ -239,10 +255,11 @@ verdict = Verdict(
     classification=Classification.MALICIOUS,
     confidence=0.88,
     summary=(
-        "A password-guessing attack from 10.13.37.24 succeeded against m.alharbi at 02:17 UTC. "
-        "The source subnet has no authentication history for this account across 30 days, the activity "
-        "falls outside any approved change window, and an encoded PowerShell process launched under the "
-        "session 90 seconds after logon. This is a genuine account compromise with post-access execution."
+        "A password-guessing attack from 10.13.37.24 succeeded against m.alharbi at "
+        "02:17 UTC. The source subnet has no authentication history for this account "
+        "across 30 days, the activity falls outside any approved change window, and an "
+        "encoded PowerShell process launched under the session 90 seconds after logon. "
+        "This is a genuine account compromise with post-access execution."
     ),
     attack_chain=[
         AttackChainStep(
@@ -299,7 +316,10 @@ policy_allow = PolicyDecision(
     autonomy_level=AutonomyLevel.ACT_WITH_APPROVAL,
     risk_score=risk.score,
     matched_rule="POL-007: reversible network block on unprotected external IP above risk 70",
-    reason="Target is not a protected entity, the action is reversible, and risk exceeds the autonomous threshold.",
+    reason=(
+        "Target is not a protected entity, the action is reversible, and risk exceeds "
+        "the autonomous threshold."
+    ),
     target_is_protected=False,
     decided_at=T0 + timedelta(minutes=10, seconds=40),
 )
@@ -312,7 +332,9 @@ policy_approval = PolicyDecision(
     autonomy_level=AutonomyLevel.ACT_WITH_APPROVAL,
     risk_score=risk.score,
     matched_rule="POL-012: account disable always requires human approval",
-    reason="Disabling a user account is disruptive to a real person and is never taken autonomously.",
+    reason=(
+        "Disabling a user account is disruptive to a real person and is never taken autonomously."
+    ),
     target_is_protected=False,
     decided_at=T0 + timedelta(minutes=10, seconds=41),
 )
