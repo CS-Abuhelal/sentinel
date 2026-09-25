@@ -10,6 +10,7 @@
   "status": "succeeded",
   "reason": "Approved by analyst.demo.",
   "dry_run": true,
+  "before": [],
   "commands": [
     {
       "argv": [

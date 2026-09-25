@@ -701,6 +701,13 @@
           "title": "Dry Run",
           "type": "boolean"
         },
+        "before": {
+          "items": {
+            "$ref": "#/$defs/CommandResult"
+          },
+          "title": "Before",
+          "type": "array"
+        },
         "commands": {
           "items": {
             "$ref": "#/$defs/CommandResult"
@@ -750,6 +757,7 @@
         "status",
         "reason",
         "dry_run",
+        "before",
         "commands",
         "verified",
         "verification",

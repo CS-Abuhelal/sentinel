@@ -348,6 +348,7 @@ class ExecutionResult(SentinelModel):
     status: ExecutionStatus
     reason: str
     dry_run: bool = False
+    before: list[CommandResult] = Field(default_factory=list)
     commands: list[CommandResult] = Field(default_factory=list)
     verified: bool | None = None
     verification: list[CommandResult] = Field(default_factory=list)
