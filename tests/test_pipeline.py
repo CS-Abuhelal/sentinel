@@ -78,7 +78,7 @@ def test_main_with_live_model_records_responses(
         },
         {"role": "assistant", "content": json.dumps(final)},
     )
-    monkeypatch.setattr(run_module, "OllamaClient", lambda model, base_url: fake.client())
+    monkeypatch.setattr(run_module, "OllamaClient", lambda model, base_url, think: fake.client())
     recording_path = tmp_path / "recorded.json"
     argv = [str(S1_LOG), "--llm", "ollama", "--out", str(tmp_path), "--record", str(recording_path)]
     assert main(argv) == 0

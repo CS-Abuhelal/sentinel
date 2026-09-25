@@ -24,15 +24,17 @@ class OllamaClient:
         self,
         model: str = DEFAULT_MODEL,
         base_url: str = DEFAULT_URL,
-        timeout: float = 900.0,
+        think: bool = False,
+        timeout: float = 2400.0,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
         self._model = model
+        self._think = think
         self._http = httpx.Client(base_url=base_url, timeout=timeout, transport=transport)
 
     @property
     def model_name(self) -> str:
-        return f"ollama:{self._model}"
+        return f"ollama:{self._model}{' thinking' if self._think else ''}"
 
     def complete(self, messages: list[Message], tools: list[ToolSpec]) -> LLMResponse:
         body = {
@@ -40,7 +42,7 @@ class OllamaClient:
             "messages": _messages(messages),
             "tools": [_tool(spec) for spec in tools],
             "stream": False,
-            "think": False,
+            "think": self._think,
             "options": {"temperature": 0, "num_ctx": 16384},
         }
         response = self._http.post("/api/chat", json=body)

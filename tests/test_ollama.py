@@ -78,6 +78,14 @@ def test_model_name() -> None:
     assert FakeOllama().client().model_name == "ollama:qwen3:8b"
 
 
+def test_thinking_mode() -> None:
+    fake = FakeOllama(_text_reply("{}"))
+    client = OllamaClient("qwen3:14b", think=True, transport=httpx.MockTransport(fake))
+    client.complete([], [SPEC])
+    assert fake.requests[0]["think"] is True
+    assert client.model_name == "ollama:qwen3:14b thinking"
+
+
 @pytest.mark.parametrize(
     "arguments", [{"account": "jdoe"}, '{"account": "jdoe"}'], ids=["object", "string"]
 )

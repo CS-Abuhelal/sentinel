@@ -1,0 +1,71 @@
+name: Model trial
+
+on:
+  push:
+    branches: ["trial/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  trial:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: qwen3-8b-thinking
+            model: qwen3:8b
+            think: "--think"
+          - name: qwen3-14b
+            model: qwen3:14b
+            think: ""
+          - name: qwen3-14b-thinking
+            model: qwen3:14b
+            think: "--think"
+    services:
+      ollama:
+        image: ollama/ollama:0.34.4
+        ports:
+          - 11434:11434
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Pull the model
+        run: |
+          for attempt in $(seq 1 30); do
+            curl -sf http://localhost:11434/api/version && break
+            sleep 2
+          done
+          curl -sSf http://localhost:11434/api/pull \
+            -d "{\"model\": \"${{ matrix.model }}\", \"stream\": false}"
+
+      - name: Investigate each scenario
+        run: |
+          for log in lab/scenarios/*/auth.log; do
+            case_id=$(basename "$(dirname "$log")")
+            start=$(date +%s)
+            python -m pipeline.run "$log" --llm ollama --model "${{ matrix.model }}" ${{ matrix.think }} \
+              --record "recordings/$case_id.json" | tee "summary-$case_id.txt"
+            echo "seconds   $(( $(date +%s) - start ))" | tee -a "summary-$case_id.txt"
+          done
+
+      - name: Keep the results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trial-${{ matrix.name }}
+          path: |
+            runs/
+            recordings/
+            summary-*.txt

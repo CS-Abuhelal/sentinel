@@ -108,12 +108,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Ollama model tag")
     parser.add_argument("--ollama-url", default=DEFAULT_URL)
+    parser.add_argument("--think", action="store_true", help="turn on the model's thinking mode")
     parser.add_argument("--record", type=Path, help="save the live model's responses here")
     args = parser.parse_args(argv)
 
     case_id = args.case_id or args.log.resolve().parent.name
     if args.llm == "ollama":
-        llm: LLMClient = OllamaClient(model=args.model, base_url=args.ollama_url)
+        llm: LLMClient = OllamaClient(model=args.model, base_url=args.ollama_url, think=args.think)
     else:
         llm = ReplayClient.from_file(
             args.recording or RECORDINGS_DIR / f"{case_id}.handwritten.json"
