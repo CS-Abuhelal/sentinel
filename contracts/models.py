@@ -14,6 +14,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
+CONTRACT_VERSION = "1.1.0"
+
 
 def _new_id(prefix: str) -> str:
     return f"{prefix}_{uuid4().hex[:12]}"
@@ -103,6 +105,12 @@ class ActionType(StrEnum):
     KILL_PROCESS = "kill_process"
     FORCE_PASSWORD_RESET = "force_password_reset"
     NO_ACTION = "no_action"
+
+
+class InvestigationStopReason(StrEnum):
+    VERDICT_REACHED = "verdict_reached"
+    TOOL_CALL_CAP = "tool_call_cap"
+    INVALID_OUTPUT = "invalid_output"
 
 
 class PolicyOutcome(StrEnum):
@@ -262,6 +270,7 @@ class Verdict(SentinelModel):
     input_tokens: int = 0
     output_tokens: int = 0
     latency_ms: int = 0
+    stop_reason: InvestigationStopReason
 
 
 class RiskScore(SentinelModel):
@@ -291,10 +300,56 @@ class PolicyDecision(SentinelModel):
     approved_at: datetime | None = None
 
 
-CONTRACT_VERSION = "1.0.0"
+class AccountRecord(SentinelModel):
+    role: str
+    privileged: bool = False
+    protected: bool = False
+
+
+class HostRecord(SentinelModel):
+    role: str
+    protected: bool = False
+
+
+class Inventory(SentinelModel):
+    """Lab asset inventory. Protected entities are denied at the policy level."""
+
+    accounts: dict[str, AccountRecord] = Field(default_factory=dict)
+    hosts: dict[str, HostRecord] = Field(default_factory=dict)
+
+    def is_protected(self, entity_type: EntityType, value: str) -> bool:
+        if entity_type is EntityType.ACCOUNT:
+            record: AccountRecord | HostRecord | None = self.accounts.get(value)
+        elif entity_type is EntityType.HOST:
+            record = self.hosts.get(value)
+        else:
+            return False
+        return record is not None and record.protected
+
+    def is_privileged(self, account: str) -> bool:
+        record = self.accounts.get(account)
+        return record is not None and record.privileged
+
+
+class IncidentRun(SentinelModel):
+    """One incident taken through every pipeline stage. The run file and the API response."""
+
+    run_id: str = Field(default_factory=lambda: _new_id("run"))
+    case_id: str
+    contract_version: str = CONTRACT_VERSION
+    created_at: datetime
+    events: list[Event]
+    alerts: list[Alert]
+    incident: Incident
+    evidence: list[EvidenceItem]
+    verdict: Verdict
+    risk_score: RiskScore
+    policy_decisions: list[PolicyDecision]
+
 
 __all__ = [
     "CONTRACT_VERSION",
+    "AccountRecord",
     "ActionType",
     "Alert",
     "AttackChainStep",
@@ -307,8 +362,12 @@ __all__ = [
     "EventCategory",
     "EvidenceClass",
     "EvidenceItem",
+    "HostRecord",
     "Incident",
+    "IncidentRun",
     "IncidentStatus",
+    "InvestigationStopReason",
+    "Inventory",
     "NetworkInfo",
     "PolicyDecision",
     "PolicyOutcome",

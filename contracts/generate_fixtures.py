@@ -27,7 +27,9 @@ from contracts.models import (
     EvidenceClass,
     EvidenceItem,
     Incident,
+    IncidentRun,
     IncidentStatus,
+    InvestigationStopReason,
     NetworkInfo,
     PolicyDecision,
     PolicyOutcome,
@@ -306,6 +308,7 @@ verdict = Verdict(
     input_tokens=11420,
     output_tokens=903,
     latency_ms=18734,
+    stop_reason=InvestigationStopReason.VERDICT_REACHED,
 )
 
 policy_allow = PolicyDecision(
@@ -339,6 +342,19 @@ policy_approval = PolicyDecision(
     decided_at=T0 + timedelta(minutes=10, seconds=41),
 )
 
+incident_run = IncidentRun(
+    run_id="run_0a1b2c3d4e5f",
+    case_id=CASE,
+    created_at=T0 + timedelta(minutes=10, seconds=45),
+    events=[failed_login, successful_login, post_login_process],
+    alerts=[alert_bruteforce, alert_encoded_ps],
+    incident=incident,
+    evidence=[evidence_auth_history, evidence_entity_context, evidence_change_window],
+    verdict=verdict,
+    risk_score=risk,
+    policy_decisions=[policy_allow, policy_approval],
+)
+
 FIXTURES = {
     "event_failed_login": failed_login,
     "event_successful_login": successful_login,
@@ -355,6 +371,7 @@ FIXTURES = {
     "verdict": verdict,
     "policy_decision_allow": policy_allow,
     "policy_decision_require_approval": policy_approval,
+    "incident_run": incident_run,
 }
 
 SCHEMA_MODELS = [
@@ -366,6 +383,7 @@ SCHEMA_MODELS = [
     ProposedAction,
     PolicyDecision,
     RiskScore,
+    IncidentRun,
 ]
 
 

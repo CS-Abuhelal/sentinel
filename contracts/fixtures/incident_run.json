@@ -1,7 +1,8 @@
 {
+  "run_id": "run_0a1b2c3d4e5f",
   "case_id": "S1_dev_004",
-  "scenario": "S1 — credential attack leading to account compromise",
-  "ground_truth_classification": "malicious",
+  "contract_version": "1.1.0",
+  "created_at": "2026-03-14T02:21:45Z",
   "events": [
     {
       "event_id": "evt_a1b2c3d4e5f6",
@@ -228,19 +229,6 @@
       "was_productive": true
     }
   ],
-  "risk_score": {
-    "incident_id": "inc_7c3e9f1a2b4d",
-    "score": 82,
-    "severity": "high",
-    "factors": {
-      "credential_attack_confirmed": 25,
-      "novel_source_subnet": 20,
-      "post_compromise_execution": 25,
-      "outside_change_window": 7,
-      "non_privileged_target": 5
-    },
-    "computed_at": "2026-03-14T02:21:05Z"
-  },
   "verdict": {
     "verdict_id": "vrd_5f6a7b8c9d0e",
     "incident_id": "inc_7c3e9f1a2b4d",
@@ -329,6 +317,19 @@
     "output_tokens": 903,
     "latency_ms": 18734,
     "stop_reason": "verdict_reached"
+  },
+  "risk_score": {
+    "incident_id": "inc_7c3e9f1a2b4d",
+    "score": 82,
+    "severity": "high",
+    "factors": {
+      "credential_attack_confirmed": 25,
+      "novel_source_subnet": 20,
+      "post_compromise_execution": 25,
+      "outside_change_window": 7,
+      "non_privileged_target": 5
+    },
+    "computed_at": "2026-03-14T02:21:05Z"
   },
   "policy_decisions": [
     {

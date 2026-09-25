@@ -99,6 +99,15 @@
       "title": "EvaluationArm",
       "type": "string"
     },
+    "InvestigationStopReason": {
+      "enum": [
+        "verdict_reached",
+        "tool_call_cap",
+        "invalid_output"
+      ],
+      "title": "InvestigationStopReason",
+      "type": "string"
+    },
     "ProposedAction": {
       "additionalProperties": false,
       "description": "An action the agent recommends. The agent NEVER executes this itself.",
@@ -242,6 +251,9 @@
       "default": 0,
       "title": "Latency Ms",
       "type": "integer"
+    },
+    "stop_reason": {
+      "$ref": "#/$defs/InvestigationStopReason"
     }
   },
   "required": [
@@ -250,7 +262,8 @@
     "classification",
     "confidence",
     "summary",
-    "produced_at"
+    "produced_at",
+    "stop_reason"
   ],
   "title": "Verdict",
   "type": "object"
