@@ -392,6 +392,7 @@ a {
 }
 
 .stage-head h2 {
+  scroll-margin-top: 16px;
   margin: 0;
   font-family: var(--font-display);
   font-weight: 600;

@@ -2,9 +2,54 @@
 
 An evidence-driven agentic investigation and controlled response system for security operations.
 
-**Live demo:** https://cs-abuhelal.github.io/sentinel/ shows a recorded S1 run (SSH brute force
-leading to a compromised account) through every pipeline stage. It needs no install, no lab
-and no API key.
+**Live demo:** https://cs-abuhelal.github.io/sentinel/ shows the S1 case (SSH password guessing
+that ends in a compromised account) and its benign twin, run through every stage by a live
+model on each build. It needs no install, no lab and no API key.
+
+---
+
+## See it working
+
+These screenshots come from a real build: the agent is `qwen3:14b` running in GitHub Actions,
+and the executor acts on a real Linux container. Nothing in them was written by hand.
+
+**1. The attack case, resolved.** 24 failed SSH logins and then a success trip a Sigma rule.
+The verdict matches the hand-labelled expected outcome.
+
+![Attack case overview](docs/screenshots/01-overview.png)
+
+**2. The agent investigates.** It chooses a read-only tool, reads the evidence, cites it, and
+maps the attack to MITRE ATT&CK. The dashed outline marks everything the AI produced.
+([open this stage](https://cs-abuhelal.github.io/sentinel/?case=s1_attack#stage-4))
+
+![Agent investigation](docs/screenshots/02-investigation.png)
+
+**3. The policy boundary.** Past the yellow band only deterministic code runs. Risk is scored
+from evidence, never from the AI's verdict, and the policy engine requires a human to approve
+disabling an account. ([open this stage](https://cs-abuhelal.github.io/sentinel/?case=s1_attack#stage-5))
+
+![Risk and policy](docs/screenshots/03-risk-policy.png)
+
+**4. Approved, executed and proven.** After a human approval the executor locks `jdoe` in the
+lab container. Before: password active (`P`) and a live session (process 7). After: locked
+(`L`) and no session. The audit chain is re-verified in your browser, and one click shows it
+breaking when a record is edited. ([open this stage](https://cs-abuhelal.github.io/sentinel/?case=s1_attack#stage-7))
+
+![Execution with before and after proof](docs/screenshots/04-execution.png)
+
+**5. The benign twin.** A backup job retrying with a stale password trips the same rule. The
+agent sees that the source is the account's usual host, calls it benign and proposes nothing.
+It is not flawless: it still listed a brute-force step in its attack chain.
+([open this case](https://cs-abuhelal.github.io/sentinel/?case=s1_benign#stage-4))
+
+![Benign twin overview](docs/screenshots/05-benign-overview.png)
+
+![Benign twin verdict](docs/screenshots/06-benign-verdict.png)
+
+**6. The same run on a desktop PC.** `qwen3:14b` on an RTX 3060 and a local victim container,
+started from PowerShell.
+
+![Local run in PowerShell](docs/screenshots/07-local-run.png)
 
 ---
 

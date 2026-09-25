@@ -14,9 +14,9 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 }
 
-export function usePlayback(durations: number[]): Playback {
+export function usePlayback(durations: number[], startFinished = false): Playback {
   const total = durations.length;
-  const reduced = useRef(prefersReducedMotion());
+  const reduced = useRef(startFinished || prefersReducedMotion());
   const [step, setStep] = useState(reduced.current ? total : 0);
   const [playing, setPlaying] = useState(!reduced.current);
   const finished = step >= total;

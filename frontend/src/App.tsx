@@ -18,13 +18,21 @@ export function App() {
     fetchRuns()
       .then((runs) => {
         setLoad({ state: "ready", runs });
-        setSelectedId(runs[0]?.incident.incident_id ?? null);
+        const wanted = new URLSearchParams(window.location.search).get("case");
+        const initial = runs.find((run) => run.case_id === wanted) ?? runs[0];
+        setSelectedId(initial?.incident.incident_id ?? null);
       })
       .catch((error: Error) => setLoad({ state: "failed", message: error.message }));
   }, []);
 
   const runs = load.state === "ready" ? load.runs : [];
   const selected = runs.find((run) => run.incident.incident_id === selectedId) ?? null;
+
+  const select = (incidentId: string) => {
+    const run = runs.find((candidate) => candidate.incident.incident_id === incidentId);
+    if (run) window.history.replaceState(null, "", `?case=${encodeURIComponent(run.case_id)}`);
+    setSelectedId(incidentId);
+  };
 
   return (
     <div className="app">
@@ -38,7 +46,7 @@ export function App() {
       <div className="layout">
         {runs.length > 0 && (
           <nav className="runs" aria-label="Incident runs">
-            <RunList runs={runs} selectedId={selectedId} onSelect={setSelectedId} />
+            <RunList runs={runs} selectedId={selectedId} onSelect={select} />
           </nav>
         )}
         <main className="main">
