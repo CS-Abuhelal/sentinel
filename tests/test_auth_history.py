@@ -8,7 +8,11 @@ from pydantic import ValidationError
 from agent.tools import TOOLS
 from agent.tools.auth_history import AuthHistoryParams, auth_history
 from agent.tools.base import ToolContext
-from contracts.models import EvidenceClass
+from contracts.models import EvidenceClass, Inventory
+from detection.correlate import correlate
+from detection.sigma import detect, load_rules
+from ingest.linux_auth import parse_auth_log
+from tests.conftest import REPO
 
 
 @pytest.fixture(scope="module")
@@ -43,6 +47,21 @@ def test_lookback_limits_history(s1_context: ToolContext) -> None:
     result = auth_history(AuthHistoryParams(account="jdoe", lookback_hours=24), s1_context)
     assert result.content["total_successes"] == 2
     assert result.content["known_source_ips"] == ["10.77.0.50"]
+
+
+def test_baseline_does_not_depend_on_lookback() -> None:
+    log = REPO / "lab" / "scenarios" / "s1_benign" / "auth.log"
+    events = parse_auth_log(log.read_text(encoding="utf-8").splitlines())
+    [incident] = correlate(
+        detect(events, load_rules(REPO / "detection" / "rules")), events, Inventory()
+    )
+    context = ToolContext(incident=incident, events=events)
+    result = auth_history(AuthHistoryParams(account="svc_backup", lookback_hours=24), context)
+    assert result.content["baseline_days"] == 30
+    assert result.content["known_source_ips"] == ["10.77.0.20"]
+    assert result.content["baseline_successes"] == {"10.77.0.20": 5}
+    assert "no successful logins" not in result.summary
+    assert "10.77.0.20 (5 successful logins)" in result.summary
 
 
 def test_unknown_account_returns_empty_history(s1_context: ToolContext) -> None:
