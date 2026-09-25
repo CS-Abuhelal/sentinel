@@ -20,6 +20,7 @@ frontend/dist/
 secrets.json
 
 *.log
+!lab/scenarios/**/*.log
 *.pcap
 lab/telemetry/raw/
 lab/*.vdi
