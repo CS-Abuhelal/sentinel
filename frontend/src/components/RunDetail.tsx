@@ -35,7 +35,7 @@ export function RunDetail({ run }: { run: IncidentRun }) {
   const playback = usePlayback(DURATIONS, anchor !== "");
 
   useEffect(() => {
-    if (anchor) document.getElementById(anchor)?.scrollIntoView({ block: "start" });
+    if (anchor) document.getElementById(anchor)?.scrollIntoView({ block: "start", behavior: "instant" });
   }, [anchor]);
   const { step, finished } = playback;
   const state = (start: number, end: number) => stageState(step, finished, start, end);
