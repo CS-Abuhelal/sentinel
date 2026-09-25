@@ -27,6 +27,8 @@ lab/*.vdi
 lab/*.vmdk
 *.ova
 
+runs/
+
 .DS_Store
 Thumbs.db
 .idea/
