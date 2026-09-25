@@ -1,27 +1,34 @@
 # SENTINEL — Solo Portfolio Build
 
-Read this file at the start of every session. It replaces the earlier team-era CLAUDE.md.
+Read this file at the start of every session.
 
 ## Status
 
-- SENTINEL started as a 5-person graduation-project proposal. The advisor rejected it as the
-  official capstone and the team moved to a different project.
-- It now continues as Ahmed's solo portfolio project, aimed at SOC analyst and AI engineering roles.
-- Not graded. No panel, no team, no sealed holdout, no fixed 14-week schedule.
-- Optimize for: finished, demoable, and explainable in an interview. Not academic completeness.
+- SENTINEL is Ahmed's solo portfolio project, aimed at SOC analyst and AI engineering roles.
+- Optimize for: finished, demoable, and explainable in an interview.
+- Public repo: https://github.com/CS-Abuhelal/sentinel
+- Live dashboard: https://cs-abuhelal.github.io/sentinel/ (rebuilt on every push to `main`).
 
 ## What already exists in this repo (build on it, do not rebuild it)
 
-- `contracts/models.py` v1.0.0: Event, Alert, Incident, EvidenceItem, Verdict, ProposedAction,
-  PolicyDecision, RiskScore, plus supporting enums. `extra="forbid"` on every model.
-- 16 fixtures covering one complete S1 case at every pipeline stage, plus `s1_full_case.json`.
-- 8 JSON Schemas for frontend TypeScript type generation.
-- 22 contract tests (round-trip validation and safety invariants).
-- CI: ruff (pinned exact version), tests, stale-fixture check.
-- `docker-compose.yml` (PostgreSQL + FastAPI + Vite) and a `/health` endpoint.
-- Regenerate fixtures with `python -m contracts.generate_fixtures` (module form, not a file path).
+- `contracts/models.py` (see `CONTRACT_VERSION`): every shared shape, including `IncidentRun`,
+  `Scenario`, `Inventory`, `Approval`, `ExecutionResult` and `AuditRecord`. `extra="forbid"`
+  on every model. Fixtures and JSON Schemas are generated from it.
+- Pipeline: sshd `auth.log` ingest, Sigma rules with an `event_count` correlation, alert
+  correlation, the agent (`auth_history` tool, replay and Ollama clients), deterministic risk
+  scoring, the policy engine, the executor (`disable_account`, `isolate_host`, run in a victim
+  container or as a dry run), a hash-chained audit log, and `python -m pipeline.run`.
+- Scenarios in `lab/scenarios/`: `s1_attack` and its benign twin `s1_benign`, each with a
+  hand-labelled `scenario.yml`. Human approvals live in `approvals/<case_id>.yml`.
+- Read-only runs API (`backend/`) and the React dashboard (`frontend/`).
+- The live demo runs `qwen3:14b` through Ollama inside GitHub Actions. The `Model trial`
+  workflow compares models on `trial/*` branches.
+- Tests: pytest, including real-container tests when `SENTINEL_DOCKER` is set (CI sets it).
+- CI: ruff (pinned exact version), tests, stale-fixture check, dashboard typecheck and build.
+- Regenerate fixtures with `python -m contracts.generate_fixtures` (module form, not a file path),
+  then the frontend types with `npm run gen:types` in `frontend/`.
 
-Contract changes are allowed now that this is solo, but always: change the model in `contracts/`,
+Contract changes are allowed, but always: change the model in `contracts/`,
 bump the version, regenerate fixtures and schemas, keep tests green, and log it in DECISIONS.md.
 Never define a parallel data shape outside `contracts/`. Check `contracts/models.py` for exact
 field and enum names instead of guessing.
@@ -70,8 +77,8 @@ deterministic policy engine sits between agent judgment and system authority."
 
 ## Lab and safety
 
-- All attack activity runs only inside isolated lab VMs Ahmed owns. Never target external
-  systems, university networks, or anything outside the lab.
+- All attack activity runs only inside isolated lab machines or containers Ahmed owns. Never
+  target external systems or anything outside the lab.
 - Linux-only lab: attacker VM on a routed attacker segment, victim VM on a separate victim
   segment, a gateway between them, and a separate management network for telemetry and
   responder control.
@@ -100,20 +107,18 @@ Stretch (only after the must-haves are done and demoed):
 - A second scenario (S3 living-off-the-land is the most interesting for benign-vs-malicious).
 - A local-model comparison.
 
-Cut:
-- Windows lab and Sysmon, 4 scenarios, 5 comparison arms, sealed holdout, large action
-  catalog, team workflow rules.
-- The CI check that blocks changes to `benchmark/holdout/` can be removed.
-- Folder-ownership rules from the old CLAUDE.md no longer apply.
+Out of scope:
+- Windows lab and Sysmon, more than two scenarios before the must-haves are done, extra
+  comparison arms, a large action catalog.
 
 ## LLM usage and cost
 
 - The agent calls the LLM through one small client interface so the provider/model can be
-  swapped.
+  swapped. Current model: `qwen3:14b` via Ollama, free, in GitHub Actions and locally.
 - Replay mode: record real LLM responses and replay them in development and tests. Tests never
   call the paid API.
-- The API key has a hard spend cap. Never commit keys. Use a git-ignored `.env` and commit
-  `.env.example`.
+- If a paid provider is added, its API key gets a hard spend cap. Never commit keys. Use a
+  git-ignored `.env` and commit `.env.example`.
 
 ## Evaluation (lightweight, but honest)
 
@@ -143,11 +148,9 @@ Cut:
   proven live; then the benign twin -> agent says benign -> no action taken.
 - A hosted replay-mode dashboard (serves recorded incidents, no live lab or API key) so a
   recruiter can click through it from a link.
-- The repo is currently private. Before making it public, scan the full git history for
+- The repo is public (full history scanned for secrets on 2026-09-25). Never commit
   secrets.
 
 ## Open decisions
 
-- LLM provider and model.
 - Pace and timeline.
-- VM platform on the Windows host.
