@@ -36,6 +36,7 @@ from contracts.models import (
     ProcessInfo,
     ProposedAction,
     RiskScore,
+    Scenario,
     Severity,
     TelemetrySource,
     Verdict,
@@ -352,6 +353,11 @@ incident_run = IncidentRun(
     verdict=verdict,
     risk_score=risk,
     policy_decisions=[policy_allow, policy_approval],
+    scenario=Scenario(
+        title="Credential attack leading to account compromise",
+        description="An outside host guesses a user's password and signs in with it.",
+        expected_classification=Classification.MALICIOUS,
+    ),
 )
 
 FIXTURES = {

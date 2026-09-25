@@ -1,12 +1,69 @@
 import { ACTION, ENTITY, STOP_REASON } from "../../format";
 import type { IncidentRun } from "../../types/contracts";
 import { Cites } from "../Cites";
+import { ExpectedNote } from "../Expected";
 
-type Props = { run: IncidentRun; refs: Map<string, string> };
+type EvidenceProps = { run: IncidentRun; refs: Map<string, string>; calling: boolean };
 
-export function Investigation({ run, refs }: Props) {
+function EvidenceList({ run, refs, calling }: EvidenceProps) {
+  if (run.evidence.length === 0) {
+    return <p className="muted">{calling ? "The agent is deciding what to check." : "No evidence was collected."}</p>;
+  }
+  return (
+    <ol className="evidence">
+      {run.evidence.map((item) => {
+        const ref = refs.get(item.evidence_id) ?? "?";
+        const args = Object.entries(item.tool_query)
+          .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
+          .join(", ");
+        return (
+          <li key={item.evidence_id} id={`evidence-${ref}`} className="evidence-item">
+            <span className="tag">{ref}</span>
+            <div>
+              <code className="call">
+                {item.tool_name}({args})
+              </code>
+              {calling ? (
+                <p className="pending">
+                  <span className="spinner" aria-hidden="true" /> Running the tool.
+                </p>
+              ) : (
+                <>
+                  <p>{item.summary}</p>
+                  <details className="disclosure">
+                    <summary>Raw tool output</summary>
+                    <pre className="raw">{JSON.stringify(item.content, null, 2)}</pre>
+                  </details>
+                </>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+type Props = { run: IncidentRun; refs: Map<string, string>; phase: number };
+
+export function Investigation({ run, refs, phase }: Props) {
   const { verdict } = run;
   const calls = verdict.tool_calls_made;
+  const calling = phase === 0;
+  if (phase < 2) {
+    return (
+      <>
+        <p className="lede">The agent is investigating with read-only tools.</p>
+        <h3 className="sub">Evidence</h3>
+        <EvidenceList run={run} refs={refs} calling={calling} />
+        {!calling && (
+          <p className="pending">
+            <span className="spinner" aria-hidden="true" /> The agent is writing its verdict.
+          </p>
+        )}
+      </>
+    );
+  }
   return (
     <>
       <p className="lede">
@@ -15,30 +72,7 @@ export function Investigation({ run, refs }: Props) {
       </p>
 
       <h3 className="sub">Evidence</h3>
-      {run.evidence.length === 0 && <p className="muted">No evidence was collected.</p>}
-      <ol className="evidence">
-        {run.evidence.map((item) => {
-          const ref = refs.get(item.evidence_id) ?? "?";
-          const args = Object.entries(item.tool_query)
-            .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
-            .join(", ");
-          return (
-            <li key={item.evidence_id} id={`evidence-${ref}`} className="evidence-item">
-              <span className="tag">{ref}</span>
-              <div>
-                <code className="call">
-                  {item.tool_name}({args})
-                </code>
-                <p>{item.summary}</p>
-                <details className="disclosure">
-                  <summary>Raw tool output</summary>
-                  <pre className="raw">{JSON.stringify(item.content, null, 2)}</pre>
-                </details>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
+      <EvidenceList run={run} refs={refs} calling={false} />
 
       <h3 className="sub">Verdict</h3>
       <div className="proposal verdict">
@@ -48,6 +82,7 @@ export function Investigation({ run, refs }: Props) {
           <Cites ids={verdict.cited_evidence_ids} refs={refs} />
         </p>
         <p>{verdict.summary}</p>
+        <ExpectedNote run={run} />
         {verdict.attack_chain.length > 0 && (
           <ol className="chain" aria-label="Attack chain">
             {verdict.attack_chain.map((step) => (

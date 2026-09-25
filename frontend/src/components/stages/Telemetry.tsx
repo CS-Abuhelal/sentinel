@@ -1,16 +1,19 @@
 import { utc } from "../../format";
+import { useCountUp } from "../../playback";
 import type { IncidentRun } from "../../types/contracts";
 
-export function Telemetry({ run }: { run: IncidentRun }) {
+export function Telemetry({ run, counting }: { run: IncidentRun; counting: boolean }) {
   const alerted = new Set(run.alerts.flatMap((alert) => alert.event_ids));
   const hosts = [...new Set(run.events.map((event) => event.host))].join(", ");
   const sources = [...new Set(run.events.map((event) => event.source))].join(", ");
+  const shown = useCountUp(run.events.length, counting);
 
   return (
     <>
       <p className="lede">
-        {run.events.length} sshd login events parsed from <span className="mono">{hosts}</span>{" "}
-        ({sources}). {alerted.size} of them fed the alert and are marked below.
+        <strong className="count">{shown}</strong> sshd login events parsed from{" "}
+        <span className="mono">{hosts}</span> ({sources}). {alerted.size} of them fed the alert and
+        are marked below.
       </p>
       <details className="disclosure">
         <summary>Show all {run.events.length} normalized events</summary>

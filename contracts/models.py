@@ -14,7 +14,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-CONTRACT_VERSION = "1.1.0"
+CONTRACT_VERSION = "1.2.0"
 
 
 def _new_id(prefix: str) -> str:
@@ -332,6 +332,14 @@ class Inventory(SentinelModel):
         return record is not None and record.privileged
 
 
+class Scenario(SentinelModel):
+    """A prepared lab case with its hand-labelled expected outcome. Never shown to the agent."""
+
+    title: str
+    description: str
+    expected_classification: Classification
+
+
 class IncidentRun(SentinelModel):
     """One incident taken through every pipeline stage. The run file and the API response."""
 
@@ -346,6 +354,7 @@ class IncidentRun(SentinelModel):
     verdict: Verdict
     risk_score: RiskScore
     policy_decisions: list[PolicyDecision]
+    scenario: Scenario | None = None
 
 
 __all__ = [
@@ -375,6 +384,7 @@ __all__ = [
     "ProcessInfo",
     "ProposedAction",
     "RiskScore",
+    "Scenario",
     "Severity",
     "TelemetrySource",
     "Verdict",

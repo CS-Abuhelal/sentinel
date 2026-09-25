@@ -991,6 +991,30 @@
       "title": "RiskScore",
       "type": "object"
     },
+    "Scenario": {
+      "additionalProperties": false,
+      "description": "A prepared lab case with its hand-labelled expected outcome. Never shown to the agent.",
+      "properties": {
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "expected_classification": {
+          "$ref": "#/$defs/Classification"
+        }
+      },
+      "required": [
+        "title",
+        "description",
+        "expected_classification"
+      ],
+      "title": "Scenario",
+      "type": "object"
+    },
     "Severity": {
       "enum": [
         "info",
@@ -1156,7 +1180,7 @@
       "type": "string"
     },
     "contract_version": {
-      "default": "1.1.0",
+      "default": "1.2.0",
       "title": "Contract Version",
       "type": "string"
     },
@@ -1201,6 +1225,17 @@
       },
       "title": "Policy Decisions",
       "type": "array"
+    },
+    "scenario": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Scenario"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     }
   },
   "required": [
@@ -1214,7 +1249,8 @@
     "evidence",
     "verdict",
     "risk_score",
-    "policy_decisions"
+    "policy_decisions",
+    "scenario"
   ],
   "title": "IncidentRun",
   "type": "object"

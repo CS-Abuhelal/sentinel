@@ -7,7 +7,15 @@ from typing import Any
 import pytest
 
 from agent.investigate import MAX_TOOL_CALLS, investigate
-from agent.llm import LLMResponse, Message, Recording, ReplayClient, ReplayExhausted, ToolSpec
+from agent.llm import (
+    LLMResponse,
+    Message,
+    Recording,
+    ReplayClient,
+    ReplayExhausted,
+    ToolCall,
+    ToolSpec,
+)
 from contracts.models import (
     ActionType,
     Classification,
@@ -80,6 +88,11 @@ def test_tool_results_reach_the_model_as_json_data(s1) -> None:
     assert str(MAX_TOOL_CALLS) in first[0].content
     assert "{max_tool_calls}" not in first[0].content
     assert incident.incident_id in first[1].content
+    call_message = second[-2]
+    assert call_message.role == "assistant"
+    assert call_message.tool_call == ToolCall(
+        tool="auth_history", args={"account": "jdoe", "lookback_hours": 168}
+    )
     tool_message = second[-1]
     assert tool_message.role == "tool"
     body = json.loads(tool_message.content)

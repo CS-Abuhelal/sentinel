@@ -9,7 +9,8 @@ from pathlib import Path
 import yaml
 
 from agent.investigate import investigate
-from agent.llm import LLMClient, ReplayClient
+from agent.llm import LLMClient, RecordingClient, ReplayClient
+from agent.ollama import DEFAULT_MODEL, DEFAULT_URL, OllamaClient
 from contracts.models import (
     Classification,
     IncidentRun,
@@ -17,6 +18,7 @@ from contracts.models import (
     Inventory,
     PolicyDecision,
     PolicyOutcome,
+    Scenario,
     Verdict,
 )
 from detection.correlate import correlate
@@ -40,6 +42,12 @@ def load_inventory(path: Path) -> Inventory:
     return Inventory.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")) or {})
 
 
+def load_scenario(path: Path) -> Scenario | None:
+    if not path.is_file():
+        return None
+    return Scenario.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
+
+
 def run_pipeline(
     lines: list[str],
     case_id: str,
@@ -47,6 +55,7 @@ def run_pipeline(
     llm: LLMClient,
     rules: RuleSet | None = None,
     now: Callable[[], datetime] = utcnow,
+    scenario: Scenario | None = None,
 ) -> IncidentRun:
     events = parse_auth_log(lines, case_id)
     alerts = detect(events, rules or load_rules(RULES_DIR), case_id)
@@ -74,6 +83,7 @@ def run_pipeline(
         verdict=verdict,
         risk_score=risk,
         policy_decisions=decisions,
+        scenario=scenario,
     )
 
 
@@ -99,16 +109,38 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--inventory", type=Path, default=INVENTORY_FILE)
     parser.add_argument("--out", type=Path, default=RUNS_DIR)
+    parser.add_argument(
+        "--llm",
+        choices=["replay", "ollama"],
+        default="replay",
+        help="replay a recording (default) or ask a live model through Ollama",
+    )
+    parser.add_argument("--model", default=DEFAULT_MODEL, help="Ollama model tag")
+    parser.add_argument("--ollama-url", default=DEFAULT_URL)
+    parser.add_argument("--think", action="store_true", help="turn on the model's thinking mode")
+    parser.add_argument("--record", type=Path, help="save the live model's responses here")
     args = parser.parse_args(argv)
 
     case_id = args.case_id or args.log.resolve().parent.name
-    recording = args.recording or RECORDINGS_DIR / f"{case_id}.handwritten.json"
+    if args.llm == "ollama":
+        llm: LLMClient = OllamaClient(model=args.model, base_url=args.ollama_url, think=args.think)
+    else:
+        llm = ReplayClient.from_file(
+            args.recording or RECORDINGS_DIR / f"{case_id}.handwritten.json"
+        )
+    recorder = RecordingClient(llm)
     run = run_pipeline(
         args.log.read_text(encoding="utf-8").splitlines(),
         case_id,
         load_inventory(args.inventory),
-        ReplayClient.from_file(recording),
+        recorder,
+        scenario=load_scenario(args.log.parent / "scenario.yml"),
     )
+    if args.record:
+        args.record.parent.mkdir(parents=True, exist_ok=True)
+        args.record.write_text(
+            recorder.recording().model_dump_json(indent=2) + "\n", encoding="utf-8"
+        )
     args.out.mkdir(parents=True, exist_ok=True)
     path = args.out / f"{case_id}.json"
     path.write_text(run.model_dump_json(indent=2) + "\n", encoding="utf-8")

@@ -8,12 +8,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 @dataclass(frozen=True)
-class Message:
-    role: Literal["system", "user", "assistant", "tool"]
-    content: str
-
-
-@dataclass(frozen=True)
 class ToolSpec:
     name: str
     description: str
@@ -24,6 +18,13 @@ class ToolSpec:
 class ToolCall:
     tool: str
     args: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class Message:
+    role: Literal["system", "user", "assistant", "tool"]
+    content: str
+    tool_call: ToolCall | None = None
 
 
 @dataclass(frozen=True)
@@ -90,3 +91,28 @@ class ReplayClient:
         if isinstance(recorded, RecordedToolCall):
             return ToolCall(tool=recorded.tool, args=dict(recorded.args))
         return FinalAnswer(payload=recorded.payload)
+
+
+class RecordingClient:
+    def __init__(self, inner: LLMClient) -> None:
+        self._inner = inner
+        self._responses: list[RecordedToolCall | RecordedFinal] = []
+
+    @property
+    def model_name(self) -> str:
+        return self._inner.model_name
+
+    def complete(self, messages: list[Message], tools: list[ToolSpec]) -> LLMResponse:
+        response = self._inner.complete(messages, tools)
+        if isinstance(response, ToolCall):
+            self._responses.append(
+                RecordedToolCall(type="tool_call", tool=response.tool, args=response.args)
+            )
+        else:
+            self._responses.append(RecordedFinal(type="final", payload=response.payload))
+        return response
+
+    def recording(self) -> Recording:
+        return Recording(
+            source="recorded", model_name=self.model_name, responses=list(self._responses)
+        )

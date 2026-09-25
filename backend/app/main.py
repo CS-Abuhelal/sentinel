@@ -24,7 +24,7 @@ def load_runs() -> list[IncidentRun]:
         IncidentRun.model_validate_json(path.read_text(encoding="utf-8"))
         for path in sorted(directory.glob("*.json"))
     ]
-    return sorted(runs, key=lambda run: run.created_at, reverse=True)
+    return sorted(runs, key=lambda run: run.incident.created_at, reverse=True)
 
 
 @app.get("/health")

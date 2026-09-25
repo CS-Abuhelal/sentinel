@@ -143,6 +143,8 @@ export type DecidedAt = string;
 export type ApprovedBy = string | null;
 export type ApprovedAt = string | null;
 export type PolicyDecisions = PolicyDecision[];
+export type Title1 = string;
+export type Description2 = string;
 
 /**
  * One incident taken through every pipeline stage. The run file and the API response.
@@ -159,6 +161,7 @@ export interface IncidentRun {
   verdict: Verdict;
   risk_score: RiskScore;
   policy_decisions: PolicyDecisions;
+  scenario: Scenario | null;
 }
 /**
  * One normalized telemetry record. The atomic unit of evidence.
@@ -333,4 +336,12 @@ export interface PolicyDecision {
   decided_at: DecidedAt;
   approved_by: ApprovedBy;
   approved_at: ApprovedAt;
+}
+/**
+ * A prepared lab case with its hand-labelled expected outcome. Never shown to the agent.
+ */
+export interface Scenario {
+  title: Title1;
+  description: Description2;
+  expected_classification: Classification;
 }

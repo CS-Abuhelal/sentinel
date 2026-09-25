@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -7,6 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from agent.tools.base import Tool, ToolContext, ToolResult
 from contracts.models import Event, EventCategory, EvidenceClass
+
+BASELINE_DAYS = 30
 
 
 class AuthHistoryParams(BaseModel):
@@ -30,24 +33,26 @@ def auth_history(params: AuthHistoryParams, context: ToolContext) -> ToolResult:
         ),
         key=lambda e: e.timestamp,
     )
-    by_source = _by_source(events)
-    known = sorted(
-        {
-            _src_ip(e)
-            for e in events
-            if e.outcome == "success" and e.timestamp < incident.window_start
-        }
+    baseline_start = incident.window_start - timedelta(days=BASELINE_DAYS)
+    baseline = Counter(
+        _src_ip(e)
+        for e in context.events
+        if e.category is EventCategory.AUTHENTICATION
+        and e.user == params.account
+        and e.outcome == "success"
+        and baseline_start <= e.timestamp < incident.window_start
     )
-    after_failures = _success_after_failures(events, incident.window_start)
     content = {
         "account": params.account,
         "range_start": range_start.isoformat(),
         "range_end": range_end.isoformat(),
         "total_failures": sum(1 for e in events if e.outcome == "failure"),
         "total_successes": sum(1 for e in events if e.outcome == "success"),
-        "by_source_ip": by_source,
-        "success_after_failures": after_failures,
-        "known_source_ips": known,
+        "by_source_ip": _by_source(events),
+        "success_after_failures": _success_after_failures(events, incident.window_start),
+        "baseline_days": BASELINE_DAYS,
+        "baseline_successes": dict(sorted(baseline.items())),
+        "known_source_ips": sorted(baseline),
     }
     return ToolResult(
         summary=_summary(content, range_start, range_end),
@@ -100,25 +105,31 @@ def _success_after_failures(events: list[Event], window_start: datetime) -> list
 
 
 def _summary(content: dict[str, Any], range_start: datetime, range_end: datetime) -> str:
-    known = content["known_source_ips"]
+    days = content["baseline_days"]
+    baseline = content["baseline_successes"]
     parts = [
         f"{content['account']}: {content['total_failures']} failed and "
         f"{content['total_successes']} successful logins between "
         f"{_short(range_start)} and {_short(range_end)}."
     ]
     for entry in content["success_after_failures"]:
-        novelty = (
-            " This source had no successful logins before the incident."
-            if entry["src_ip"] not in known
-            else ""
+        history = (
+            f" This source had no successful logins in the {days} days before the incident."
+            if entry["src_ip"] not in baseline
+            else f" This source is one the account used in the {days} days before the incident."
         )
         parts.append(
             f"Successful login from {entry['src_ip']} after {entry['failures_before']} "
             f"consecutive failures, at {_short(datetime.fromisoformat(entry['success_at']))}."
-            f"{novelty}"
+            f"{history}"
         )
+    sources = ", ".join(
+        f"{src_ip} ({count} successful login{'' if count == 1 else 's'})"
+        for src_ip, count in baseline.items()
+    )
     parts.append(
-        f"Sources with successful logins before the incident: {', '.join(known) or 'none'}."
+        f"Sources with successful logins in the {days} days before the incident: "
+        f"{sources or 'none'}."
     )
     return " ".join(parts)
 

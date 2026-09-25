@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from agent.llm import FinalAnswer, LLMClient, Message
+from agent.llm import FinalAnswer, LLMClient, Message, ToolCall
 from agent.tools import TOOLS, Tool, ToolContext
 from contracts.models import (
     ActionType,
@@ -124,9 +124,7 @@ def investigate(
         )
         evidence.append(item)
         refs[ref] = item.evidence_id
-        messages.append(
-            Message("assistant", json.dumps({"tool_call": {"tool": tool.name, "args": query}}))
-        )
+        messages.append(Message("assistant", "", tool_call=ToolCall(tool=tool.name, args=query)))
         messages.append(
             Message(
                 "tool",
