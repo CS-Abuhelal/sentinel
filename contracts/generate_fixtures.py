@@ -1,10 +1,10 @@
 """Generate sample JSON for every contract model, plus JSON Schema.
 
-Run from the repo root:  python contracts/generate_fixtures.py
+Run from the repo root:  python -m contracts.generate_fixtures
 
 The fixtures describe one coherent S1 case (credential attack leading to account
-compromise) flowing through every stage of the pipeline. Build against these instead of
-waiting for another team member's component.
+compromise) at every stage of the pipeline, so each stage can be built and tested on its
+own.
 """
 
 from __future__ import annotations
