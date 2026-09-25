@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import { STATUS, evidenceRefs, utc } from "../format";
 import { usePlayback, type Playback } from "../playback";
 import type { IncidentRun } from "../types/contracts";
@@ -29,7 +31,12 @@ export function RunDetail({ run }: { run: IncidentRun }) {
   const { incident, verdict, risk_score: risk } = run;
   const refs = evidenceRefs(run.evidence);
   const agent = `Agent · ${verdict.model_name ?? "unknown model"}`;
-  const playback = usePlayback(DURATIONS);
+  const [anchor] = useState(() => window.location.hash.slice(1));
+  const playback = usePlayback(DURATIONS, anchor !== "");
+
+  useEffect(() => {
+    if (anchor) document.getElementById(anchor)?.scrollIntoView({ block: "start" });
+  }, [anchor]);
   const { step, finished } = playback;
   const state = (start: number, end: number) => stageState(step, finished, start, end);
 
