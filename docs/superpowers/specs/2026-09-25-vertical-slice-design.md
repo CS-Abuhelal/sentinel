@@ -1,6 +1,6 @@
 # Vertical slice — design
 
-Date: 2026-09-25. Status: approved.
+Date: 2026-09-25. Status: implemented on `feat/vertical-slice`.
 
 ## Goal
 

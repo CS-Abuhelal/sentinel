@@ -394,7 +394,7 @@ def main() -> None:
 
     for name, obj in FIXTURES.items():
         path = fixtures_dir / f"{name}.json"
-        path.write_text(obj.model_dump_json(indent=2) + "\n", encoding="utf-8")
+        path.write_text(obj.model_dump_json(indent=2) + "\n", encoding="utf-8", newline="\n")
         print(f"fixture  {path.relative_to(OUT.parent)}")
 
     for model in SCHEMA_MODELS:
@@ -403,6 +403,7 @@ def main() -> None:
             json.dumps(model.model_json_schema(mode="serialization"), indent=2, ensure_ascii=False)
             + "\n",
             encoding="utf-8",
+            newline="\n",
         )
         print(f"schema   {path.relative_to(OUT.parent)}")
 
@@ -440,6 +441,7 @@ def main() -> None:
         )
         + "\n",
         encoding="utf-8",
+        newline="\n",
     )
     print(f"bundle   {bundle.relative_to(OUT.parent)}")
 
