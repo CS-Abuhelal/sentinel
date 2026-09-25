@@ -48,22 +48,33 @@ jobs:
           curl -sSf http://localhost:11434/api/pull \
             -d "{\"model\": \"$SENTINEL_MODEL\", \"stream\": false}"
 
-      - name: Investigate each scenario with the live model
+      - name: Build the victim lab container
+        run: docker build -q -t sentinel-victim lab/victim
+
+      - name: Investigate each scenario live and execute approved actions in the lab
         run: |
           for log in lab/scenarios/*/auth.log; do
             case_id=$(basename "$(dirname "$log")")
+            victim="victim-$case_id"
+            docker run -d --cap-add NET_ADMIN --name "$victim" sentinel-victim
+            for user in jdoe svc_backup; do
+              docker exec -d -u "$user" "$victim" sleep 3600
+            done
             python -m pipeline.run "$log" --llm ollama --model "$SENTINEL_MODEL" \
-              --record "recordings/$case_id.json"
+              --record "recordings/$case_id.json" \
+              --target docker --container "victim-web-01=$victim" \
+              --audit-log audit/audit.jsonl
           done
           python -m pipeline.export runs frontend/public/runs.json
 
-      - name: Keep the model's raw responses
+      - name: Keep the model's raw responses and the audit log
         uses: actions/upload-artifact@v7
         with:
           name: live-runs
           path: |
             runs/
             recordings/
+            audit/
 
       - uses: actions/setup-node@v7
         with:

@@ -5,6 +5,7 @@ import type { IncidentRun } from "../../types/contracts";
 
 export function Policy({ run }: { run: IncidentRun }) {
   const actions = new Map(run.verdict.proposed_actions.map((action) => [action.action_id, action]));
+  const approved = new Set(run.approvals.map((approval) => approval.decision_id));
   if (run.policy_decisions.length === 0) {
     return <p className="lede">The agent proposed no actions, so nothing reached the policy engine.</p>;
   }
@@ -44,7 +45,7 @@ export function Policy({ run }: { run: IncidentRun }) {
                   <dd>{decision.target_is_protected ? "Yes" : "No"}</dd>
                 </div>
               </dl>
-              {decision.outcome === "require_approval" && action && (
+              {decision.outcome === "require_approval" && action && !approved.has(decision.decision_id) && (
                 <AnalystCall label={`${ACTION[action.action_type].toLowerCase()} ${action.target_value}`} />
               )}
             </div>
@@ -52,8 +53,9 @@ export function Policy({ run }: { run: IncidentRun }) {
         );
       })}
       <p className="executed">
-        Nothing runs without this decision. This demo has no lab attached, so your approval shows what
-        would happen next without changing any system.
+        Nothing runs without this decision. Where no approval is recorded for this run, the buttons
+        let you play the analyst; your click changes nothing. Recorded approvals and what the executor
+        did are in the next stage.
       </p>
     </>
   );
