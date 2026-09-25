@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
-from agent.llm import ReplayClient
+from agent.llm import Recording, ReplayClient
 from contracts.models import (
     CONTRACT_VERSION,
     Classification,
@@ -13,8 +14,10 @@ from contracts.models import (
     IncidentStatus,
     PolicyOutcome,
 )
+from pipeline import run as run_module
 from pipeline.run import INVENTORY_FILE, load_inventory, main, run_pipeline
 from tests.conftest import S1_LOG, S1_RECORDING
+from tests.test_ollama import FakeOllama
 
 NOW = datetime(2026, 9, 25, 2, 20, tzinfo=UTC)
 
@@ -54,6 +57,36 @@ def test_log_without_alerts_raises() -> None:
     baseline = [line for line in lines if not line.startswith("2026-09-25")]
     with pytest.raises(ValueError, match="exactly one incident"):
         _run(baseline)
+
+
+def test_main_with_live_model_records_responses(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    final = {
+        "classification": "malicious",
+        "confidence": 0.7,
+        "summary": "Password guessing followed by a successful login.",
+        "cited_evidence": ["E1"],
+    }
+    fake = FakeOllama(
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+                {"function": {"name": "auth_history", "arguments": {"account": "jdoe"}}}
+            ],
+        },
+        {"role": "assistant", "content": json.dumps(final)},
+    )
+    monkeypatch.setattr(run_module, "OllamaClient", lambda model, base_url: fake.client())
+    recording_path = tmp_path / "recorded.json"
+    argv = [str(S1_LOG), "--llm", "ollama", "--out", str(tmp_path), "--record", str(recording_path)]
+    assert main(argv) == 0
+    run = IncidentRun.model_validate_json((tmp_path / "s1_attack.json").read_text(encoding="utf-8"))
+    assert run.verdict.model_name == "ollama:qwen3:8b"
+    recording = Recording.model_validate_json(recording_path.read_text(encoding="utf-8"))
+    assert recording.source == "recorded"
+    assert [r.type for r in recording.responses] == ["tool_call", "final"]
 
 
 def test_main_writes_run_file(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

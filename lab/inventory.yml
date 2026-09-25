@@ -1,6 +1,8 @@
 accounts:
   jdoe:
     role: developer
+  svc_backup:
+    role: backup service account
   labadmin:
     role: lab administrator
     privileged: true
