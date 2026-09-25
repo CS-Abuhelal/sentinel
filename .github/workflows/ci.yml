@@ -33,16 +33,3 @@ jobs:
           python -m contracts.generate_fixtures
           git diff --exit-code contracts/fixtures contracts/schemas \
             || (echo "::error::Fixtures are stale. Run: python -m contracts.generate_fixtures" && exit 1)
-
-      - name: Holdout benchmark must stay sealed
-        if: github.event_name == 'pull_request'
-        run: |
-          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
-          changed=$(git diff --name-only FETCH_HEAD...HEAD \
-            | grep '^benchmark/holdout/' \
-            | grep -vE '(README\.md|\.gitkeep)$' || true)
-          if [ -n "$changed" ]; then
-            echo "::error::This PR touches benchmark/holdout/. That split is sealed until week 10."
-            echo "$changed"
-            exit 1
-          fi

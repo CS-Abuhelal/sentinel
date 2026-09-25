@@ -1,7 +1,8 @@
 """SENTINEL shared data contracts.
 
-FROZEN. Every component imports these models. No component defines its own version
-of any shape declared here. Changes require a team decision logged in docs/decisions.md.
+Every component imports these models. No component defines its own version of any shape
+declared here. Changes bump the contract version, regenerate fixtures and schemas, and are
+logged in DECISIONS.md.
 """
 
 from __future__ import annotations

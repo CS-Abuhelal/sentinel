@@ -1,17 +1,31 @@
----
-title: SENTINEL — Architecture Decision Log
-status: LIVE — append when a decision is made, not afterwards. Newest at top.
----
-
 # Decision Log
 
-Format: **D-NN — Title** (date) → Decision / Why / Consequence.
-Write the entry the day the decision is made. Reconstructing these in week 13 for the report
-is painful and produces worse reasoning than what actually happened.
+Format: **D-NN — Title** (date) → Decision / Why / Consequence. Newest at top.
+Write the entry the day the decision is made, not afterwards.
 
 ---
 
-## D-03 — Feature freeze at Week 7 (2026-08-27)
+## D-04 — Continue as a solo portfolio project (2026-09-25)
+
+**Decision.** SENTINEL was not accepted as the team's graduation project. It continues as a
+solo portfolio project. No team, no panel, no fixed 14-week schedule. The scope is cut to one
+real scenario (S1) with at least one benign twin, the policy engine, a two-action executor, and a
+dashboard. `CLAUDE.md` is replaced with the solo brief.
+
+**Why.** The goal is now a finished, demoable project that can be explained in an interview.
+Academic completeness is no longer the goal.
+
+**Consequence.**
+- D-01 is relaxed. Contracts can change, but every change bumps the version, regenerates
+  fixtures and schemas, keeps tests green, and gets an entry here.
+- D-02 is dropped. The sealed holdout split is gone, along with its CI check. Evaluation uses
+  5 to 10 hand-labeled cases.
+- D-03 is dropped. There is no week-based feature freeze.
+- D-00 still holds.
+
+---
+
+## D-03 — Feature freeze at Week 7 (2026-08-27) — superseded by D-04
 
 **Decision.** No new system features after week 7. Weeks 8–12 are evaluation and analysis only.
 
@@ -23,7 +37,7 @@ made before then, not deferred.
 
 ---
 
-## D-02 — Holdout benchmark split assigned at case creation (2026-08-27)
+## D-02 — Holdout benchmark split assigned at case creation (2026-08-27) — superseded by D-04
 
 **Decision.** Every benchmark case is assigned `dev` or `holdout` at authoring time, before
 anyone has seen system performance on it. The holdout is stored separately with restricted
@@ -37,7 +51,7 @@ finding — no re-tuning.
 
 ---
 
-## D-01 — Contracts frozen in Week 1, before any component logic (2026-08-27)
+## D-01 — Contracts frozen in Week 1, before any component logic (2026-08-27) — relaxed by D-04
 
 **Decision.** Week 1 delivers `contracts/` — Pydantic models plus JSON Schema plus fixtures for
 Event, Alert, Incident, EvidenceItem, Verdict, ProposedAction, PolicyDecision — merged to `main`

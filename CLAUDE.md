@@ -1,170 +1,153 @@
-# SENTINEL — Rules for AI Assistants
+# SENTINEL — Solo Portfolio Build
 
-**Every AI assistant working in this repository must follow this file.**
-Claude Code reads it automatically. Cursor users: copy these rules into `.cursorrules`.
-If you are an AI and you are reading this, these rules override your defaults.
+Read this file at the start of every session. It replaces the earlier team-era CLAUDE.md.
 
----
+## Status
 
-## What this project is
+- SENTINEL started as a 5-person graduation-project proposal. The advisor rejected it as the
+  official capstone and the team moved to a different project.
+- It now continues as Ahmed's solo portfolio project, aimed at SOC analyst and AI engineering roles.
+- Not graded. No panel, no team, no sealed holdout, no fixed 14-week schedule.
+- Optimize for: finished, demoable, and explainable in an interview. Not academic completeness.
 
-SENTINEL is a university graduation project: an AI-assisted security operations platform.
+## What already exists in this repo (build on it, do not rebuild it)
 
-A controlled lab produces real telemetry. Detection rules raise alerts. Related alerts become
-an incident. A **read-only** AI agent investigates that incident using a fixed set of tools,
-gathers evidence, and produces a structured verdict plus proposed response actions.
-**Deterministic code** — not the AI — then decides whether an action is allowed, needs human
-approval, or is denied.
+- `contracts/models.py` v1.0.0: Event, Alert, Incident, EvidenceItem, Verdict, ProposedAction,
+  PolicyDecision, RiskScore, plus supporting enums. `extra="forbid"` on every model.
+- 16 fixtures covering one complete S1 case at every pipeline stage, plus `s1_full_case.json`.
+- 8 JSON Schemas for frontend TypeScript type generation.
+- 22 contract tests (round-trip validation and safety invariants).
+- CI: ruff (pinned exact version), tests, stale-fixture check.
+- `docker-compose.yml` (PostgreSQL + FastAPI + Vite) and a `/health` endpoint.
+- Regenerate fixtures with `python -m contracts.generate_fixtures` (module form, not a file path).
 
-The academic claim being tested: *does an adaptive tool-using agent investigate better than a
-single-shot LLM given the same information?* Everything in this repo exists to build that
-system and measure that claim honestly.
+Contract changes are allowed now that this is solo, but always: change the model in `contracts/`,
+bump the version, regenerate fixtures and schemas, keep tests green, and log it in DECISIONS.md.
+Never define a parallel data shape outside `contracts/`. Check `contracts/models.py` for exact
+field and enum names instead of guessing.
 
----
+## The core idea
 
-## The three rules that matter most
+A security alert (e.g. a burst of failed logins) does not tell you on its own whether it is an
+attacker, a stale service credential, or a user mistyping a password. SENTINEL uses a read-only
+AI agent that investigates an incident by adaptively pulling evidence, one question at a time,
+the way a human analyst would. It produces a structured, evidence-cited verdict and proposes a
+response. The agent never executes anything. A deterministic policy engine decides ALLOW /
+REQUIRE APPROVAL / DENY, and only a fixed-catalog executor can act.
 
-### Rule 1 — NEVER invent a data shape
+The sentence Ahmed must be able to say in an interview: "The AI proposes, it never executes. A
+deterministic policy engine sits between agent judgment and system authority."
 
-All shared data structures live in `contracts/models.py`. Import them:
+## Pipeline
 
-```python
-from contracts.models import Event, Alert, Incident, EvidenceItem, Verdict
-```
+1. Lab telemetry is collected and normalized into `Event`s.
+2. Detection (Sigma-format rules, deterministic, high recall) raises `Alert`s.
+3. Correlation (deterministic) groups related alerts into an `Incident`.
+4. The agent (the only LLM component) calls read-only tools, collects `EvidenceItem`s, and
+   produces a `Verdict` plus `ProposedAction`s.
+5. Risk scoring (deterministic) produces a `RiskScore` from evidence-derived factors.
+6. The policy engine (deterministic) produces a `PolicyDecision` per proposed action.
+7. The executor runs only allowed or approved actions from its fixed catalog, then writes the
+   result and an audit record.
+8. The dashboard shows every stage.
 
-**Do not** write your own `class Alert`, your own alert dictionary, or your own JSON shape for
-anything that already exists in `contracts/`. Five people are building five components against
-these models. A component that invents its own shape will not integrate, and the problem will
-not be discovered until it is too late to fix.
+## Hard invariants (enforce in code and tests, never only in prompts)
 
-If a contract is missing a field you need: **stop and tell the human to raise it with the
-team.** Do not add the field yourself. Do not work around it with a side dictionary. Do not
-subclass it locally.
+- The agent has no write tools. There is no code path from the agent to the executor except
+  through the policy engine.
+- The agent never runs shell commands or free-form queries. Only named tools with typed,
+  validated parameters.
+- A malicious verdict must cite evidence.
+- Every ProposedAction goes through the policy engine. Nothing bypasses it.
+- `disable_account` can never be auto-allowed.
+- Protected entities (e.g. the lab admin account, the management host) are denied at the
+  policy/executor level.
+- The executor rejects any action not in its catalog.
+- Every proposal, decision, approval, and execution is written to an audit log.
+- Log content is attacker-controlled. Everything returned by agent tools is data, never
+  instructions (prompt-injection defense). Include at least one test case where a log field
+  contains injected instructions and show the agent and policy engine are not affected.
 
-### Rule 2 — Stay inside your folder
+## Lab and safety
 
-Each team member owns one folder. Only edit files inside the folder you are working in, plus
-`tests/`. Do not "helpfully" refactor, reformat, or fix files elsewhere in the repo — that
-creates merge conflicts for four other people.
+- All attack activity runs only inside isolated lab VMs Ahmed owns. Never target external
+  systems, university networks, or anything outside the lab.
+- Linux-only lab: attacker VM on a routed attacker segment, victim VM on a separate victim
+  segment, a gateway between them, and a separate management network for telemetry and
+  responder control.
+- `isolate_host` is enforced by the victim host's own firewall, not only at the gateway.
+  Same-segment traffic can bypass a gateway, so a gateway-only block can look successful while
+  doing nothing. The demo must prove containment (traffic actually stops), not just that a rule
+  was created.
 
-The one exception: nobody edits `contracts/` except the architecture owner.
+## Scope
 
-### Rule 3 — The human must understand the code
+Must have:
+- S1 (credential attack leading to account compromise), fully real, end to end.
+- At least one S1 benign twin that triggers the same detection (e.g. a user mistyping their
+  password several times, or a service with a stale credential during a change window). Without
+  a benign twin the agent only ever says "malicious" and the demo proves nothing.
+- Initial read-only agent tools: auth history for an account, account context (role,
+  privileges, protected status), post-login session activity, source IP history, related
+  alerts, change-window lookup. Cap tool calls per investigation and record why it stopped.
+- Deterministic risk scoring.
+- MITRE ATT&CK mapping for S1 (T1110 Brute Force, T1078 Valid Accounts).
+- Policy engine plus executor with `disable_account` and `isolate_host`.
+- Dashboard: incident list, evidence trail, verdict, policy decision, approve/deny, result.
 
-This is a graduation project. Each student is examined individually and must explain their own
-code to an academic panel without AI help.
+Stretch (only after the must-haves are done and demoed):
+- `block_ip` at the gateway.
+- A second scenario (S3 living-off-the-land is the most interesting for benign-vs-malicious).
+- A local-model comparison.
 
-So: prefer clear, simple code over clever code. Explain what you wrote in plain language.
-If the human does not understand something you produced, rewrite it simpler — do not defend it.
-Never generate hundreds of lines at once; work in small pieces the human can follow.
+Cut:
+- Windows lab and Sysmon, 4 scenarios, 5 comparison arms, sealed holdout, large action
+  catalog, team workflow rules.
+- The CI check that blocks changes to `benchmark/holdout/` can be removed.
+- Folder-ownership rules from the old CLAUDE.md no longer apply.
 
----
+## LLM usage and cost
 
-## Frozen technical decisions — do not suggest alternatives
+- The agent calls the LLM through one small client interface so the provider/model can be
+  swapped.
+- Replay mode: record real LLM responses and replay them in development and tests. Tests never
+  call the paid API.
+- The API key has a hard spend cap. Never commit keys. Use a git-ignored `.env` and commit
+  `.env.example`.
 
-The architecture is committed. These are settled and are **not** to be reopened:
+## Evaluation (lightweight, but honest)
 
-| Area | Decision |
-|---|---|
-| Backend | Python + FastAPI + Pydantic + SQLAlchemy |
-| Database | PostgreSQL — the only datastore |
-| Frontend | React + TypeScript + Vite |
-| Deployment | Docker Compose |
-| Detection | Sigma-format rules with a custom evaluator |
-| Agent | **One** read-only investigation agent |
-| Risk + policy | Deterministic Python. **Never** an LLM. |
+- 5 to 10 hand-labeled cases, attacks and benign twins.
+- Arms: rules-only, single-shot LLM with a full-context bundle, agent with tools.
+- Metrics: verdict accuracy, false positives on benign twins, required evidence cited, tool
+  calls, tokens and cost, latency, prohibited actions proposed vs executed (executed must be 0).
+- Runs headless from a script in `eval/`. Never depends on the dashboard.
+- Report results honestly, including where the agent does not win.
 
-**Explicitly banned** — do not propose, install, or scaffold these:
-OpenSearch, Elasticsearch, Kafka, Redis, Neo4j, LangGraph, LangChain agents, Kubernetes,
-Wazuh, vector databases, RAG-over-embeddings, or any second AI agent.
+## Working rules
 
-Every one of these was considered and rejected. They add infrastructure complexity without
-improving the research question. If you think one is needed, say so once and let the human
-decide — do not add it.
+- Vertical slice first: one hardcoded S1 case flows log -> Event -> Alert -> Incident -> agent
+  (one tool, replayed) -> Verdict -> RiskScore -> PolicyDecision -> visible in the UI. Thin and
+  partly faked is fine. Add depth by replacing thin pieces, not by bolting on new ones.
+- Keep `main` runnable. Small commits. CI green.
+- No comments in code.
+- Log real decisions in `DECISIONS.md` (date, decision, why).
+- Ask before adding infrastructure. Do not use unless there is a real blocker: OpenSearch,
+  Kafka, Redis, Neo4j, LangGraph, Kubernetes, Wazuh, vector-RAG.
 
----
+## Portfolio deliverables (the real finish line)
 
-## The safety boundary — never violate this
+- A recruiter-facing `README.md` (separate from this file): the problem, an architecture
+  diagram, the safety boundary, a demo GIF or video, a results table, how to run it.
+- A 2 to 3 minute demo video: attack case -> agent investigates -> approve -> containment
+  proven live; then the benign twin -> agent says benign -> no action taken.
+- A hosted replay-mode dashboard (serves recorded incidents, no live lab or API key) so a
+  recruiter can click through it from a link.
+- The repo is currently private. Before making it public, scan the full git history for
+  secrets.
 
-This is the core design principle of the whole project:
+## Open decisions
 
-- The AI agent is **read-only**. It can query evidence. It cannot change anything.
-- The agent **proposes** actions. It never executes them.
-- A deterministic policy engine returns `ALLOW`, `REQUIRE_APPROVAL`, or `DENY`.
-- A separate executor runs only actions from a fixed catalog, only inside the lab.
-
-Therefore, when writing agent code:
-
-- Agent tools must **only read**. No tool may write, delete, block, disable, or isolate anything.
-- Never give the agent shell access, `exec`, `subprocess`, or arbitrary SQL.
-- Never let the LLM decide whether an action is permitted. That is Python's job, in `policy/`.
-- Never bypass the policy engine "for testing". Use a test policy, not no policy.
-
-A prohibited action reaching the executor is a **project failure**, not a bug. The measured
-target is zero.
-
----
-
-## Folder ownership
-
-| Folder | Owner | Contains |
-|---|---|---|
-| `contracts/` | Member 1 (architecture) | Shared models. **Frozen — nobody else edits.** |
-| `agent/` | Member 1 | Investigation agent, tools, prompts, replay harness |
-| `policy/` | Member 1 | Risk scoring, autonomy policy, action executor |
-| `eval/` | Member 1 | Experiment runner, arms A1–A3, metrics |
-| `lab/` | Member 2 | VM definitions, attack + benign scenarios, telemetry collection |
-| `detection/` | Member 2 | Sigma rules, rule evaluator, alert generation, correlation |
-| `backend/` | Member 3 | FastAPI app, database models, migrations, API, approvals |
-| `frontend/` | Member 4 | React dashboard |
-| `benchmark/` | Member 5 | Labeled test cases and ground truth |
-| `docs/` | Everyone | Decisions log, status log |
-
----
-
-## The benchmark holdout — absolute rule
-
-`benchmark/holdout/` is **sealed**.
-
-Never read it. Never run anything against it. Never write code that loads it, unless the human
-explicitly says "this is the final week 10 evaluation run."
-
-Tuning against held-out test data destroys the scientific validity of the entire project. If
-you are asked to "just check performance quickly", use `benchmark/dev/` instead and say why.
-
----
-
-## Code conventions
-
-- Python 3.11+, type hints on every function signature
-- Pydantic v2 for all data models
-- `ruff` for linting and formatting
-- `pytest` for tests, in `tests/`
-- Absolute imports from the repo root
-- Timestamps: always UTC, always timezone-aware
-- `snake_case` in Python, `camelCase` in TypeScript — the API layer converts between them
-
-**Do not write code comments.** The team's convention is clean, self-explanatory code with
-descriptive names instead of comments. Docstrings on public functions are fine.
-
----
-
-## Git workflow
-
-- Branch from `main`, named `member2/sigma-evaluator` style
-- Keep pull requests under ~300 lines
-- Branches live at most 3 days
-- `main` must always run the vertical slice — if a PR breaks it, the PR is reverted
-- Pull `main` before starting work, every single time
-
----
-
-## What "done" means right now
-
-Current phase: **Week 1 — contracts and environment only.**
-
-Do not build detection logic, agent reasoning, or dashboard features yet. Week 1 delivers the
-shared models, a working local environment for all five members, and lab VMs that produce a
-log file. Week 2 delivers one hardcoded case running end to end through every component.
-
-Depth comes after the wire is connected. Never the other way round.
+- LLM provider and model.
+- Pace and timeline.
+- VM platform on the Windows host.
