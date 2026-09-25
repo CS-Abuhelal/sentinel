@@ -2,6 +2,10 @@
 
 An evidence-driven agentic investigation and controlled response system for security operations.
 
+**Live demo:** https://cs-abuhelal.github.io/sentinel/ shows a recorded S1 run (SSH brute force
+leading to a compromised account) through every pipeline stage. It needs no install, no lab
+and no API key.
+
 ---
 
 ## What it does
@@ -49,6 +53,15 @@ cd frontend && npm install && npm run dev                # dashboard on :5173
 Open http://localhost:5173. The dashboard shows the run stage by stage: parsed events, the
 Sigma alert, the incident, the agent's evidence and verdict, the deterministic risk score, and
 the policy decision on each proposed action.
+
+The live demo is the same dashboard built as a static site. The `Dashboard demo` workflow
+runs the pipeline, bundles the run files and deploys to GitHub Pages on every push to `main`.
+To build it yourself:
+
+```bash
+python -m pipeline.export runs frontend/public/runs.json
+cd frontend && VITE_BASE=/sentinel/ VITE_RUNS_URL=runs.json npm run build
+```
 
 ---
 

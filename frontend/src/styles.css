@@ -111,6 +111,11 @@ a {
   font-size: 13px;
 }
 
+.masthead-link {
+  margin-left: auto;
+  font-size: 13px;
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

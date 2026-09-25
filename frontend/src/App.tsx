@@ -31,6 +31,9 @@ export function App() {
       <header className="masthead">
         <span className="wordmark">SENTINEL</span>
         <span className="masthead-tag">The AI proposes. Deterministic policy decides.</span>
+        <a className="masthead-link" href="https://github.com/CS-Abuhelal/sentinel">
+          Source on GitHub
+        </a>
       </header>
       <div className="layout">
         {runs.length > 0 && (
