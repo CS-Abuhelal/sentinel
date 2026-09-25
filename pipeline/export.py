@@ -18,7 +18,7 @@ def export_runs(runs_dir: Path, out: Path) -> list[IncidentRun]:
     ]
     if not runs:
         raise ValueError(f"no run files in {runs_dir}")
-    runs.sort(key=lambda r: r.created_at, reverse=True)
+    runs.sort(key=lambda r: r.incident.created_at, reverse=True)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_bytes(_RUNS.dump_json(runs))
     return runs

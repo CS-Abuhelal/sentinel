@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { ACTION, OUTCOME } from "../../format";
 import type { IncidentRun } from "../../types/contracts";
 
@@ -42,11 +44,55 @@ export function Policy({ run }: { run: IncidentRun }) {
                   <dd>{decision.target_is_protected ? "Yes" : "No"}</dd>
                 </div>
               </dl>
+              {decision.outcome === "require_approval" && action && (
+                <AnalystCall label={`${ACTION[action.action_type].toLowerCase()} ${action.target_value}`} />
+              )}
             </div>
           </div>
         );
       })}
-      <p className="executed">Nothing has been executed. Actions that need approval wait for an analyst.</p>
+      <p className="executed">
+        Nothing runs without this decision. This demo has no lab attached, so your approval shows what
+        would happen next without changing any system.
+      </p>
     </>
+  );
+}
+
+function AnalystCall({ label }: { label: string }) {
+  const [choice, setChoice] = useState<"approved" | "denied" | null>(null);
+  if (choice === "approved") {
+    return (
+      <p className="analyst-result analyst-result--approved" role="status">
+        <strong>You approved it.</strong> The executor would now {label} from its fixed catalog and
+        write the result to the audit log.{" "}
+        <button type="button" className="link-button" onClick={() => setChoice(null)}>
+          Undo
+        </button>
+      </p>
+    );
+  }
+  if (choice === "denied") {
+    return (
+      <p className="analyst-result" role="status">
+        <strong>You denied it.</strong> Nothing runs, and the denial is recorded.{" "}
+        <button type="button" className="link-button" onClick={() => setChoice(null)}>
+          Undo
+        </button>
+      </p>
+    );
+  }
+  return (
+    <div className="analyst">
+      <span className="kicker">Your call as the analyst</span>
+      <div className="analyst-buttons">
+        <button type="button" className="control" onClick={() => setChoice("approved")}>
+          Approve
+        </button>
+        <button type="button" className="control control--quiet" onClick={() => setChoice("denied")}>
+          Deny
+        </button>
+      </div>
+    </div>
   );
 }
