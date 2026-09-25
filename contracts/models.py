@@ -14,7 +14,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-CONTRACT_VERSION = "1.2.0"
+CONTRACT_VERSION = "1.3.0"
 
 
 def _new_id(prefix: str) -> str:
@@ -112,6 +112,19 @@ class InvestigationStopReason(StrEnum):
     VERDICT_REACHED = "verdict_reached"
     TOOL_CALL_CAP = "tool_call_cap"
     INVALID_OUTPUT = "invalid_output"
+
+
+class ExecutionStatus(StrEnum):
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    REJECTED = "rejected"
+
+
+class AuditKind(StrEnum):
+    PROPOSAL = "proposal"
+    DECISION = "decision"
+    APPROVAL = "approval"
+    EXECUTION = "execution"
 
 
 class PolicyOutcome(StrEnum):
@@ -301,6 +314,62 @@ class PolicyDecision(SentinelModel):
     approved_at: datetime | None = None
 
 
+class Approval(SentinelModel):
+    """A human's answer to a decision that required approval. Nothing else can unlock one."""
+
+    approval_id: str = Field(default_factory=lambda: _new_id("apr"))
+    decision_id: str
+    action_id: str
+    incident_id: str
+    approved: bool
+    decided_by: str = Field(min_length=1)
+    decided_at: datetime
+    source: str
+    note: str | None = None
+
+
+class CommandResult(SentinelModel):
+    argv: list[str] = Field(min_length=1)
+    exit_code: int
+    output: str = ""
+
+
+class ExecutionResult(SentinelModel):
+    """What the executor did with one decision on one host. Rejected means nothing ran."""
+
+    execution_id: str = Field(default_factory=lambda: _new_id("exe"))
+    decision_id: str
+    action_id: str
+    incident_id: str
+    action_type: ActionType
+    target_type: EntityType
+    target_value: str
+    host: str | None = None
+    status: ExecutionStatus
+    reason: str
+    dry_run: bool = False
+    before: list[CommandResult] = Field(default_factory=list)
+    commands: list[CommandResult] = Field(default_factory=list)
+    verified: bool | None = None
+    verification: list[CommandResult] = Field(default_factory=list)
+    started_at: datetime
+    finished_at: datetime
+
+
+class AuditRecord(SentinelModel):
+    """One append-only audit entry. Each hash covers the previous one, so edits break the chain."""
+
+    sequence: int = Field(ge=0)
+    recorded_at: datetime
+    kind: AuditKind
+    incident_id: str
+    subject_id: str
+    summary: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+    prev_hash: str
+    hash: str
+
+
 class AccountRecord(SentinelModel):
     role: str
     privileged: bool = False
@@ -355,6 +424,9 @@ class IncidentRun(SentinelModel):
     risk_score: RiskScore
     policy_decisions: list[PolicyDecision]
     scenario: Scenario | None = None
+    approvals: list[Approval] = Field(default_factory=list)
+    executions: list[ExecutionResult] = Field(default_factory=list)
+    audit: list[AuditRecord] = Field(default_factory=list)
 
 
 __all__ = [
@@ -362,9 +434,13 @@ __all__ = [
     "AccountRecord",
     "ActionType",
     "Alert",
+    "Approval",
+    "AuditKind",
+    "AuditRecord",
     "AttackChainStep",
     "AutonomyLevel",
     "Classification",
+    "CommandResult",
     "Entity",
     "EntityType",
     "EvaluationArm",
@@ -372,6 +448,8 @@ __all__ = [
     "EventCategory",
     "EvidenceClass",
     "EvidenceItem",
+    "ExecutionResult",
+    "ExecutionStatus",
     "HostRecord",
     "Incident",
     "IncidentRun",

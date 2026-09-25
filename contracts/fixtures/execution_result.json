@@ -1,0 +1,51 @@
+{
+  "execution_id": "exe_1f2e3d4c5b6a",
+  "decision_id": "pol_6f5e4d3c2b1a",
+  "action_id": "act_ee44ff55aa66",
+  "incident_id": "inc_7c3e9f1a2b4d",
+  "action_type": "disable_account",
+  "target_type": "account",
+  "target_value": "m.alharbi",
+  "host": "WIN-FIN-07",
+  "status": "succeeded",
+  "reason": "Approved by analyst.demo.",
+  "dry_run": true,
+  "before": [],
+  "commands": [
+    {
+      "argv": [
+        "usermod",
+        "--lock",
+        "--expiredate",
+        "1",
+        "m.alharbi"
+      ],
+      "exit_code": 0,
+      "output": ""
+    },
+    {
+      "argv": [
+        "pkill",
+        "-KILL",
+        "-u",
+        "m.alharbi"
+      ],
+      "exit_code": 0,
+      "output": ""
+    }
+  ],
+  "verified": true,
+  "verification": [
+    {
+      "argv": [
+        "passwd",
+        "--status",
+        "m.alharbi"
+      ],
+      "exit_code": 0,
+      "output": "m.alharbi L 03/14/2026 0 99999 7 -1"
+    }
+  ],
+  "started_at": "2026-03-14T02:25:02Z",
+  "finished_at": "2026-03-14T02:25:03Z"
+}

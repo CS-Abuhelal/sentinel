@@ -5,13 +5,14 @@ import { ExpectedBadge } from "./Expected";
 import { Stage, stageState } from "./Stage";
 import { Correlation } from "./stages/Correlation";
 import { Detection } from "./stages/Detection";
+import { Execution } from "./stages/Execution";
 import { Investigation } from "./stages/Investigation";
 import { Policy } from "./stages/Policy";
 import { Risk } from "./stages/Risk";
 import { Telemetry } from "./stages/Telemetry";
 
-const DURATIONS = [1400, 1400, 1400, 2400, 1800, 2200, 1500, 1500];
-const START = { telemetry: 0, detection: 1, correlation: 2, investigation: 3, risk: 6, policy: 7 };
+const DURATIONS = [1400, 1400, 1400, 2400, 1800, 2200, 1500, 1500, 1800];
+const START = { telemetry: 0, detection: 1, correlation: 2, investigation: 3, risk: 6, policy: 7, execution: 8 };
 const STEP_LABELS = [
   "Parsing the log",
   "Running detection rules",
@@ -21,6 +22,7 @@ const STEP_LABELS = [
   "Agent is writing its verdict",
   "Scoring risk",
   "Policy engine is deciding",
+  "Executor is acting",
 ];
 
 export function RunDetail({ run }: { run: IncidentRun }) {
@@ -89,6 +91,9 @@ export function RunDetail({ run }: { run: IncidentRun }) {
         </Stage>
         <Stage n={6} title="Policy" producer="Deterministic" state={state(START.policy, START.policy)}>
           <Policy run={run} />
+        </Stage>
+        <Stage n={7} title="Execution" producer="Deterministic" state={state(START.execution, START.execution)}>
+          <Execution run={run} />
         </Stage>
       </ol>
     </article>

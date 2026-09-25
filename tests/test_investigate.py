@@ -173,7 +173,16 @@ def test_exhausted_replay_raises(s1) -> None:
         investigate(incident, alerts, events, _client(AUTH_CALL))
 
 
-FORBIDDEN_MODULES = {"policy", "pipeline", "backend", "subprocess", "os", "shutil", "socket"}
+FORBIDDEN_MODULES = {
+    "policy",
+    "executor",
+    "pipeline",
+    "backend",
+    "subprocess",
+    "os",
+    "shutil",
+    "socket",
+}
 FORBIDDEN_CALLS = {"eval", "exec", "__import__", "compile"}
 
 

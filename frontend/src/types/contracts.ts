@@ -145,6 +145,47 @@ export type ApprovedAt = string | null;
 export type PolicyDecisions = PolicyDecision[];
 export type Title1 = string;
 export type Description2 = string;
+export type ApprovalId = string;
+export type DecisionId1 = string;
+export type ActionId2 = string;
+export type IncidentId5 = string;
+export type Approved = boolean;
+export type DecidedBy = string;
+export type DecidedAt1 = string;
+export type Source = string;
+export type Note = string | null;
+export type Approvals = Approval[];
+export type ExecutionId = string;
+export type DecisionId2 = string;
+export type ActionId3 = string;
+export type IncidentId6 = string;
+export type TargetValue1 = string;
+export type Host2 = string | null;
+export type ExecutionStatus = "succeeded" | "failed" | "rejected";
+export type Reason1 = string;
+export type DryRun = boolean;
+/**
+ * @minItems 1
+ */
+export type Argv = [string, ...string[]];
+export type ExitCode = number;
+export type Output = string;
+export type Before = CommandResult[];
+export type Commands = CommandResult[];
+export type Verified = boolean | null;
+export type Verification = CommandResult[];
+export type StartedAt = string;
+export type FinishedAt = string;
+export type Executions = ExecutionResult[];
+export type Sequence = number;
+export type RecordedAt = string;
+export type AuditKind = "proposal" | "decision" | "approval" | "execution";
+export type IncidentId7 = string;
+export type SubjectId = string;
+export type Summary2 = string;
+export type PrevHash = string;
+export type Hash = string;
+export type Audit = AuditRecord[];
 
 /**
  * One incident taken through every pipeline stage. The run file and the API response.
@@ -162,6 +203,9 @@ export interface IncidentRun {
   risk_score: RiskScore;
   policy_decisions: PolicyDecisions;
   scenario: Scenario | null;
+  approvals: Approvals;
+  executions: Executions;
+  audit: Audit;
 }
 /**
  * One normalized telemetry record. The atomic unit of evidence.
@@ -344,4 +388,62 @@ export interface Scenario {
   title: Title1;
   description: Description2;
   expected_classification: Classification;
+}
+/**
+ * A human's answer to a decision that required approval. Nothing else can unlock one.
+ */
+export interface Approval {
+  approval_id: ApprovalId;
+  decision_id: DecisionId1;
+  action_id: ActionId2;
+  incident_id: IncidentId5;
+  approved: Approved;
+  decided_by: DecidedBy;
+  decided_at: DecidedAt1;
+  source: Source;
+  note: Note;
+}
+/**
+ * What the executor did with one decision on one host. Rejected means nothing ran.
+ */
+export interface ExecutionResult {
+  execution_id: ExecutionId;
+  decision_id: DecisionId2;
+  action_id: ActionId3;
+  incident_id: IncidentId6;
+  action_type: ActionType;
+  target_type: EntityType;
+  target_value: TargetValue1;
+  host: Host2;
+  status: ExecutionStatus;
+  reason: Reason1;
+  dry_run: DryRun;
+  before: Before;
+  commands: Commands;
+  verified: Verified;
+  verification: Verification;
+  started_at: StartedAt;
+  finished_at: FinishedAt;
+}
+export interface CommandResult {
+  argv: Argv;
+  exit_code: ExitCode;
+  output: Output;
+}
+/**
+ * One append-only audit entry. Each hash covers the previous one, so edits break the chain.
+ */
+export interface AuditRecord {
+  sequence: Sequence;
+  recorded_at: RecordedAt;
+  kind: AuditKind;
+  incident_id: IncidentId7;
+  subject_id: SubjectId;
+  summary: Summary2;
+  payload: Payload;
+  prev_hash: PrevHash;
+  hash: Hash;
+}
+export interface Payload {
+  [k: string]: unknown;
 }

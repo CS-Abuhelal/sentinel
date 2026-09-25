@@ -34,3 +34,4 @@ Thumbs.db
 .idea/
 .vscode/
 frontend/public/runs.json
+audit/

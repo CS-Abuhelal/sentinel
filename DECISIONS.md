@@ -5,6 +5,24 @@ Write the entry the day the decision is made, not afterwards.
 
 ---
 
+## D-09 — Executor against a real victim container; approvals committed by a human (2026-09-25)
+
+**Decision.** Contracts 1.3.0 add `Approval`, `ExecutionResult`, `CommandResult` and a
+hash-chained `AuditRecord`. `IncidentRun` carries the approvals, executions and audit chain.
+The executor runs approved catalog actions inside a real victim container (in GitHub Actions
+and locally with Docker) and verifies them. The only source of approval is a file a human
+commits to `approvals/<case_id>.yml`.
+
+**Why.** Containment has to be shown working on a real system, not described. A committed file
+keeps approval with a person, traceable in git history, without blocking every deploy on a
+click.
+
+**Consequence.** The executor re-checks the catalog, the decision, the approval, protection and
+the target format before running anything. It never uses a shell. No AI-written file can
+approve an action.
+
+---
+
 ## D-08 — The live demo's agent is an open model running in GitHub Actions (2026-09-25)
 
 **Decision.** The published demo runs every scenario through the agent live, using an

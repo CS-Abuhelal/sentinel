@@ -1,0 +1,13 @@
+{
+  "sequence": 0,
+  "recorded_at": "2026-03-14T02:21:41Z",
+  "kind": "decision",
+  "incident_id": "inc_7c3e9f1a2b4d",
+  "subject_id": "pol_6f5e4d3c2b1a",
+  "summary": "disable_account m.alharbi -> require_approval",
+  "payload": {
+    "outcome": "require_approval"
+  },
+  "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+}

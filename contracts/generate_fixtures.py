@@ -16,9 +16,13 @@ from pathlib import Path
 from contracts.models import (
     ActionType,
     Alert,
+    Approval,
     AttackChainStep,
+    AuditKind,
+    AuditRecord,
     AutonomyLevel,
     Classification,
+    CommandResult,
     Entity,
     EntityType,
     EvaluationArm,
@@ -26,6 +30,8 @@ from contracts.models import (
     EventCategory,
     EvidenceClass,
     EvidenceItem,
+    ExecutionResult,
+    ExecutionStatus,
     Incident,
     IncidentRun,
     IncidentStatus,
@@ -360,6 +366,58 @@ incident_run = IncidentRun(
     ),
 )
 
+approval = Approval(
+    approval_id="apr_9a8b7c6d5e4f",
+    decision_id=policy_approval.decision_id,
+    action_id=action_disable.action_id,
+    incident_id=incident.incident_id,
+    approved=True,
+    decided_by="analyst.demo",
+    decided_at=T0 + timedelta(minutes=14),
+    source="approvals/S1_dev_004.yml",
+    note="Guessed password used from an unknown source.",
+)
+
+execution_result = ExecutionResult(
+    execution_id="exe_1f2e3d4c5b6a",
+    decision_id=policy_approval.decision_id,
+    action_id=action_disable.action_id,
+    incident_id=incident.incident_id,
+    action_type=ActionType.DISABLE_ACCOUNT,
+    target_type=EntityType.ACCOUNT,
+    target_value=USER,
+    host=HOST,
+    status=ExecutionStatus.SUCCEEDED,
+    reason="Approved by analyst.demo.",
+    dry_run=True,
+    commands=[
+        CommandResult(argv=["usermod", "--lock", "--expiredate", "1", USER], exit_code=0),
+        CommandResult(argv=["pkill", "-KILL", "-u", USER], exit_code=0),
+    ],
+    verified=True,
+    verification=[
+        CommandResult(
+            argv=["passwd", "--status", USER],
+            exit_code=0,
+            output=f"{USER} L 03/14/2026 0 99999 7 -1",
+        ),
+    ],
+    started_at=T0 + timedelta(minutes=14, seconds=2),
+    finished_at=T0 + timedelta(minutes=14, seconds=3),
+)
+
+audit_record = AuditRecord(
+    sequence=0,
+    recorded_at=T0 + timedelta(minutes=10, seconds=41),
+    kind=AuditKind.DECISION,
+    incident_id=incident.incident_id,
+    subject_id=policy_approval.decision_id,
+    summary="disable_account m.alharbi -> require_approval",
+    payload={"outcome": "require_approval"},
+    prev_hash="0" * 64,
+    hash="0" * 64,
+)
+
 FIXTURES = {
     "event_failed_login": failed_login,
     "event_successful_login": successful_login,
@@ -377,6 +435,9 @@ FIXTURES = {
     "policy_decision_allow": policy_allow,
     "policy_decision_require_approval": policy_approval,
     "incident_run": incident_run,
+    "approval": approval,
+    "execution_result": execution_result,
+    "audit_record": audit_record,
 }
 
 SCHEMA_MODELS = [

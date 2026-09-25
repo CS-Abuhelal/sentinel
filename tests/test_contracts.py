@@ -16,10 +16,14 @@ from pydantic import ValidationError
 from contracts.models import (
     AccountRecord,
     Alert,
+    Approval,
+    AuditRecord,
     Classification,
     EntityType,
     Event,
     EvidenceItem,
+    ExecutionResult,
+    ExecutionStatus,
     HostRecord,
     Incident,
     IncidentRun,
@@ -50,6 +54,9 @@ FIXTURE_MODEL_MAP = {
     "policy_decision_allow": PolicyDecision,
     "policy_decision_require_approval": PolicyDecision,
     "incident_run": IncidentRun,
+    "approval": Approval,
+    "execution_result": ExecutionResult,
+    "audit_record": AuditRecord,
 }
 
 
@@ -156,3 +163,25 @@ def test_inventory_is_privileged() -> None:
     assert inventory.is_privileged("labadmin") is True
     assert inventory.is_privileged("jdoe") is False
     assert inventory.is_privileged("unknown") is False
+
+
+def test_incident_run_execution_lists_default_to_empty() -> None:
+    payload = _load("incident_run")
+    for key in ("approvals", "executions", "audit"):
+        del payload[key]
+    run = IncidentRun.model_validate(payload)
+    assert (run.approvals, run.executions, run.audit) == ([], [], [])
+
+
+def test_rejected_execution_ran_nothing() -> None:
+    payload = _load("execution_result")
+    payload["status"] = ExecutionStatus.REJECTED.value
+    payload["commands"] = []
+    assert ExecutionResult.model_validate(payload).commands == []
+
+
+def test_approval_needs_a_person() -> None:
+    payload = _load("approval")
+    payload["decided_by"] = ""
+    with pytest.raises(ValidationError):
+        Approval.model_validate(payload)
