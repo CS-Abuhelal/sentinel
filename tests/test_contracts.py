@@ -14,11 +14,16 @@ import pytest
 from pydantic import ValidationError
 
 from contracts.models import (
+    AccountRecord,
     Alert,
     Classification,
+    EntityType,
     Event,
     EvidenceItem,
+    HostRecord,
     Incident,
+    IncidentRun,
+    Inventory,
     PolicyDecision,
     PolicyOutcome,
     ProposedAction,
@@ -44,6 +49,7 @@ FIXTURE_MODEL_MAP = {
     "verdict": Verdict,
     "policy_decision_allow": PolicyDecision,
     "policy_decision_require_approval": PolicyDecision,
+    "incident_run": IncidentRun,
 }
 
 
@@ -108,3 +114,45 @@ def test_malicious_verdict_carries_attack_chain() -> None:
     if verdict.classification is Classification.MALICIOUS:
         assert verdict.attack_chain, "a malicious verdict must reconstruct an attack chain"
         assert verdict.cited_evidence_ids, "a malicious verdict must cite evidence"
+
+
+def test_verdict_requires_stop_reason() -> None:
+    payload = _load("verdict")
+    del payload["stop_reason"]
+    with pytest.raises(ValidationError):
+        Verdict.model_validate(payload)
+
+
+def _inventory() -> Inventory:
+    return Inventory(
+        accounts={
+            "jdoe": AccountRecord(role="developer"),
+            "labadmin": AccountRecord(role="lab administrator", privileged=True, protected=True),
+        },
+        hosts={
+            "victim-web-01": HostRecord(role="web server"),
+            "mgmt-01": HostRecord(role="management host", protected=True),
+        },
+    )
+
+
+@pytest.mark.parametrize(
+    "entity_type,value,expected",
+    [
+        (EntityType.ACCOUNT, "labadmin", True),
+        (EntityType.ACCOUNT, "jdoe", False),
+        (EntityType.ACCOUNT, "unknown", False),
+        (EntityType.HOST, "mgmt-01", True),
+        (EntityType.HOST, "victim-web-01", False),
+        (EntityType.IP_ADDRESS, "mgmt-01", False),
+    ],
+)
+def test_inventory_is_protected(entity_type: EntityType, value: str, expected: bool) -> None:
+    assert _inventory().is_protected(entity_type, value) is expected
+
+
+def test_inventory_is_privileged() -> None:
+    inventory = _inventory()
+    assert inventory.is_privileged("labadmin") is True
+    assert inventory.is_privileged("jdoe") is False
+    assert inventory.is_privileged("unknown") is False

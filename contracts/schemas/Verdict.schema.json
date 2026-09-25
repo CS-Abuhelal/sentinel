@@ -63,7 +63,10 @@
       "required": [
         "order",
         "tactic",
-        "description"
+        "technique_id",
+        "technique_name",
+        "description",
+        "evidence_ids"
       ],
       "title": "AttackChainStep",
       "type": "object"
@@ -97,6 +100,15 @@
         "a3_tool_using_agent"
       ],
       "title": "EvaluationArm",
+      "type": "string"
+    },
+    "InvestigationStopReason": {
+      "enum": [
+        "verdict_reached",
+        "tool_call_cap",
+        "invalid_output"
+      ],
+      "title": "InvestigationStopReason",
       "type": "string"
     },
     "ProposedAction": {
@@ -135,10 +147,13 @@
         }
       },
       "required": [
+        "action_id",
         "action_type",
         "target_type",
         "target_value",
-        "justification"
+        "justification",
+        "reversible",
+        "evidence_ids"
       ],
       "title": "ProposedAction",
       "type": "object"
@@ -242,15 +257,30 @@
       "default": 0,
       "title": "Latency Ms",
       "type": "integer"
+    },
+    "stop_reason": {
+      "$ref": "#/$defs/InvestigationStopReason"
     }
   },
   "required": [
+    "verdict_id",
     "incident_id",
     "arm",
     "classification",
     "confidence",
     "summary",
-    "produced_at"
+    "attack_chain",
+    "techniques",
+    "cited_evidence_ids",
+    "risk_factors",
+    "proposed_actions",
+    "produced_at",
+    "model_name",
+    "tool_calls_made",
+    "input_tokens",
+    "output_tokens",
+    "latency_ms",
+    "stop_reason"
   ],
   "title": "Verdict",
   "type": "object"

@@ -2,6 +2,10 @@
 
 An evidence-driven agentic investigation and controlled response system for security operations.
 
+**Live demo:** https://cs-abuhelal.github.io/sentinel/ shows a recorded S1 run (SSH brute force
+leading to a compromised account) through every pipeline stage. It needs no install, no lab
+and no API key.
+
 ---
 
 ## What it does
@@ -23,13 +27,40 @@ single-shot LLM given the same information?
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-pytest                            # 22 contract tests should pass
+pytest
 ```
 
-Regenerate fixtures and JSON schemas after any change to `contracts/models.py`:
+Regenerate fixtures and JSON schemas after any change to `contracts/models.py`, then the
+frontend types:
 
 ```bash
 python -m contracts.generate_fixtures
+cd frontend && npm run gen:types
+```
+
+---
+
+## Run the S1 case end to end
+
+The agent's LLM responses are replayed from `agent/recordings/`, so no API key is needed.
+
+```bash
+python -m pipeline.run lab/scenarios/s1_attack/auth.log   # writes runs/s1_attack.json
+uvicorn backend.app.main:app --reload                    # serves runs/ on :8000
+cd frontend && npm install && npm run dev                # dashboard on :5173
+```
+
+Open http://localhost:5173. The dashboard shows the run stage by stage: parsed events, the
+Sigma alert, the incident, the agent's evidence and verdict, the deterministic risk score, and
+the policy decision on each proposed action.
+
+The live demo is the same dashboard built as a static site. The `Dashboard demo` workflow
+runs the pipeline, bundles the run files and deploys to GitHub Pages on every push to `main`.
+To build it yourself:
+
+```bash
+python -m pipeline.export runs frontend/public/runs.json
+cd frontend && VITE_BASE=/sentinel/ VITE_RUNS_URL=runs.json npm run build
 ```
 
 ---
@@ -39,13 +70,15 @@ python -m contracts.generate_fixtures
 | Folder | Contains |
 |---|---|
 | `contracts/` | Shared data models, fixtures, JSON Schemas |
-| `agent/` | Investigation agent, tools, prompts |
-| `policy/` | Risk scoring, autonomy policy, action executor |
-| `eval/` | Experiment runner, arms, metrics |
-| `lab/` | VMs, attack and benign scenarios, telemetry |
-| `detection/` | Sigma rules, evaluator, alerting, correlation |
-| `backend/` | FastAPI, database, API, approvals |
+| `lab/` | Scenario logs, lab inventory |
+| `ingest/` | Log parsing into normalized events |
+| `detection/` | Sigma rules, evaluator, correlation |
+| `agent/` | Investigation agent, read-only tools, prompt, LLM recordings |
+| `policy/` | Risk scoring and the policy engine |
+| `pipeline/` | Runs every stage and writes the run file |
+| `backend/` | FastAPI, read-only runs API |
 | `frontend/` | React dashboard |
+| `eval/` | Experiment runner, arms, metrics |
 | `benchmark/` | Labeled cases and ground truth |
 
 Design decisions are logged in `DECISIONS.md`.

@@ -1,0 +1,13 @@
+accounts:
+  jdoe:
+    role: developer
+  labadmin:
+    role: lab administrator
+    privileged: true
+    protected: true
+hosts:
+  victim-web-01:
+    role: web server
+  mgmt-01:
+    role: management host
+    protected: true

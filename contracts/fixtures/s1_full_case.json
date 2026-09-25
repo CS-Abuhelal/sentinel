@@ -327,7 +327,8 @@
     "tool_calls_made": 4,
     "input_tokens": 11420,
     "output_tokens": 903,
-    "latency_ms": 18734
+    "latency_ms": 18734,
+    "stop_reason": "verdict_reached"
   },
   "policy_decisions": [
     {

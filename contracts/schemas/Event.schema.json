@@ -114,6 +114,16 @@
           "title": "Domain"
         }
       },
+      "required": [
+        "src_ip",
+        "src_port",
+        "dst_ip",
+        "dst_port",
+        "protocol",
+        "bytes_sent",
+        "bytes_received",
+        "domain"
+      ],
       "title": "NetworkInfo",
       "type": "object"
     },
@@ -205,6 +215,15 @@
           "title": "Hash Sha256"
         }
       },
+      "required": [
+        "pid",
+        "name",
+        "command_line",
+        "parent_pid",
+        "parent_name",
+        "user",
+        "hash_sha256"
+      ],
       "title": "ProcessInfo",
       "type": "object"
     },
@@ -349,11 +368,21 @@
     }
   },
   "required": [
+    "event_id",
     "timestamp",
+    "ingested_at",
     "source",
     "category",
     "event_type",
-    "host"
+    "host",
+    "user",
+    "outcome",
+    "process",
+    "network",
+    "file_path",
+    "message",
+    "raw",
+    "case_id"
   ],
   "title": "Event",
   "type": "object"

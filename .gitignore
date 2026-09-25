@@ -20,13 +20,17 @@ frontend/dist/
 secrets.json
 
 *.log
+!lab/scenarios/**/*.log
 *.pcap
 lab/telemetry/raw/
 lab/*.vdi
 lab/*.vmdk
 *.ova
 
+runs/
+
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+frontend/public/runs.json

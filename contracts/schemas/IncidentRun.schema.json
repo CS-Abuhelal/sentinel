@@ -1,0 +1,1221 @@
+{
+  "$defs": {
+    "ActionType": {
+      "description": "The complete response catalog. The executor runs nothing outside this list.",
+      "enum": [
+        "block_ip",
+        "disable_account",
+        "isolate_host",
+        "kill_process",
+        "force_password_reset",
+        "no_action"
+      ],
+      "title": "ActionType",
+      "type": "string"
+    },
+    "Alert": {
+      "additionalProperties": false,
+      "description": "A detection rule fired. High recall by design; severity here is rule-declared,\nnot the final risk score.",
+      "properties": {
+        "alert_id": {
+          "title": "Alert Id",
+          "type": "string"
+        },
+        "rule_id": {
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "rule_name": {
+          "title": "Rule Name",
+          "type": "string"
+        },
+        "rule_severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "host": {
+          "title": "Host",
+          "type": "string"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User"
+        },
+        "src_ip": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Src Ip"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "event_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Event Ids",
+          "type": "array"
+        },
+        "suggested_techniques": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Suggested Techniques",
+          "type": "array"
+        },
+        "case_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Case Id"
+        }
+      },
+      "required": [
+        "alert_id",
+        "rule_id",
+        "rule_name",
+        "rule_severity",
+        "timestamp",
+        "host",
+        "user",
+        "src_ip",
+        "description",
+        "event_ids",
+        "suggested_techniques",
+        "case_id"
+      ],
+      "title": "Alert",
+      "type": "object"
+    },
+    "AttackChainStep": {
+      "additionalProperties": false,
+      "properties": {
+        "order": {
+          "title": "Order",
+          "type": "integer"
+        },
+        "tactic": {
+          "title": "Tactic",
+          "type": "string"
+        },
+        "technique_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Technique Id"
+        },
+        "technique_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Technique Name"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "order",
+        "tactic",
+        "technique_id",
+        "technique_name",
+        "description",
+        "evidence_ids"
+      ],
+      "title": "AttackChainStep",
+      "type": "object"
+    },
+    "AutonomyLevel": {
+      "enum": [
+        "observe_only",
+        "suggest",
+        "act_with_approval",
+        "act_autonomously"
+      ],
+      "title": "AutonomyLevel",
+      "type": "string"
+    },
+    "Classification": {
+      "enum": [
+        "malicious",
+        "benign",
+        "inconclusive"
+      ],
+      "title": "Classification",
+      "type": "string"
+    },
+    "Entity": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_type": {
+          "$ref": "#/$defs/EntityType"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        },
+        "is_protected": {
+          "default": false,
+          "title": "Is Protected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "entity_type",
+        "value",
+        "is_protected"
+      ],
+      "title": "Entity",
+      "type": "object"
+    },
+    "EntityType": {
+      "enum": [
+        "host",
+        "account",
+        "ip_address",
+        "process",
+        "file"
+      ],
+      "title": "EntityType",
+      "type": "string"
+    },
+    "EvaluationArm": {
+      "enum": [
+        "a1_rules_only",
+        "a2a_raw_single_shot",
+        "a2b_full_context",
+        "a2c_oracle_bundle",
+        "a3_tool_using_agent"
+      ],
+      "title": "EvaluationArm",
+      "type": "string"
+    },
+    "Event": {
+      "additionalProperties": false,
+      "description": "One normalized telemetry record. The atomic unit of evidence.",
+      "properties": {
+        "event_id": {
+          "title": "Event Id",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "ingested_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ingested At"
+        },
+        "source": {
+          "$ref": "#/$defs/TelemetrySource"
+        },
+        "category": {
+          "$ref": "#/$defs/EventCategory"
+        },
+        "event_type": {
+          "title": "Event Type",
+          "type": "string"
+        },
+        "host": {
+          "title": "Host",
+          "type": "string"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User"
+        },
+        "outcome": {
+          "default": "unknown",
+          "enum": [
+            "success",
+            "failure",
+            "unknown"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "process": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProcessInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "network": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NetworkInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "file_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "File Path"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message"
+        },
+        "raw": {
+          "additionalProperties": true,
+          "title": "Raw",
+          "type": "object"
+        },
+        "case_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Case Id"
+        }
+      },
+      "required": [
+        "event_id",
+        "timestamp",
+        "ingested_at",
+        "source",
+        "category",
+        "event_type",
+        "host",
+        "user",
+        "outcome",
+        "process",
+        "network",
+        "file_path",
+        "message",
+        "raw",
+        "case_id"
+      ],
+      "title": "Event",
+      "type": "object"
+    },
+    "EventCategory": {
+      "enum": [
+        "authentication",
+        "process",
+        "network",
+        "file",
+        "account_management",
+        "privilege",
+        "persistence",
+        "other"
+      ],
+      "title": "EventCategory",
+      "type": "string"
+    },
+    "EvidenceClass": {
+      "description": "Ground-truth evidence categories. Drives Evidence Coverage and Utilization metrics.",
+      "enum": [
+        "auth_history",
+        "entity_context",
+        "process_lineage",
+        "network_activity",
+        "file_activity",
+        "change_window",
+        "related_alerts",
+        "threat_intel",
+        "baseline_comparison"
+      ],
+      "title": "EvidenceClass",
+      "type": "string"
+    },
+    "EvidenceItem": {
+      "additionalProperties": false,
+      "description": "One piece of evidence a tool retrieved. Carries provenance so an analyst can verify it.",
+      "properties": {
+        "evidence_id": {
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "incident_id": {
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "evidence_class": {
+          "$ref": "#/$defs/EvidenceClass"
+        },
+        "tool_name": {
+          "title": "Tool Name",
+          "type": "string"
+        },
+        "tool_query": {
+          "additionalProperties": true,
+          "title": "Tool Query",
+          "type": "object"
+        },
+        "retrieved_at": {
+          "format": "date-time",
+          "title": "Retrieved At",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "content": {
+          "additionalProperties": true,
+          "title": "Content",
+          "type": "object"
+        },
+        "source_event_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Event Ids",
+          "type": "array"
+        },
+        "was_productive": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Was Productive"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "incident_id",
+        "evidence_class",
+        "tool_name",
+        "tool_query",
+        "retrieved_at",
+        "summary",
+        "content",
+        "source_event_ids",
+        "was_productive"
+      ],
+      "title": "EvidenceItem",
+      "type": "object"
+    },
+    "Incident": {
+      "additionalProperties": false,
+      "description": "Correlated group of alerts. The unit the agent investigates.",
+      "properties": {
+        "incident_id": {
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/IncidentStatus",
+          "default": "new"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated At"
+        },
+        "window_start": {
+          "format": "date-time",
+          "title": "Window Start",
+          "type": "string"
+        },
+        "window_end": {
+          "format": "date-time",
+          "title": "Window End",
+          "type": "string"
+        },
+        "alert_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Alert Ids",
+          "type": "array"
+        },
+        "entities": {
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "title": "Entities",
+          "type": "array"
+        },
+        "case_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Case Id"
+        }
+      },
+      "required": [
+        "incident_id",
+        "title",
+        "status",
+        "created_at",
+        "updated_at",
+        "window_start",
+        "window_end",
+        "alert_ids",
+        "entities",
+        "case_id"
+      ],
+      "title": "Incident",
+      "type": "object"
+    },
+    "IncidentStatus": {
+      "enum": [
+        "new",
+        "investigating",
+        "awaiting_approval",
+        "resolved",
+        "closed_benign"
+      ],
+      "title": "IncidentStatus",
+      "type": "string"
+    },
+    "InvestigationStopReason": {
+      "enum": [
+        "verdict_reached",
+        "tool_call_cap",
+        "invalid_output"
+      ],
+      "title": "InvestigationStopReason",
+      "type": "string"
+    },
+    "NetworkInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "src_ip": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Src Ip"
+        },
+        "src_port": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Src Port"
+        },
+        "dst_ip": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dst Ip"
+        },
+        "dst_port": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dst Port"
+        },
+        "protocol": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Protocol"
+        },
+        "bytes_sent": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bytes Sent"
+        },
+        "bytes_received": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bytes Received"
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Domain"
+        }
+      },
+      "required": [
+        "src_ip",
+        "src_port",
+        "dst_ip",
+        "dst_port",
+        "protocol",
+        "bytes_sent",
+        "bytes_received",
+        "domain"
+      ],
+      "title": "NetworkInfo",
+      "type": "object"
+    },
+    "PolicyDecision": {
+      "additionalProperties": false,
+      "description": "Deterministic authorization result. This, not the agent, decides what may run.",
+      "properties": {
+        "decision_id": {
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "action_id": {
+          "title": "Action Id",
+          "type": "string"
+        },
+        "incident_id": {
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "outcome": {
+          "$ref": "#/$defs/PolicyOutcome"
+        },
+        "autonomy_level": {
+          "$ref": "#/$defs/AutonomyLevel"
+        },
+        "risk_score": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Risk Score",
+          "type": "integer"
+        },
+        "matched_rule": {
+          "title": "Matched Rule",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "target_is_protected": {
+          "default": false,
+          "title": "Target Is Protected",
+          "type": "boolean"
+        },
+        "decided_at": {
+          "format": "date-time",
+          "title": "Decided At",
+          "type": "string"
+        },
+        "approved_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approved By"
+        },
+        "approved_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approved At"
+        }
+      },
+      "required": [
+        "decision_id",
+        "action_id",
+        "incident_id",
+        "outcome",
+        "autonomy_level",
+        "risk_score",
+        "matched_rule",
+        "reason",
+        "target_is_protected",
+        "decided_at",
+        "approved_by",
+        "approved_at"
+      ],
+      "title": "PolicyDecision",
+      "type": "object"
+    },
+    "PolicyOutcome": {
+      "enum": [
+        "allow",
+        "require_approval",
+        "deny"
+      ],
+      "title": "PolicyOutcome",
+      "type": "string"
+    },
+    "ProcessInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "pid": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pid"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "command_line": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Command Line"
+        },
+        "parent_pid": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Pid"
+        },
+        "parent_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Name"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User"
+        },
+        "hash_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hash Sha256"
+        }
+      },
+      "required": [
+        "pid",
+        "name",
+        "command_line",
+        "parent_pid",
+        "parent_name",
+        "user",
+        "hash_sha256"
+      ],
+      "title": "ProcessInfo",
+      "type": "object"
+    },
+    "ProposedAction": {
+      "additionalProperties": false,
+      "description": "An action the agent recommends. The agent NEVER executes this itself.",
+      "properties": {
+        "action_id": {
+          "title": "Action Id",
+          "type": "string"
+        },
+        "action_type": {
+          "$ref": "#/$defs/ActionType"
+        },
+        "target_type": {
+          "$ref": "#/$defs/EntityType"
+        },
+        "target_value": {
+          "title": "Target Value",
+          "type": "string"
+        },
+        "justification": {
+          "title": "Justification",
+          "type": "string"
+        },
+        "reversible": {
+          "default": true,
+          "title": "Reversible",
+          "type": "boolean"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "action_id",
+        "action_type",
+        "target_type",
+        "target_value",
+        "justification",
+        "reversible",
+        "evidence_ids"
+      ],
+      "title": "ProposedAction",
+      "type": "object"
+    },
+    "RiskScore": {
+      "additionalProperties": false,
+      "description": "Deterministic. Computed in Python from evidence-derived factors. Never by an LLM.",
+      "properties": {
+        "incident_id": {
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "score": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Score",
+          "type": "integer"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "factors": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Factors",
+          "type": "object"
+        },
+        "computed_at": {
+          "format": "date-time",
+          "title": "Computed At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "incident_id",
+        "score",
+        "severity",
+        "factors",
+        "computed_at"
+      ],
+      "title": "RiskScore",
+      "type": "object"
+    },
+    "Severity": {
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "TelemetrySource": {
+      "enum": [
+        "windows_security",
+        "windows_sysmon",
+        "linux_auth",
+        "linux_syslog",
+        "linux_auditd",
+        "zeek_conn",
+        "zeek_dns",
+        "zeek_http"
+      ],
+      "title": "TelemetrySource",
+      "type": "string"
+    },
+    "Verdict": {
+      "additionalProperties": false,
+      "description": "The agent's structured conclusion about an incident.",
+      "properties": {
+        "verdict_id": {
+          "title": "Verdict Id",
+          "type": "string"
+        },
+        "incident_id": {
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "arm": {
+          "$ref": "#/$defs/EvaluationArm"
+        },
+        "classification": {
+          "$ref": "#/$defs/Classification"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "attack_chain": {
+          "items": {
+            "$ref": "#/$defs/AttackChainStep"
+          },
+          "title": "Attack Chain",
+          "type": "array"
+        },
+        "techniques": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Techniques",
+          "type": "array"
+        },
+        "cited_evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Cited Evidence Ids",
+          "type": "array"
+        },
+        "risk_factors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Risk Factors",
+          "type": "array"
+        },
+        "proposed_actions": {
+          "items": {
+            "$ref": "#/$defs/ProposedAction"
+          },
+          "title": "Proposed Actions",
+          "type": "array"
+        },
+        "produced_at": {
+          "format": "date-time",
+          "title": "Produced At",
+          "type": "string"
+        },
+        "model_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Name"
+        },
+        "tool_calls_made": {
+          "default": 0,
+          "title": "Tool Calls Made",
+          "type": "integer"
+        },
+        "input_tokens": {
+          "default": 0,
+          "title": "Input Tokens",
+          "type": "integer"
+        },
+        "output_tokens": {
+          "default": 0,
+          "title": "Output Tokens",
+          "type": "integer"
+        },
+        "latency_ms": {
+          "default": 0,
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "stop_reason": {
+          "$ref": "#/$defs/InvestigationStopReason"
+        }
+      },
+      "required": [
+        "verdict_id",
+        "incident_id",
+        "arm",
+        "classification",
+        "confidence",
+        "summary",
+        "attack_chain",
+        "techniques",
+        "cited_evidence_ids",
+        "risk_factors",
+        "proposed_actions",
+        "produced_at",
+        "model_name",
+        "tool_calls_made",
+        "input_tokens",
+        "output_tokens",
+        "latency_ms",
+        "stop_reason"
+      ],
+      "title": "Verdict",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One incident taken through every pipeline stage. The run file and the API response.",
+  "properties": {
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "case_id": {
+      "title": "Case Id",
+      "type": "string"
+    },
+    "contract_version": {
+      "default": "1.1.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "events": {
+      "items": {
+        "$ref": "#/$defs/Event"
+      },
+      "title": "Events",
+      "type": "array"
+    },
+    "alerts": {
+      "items": {
+        "$ref": "#/$defs/Alert"
+      },
+      "title": "Alerts",
+      "type": "array"
+    },
+    "incident": {
+      "$ref": "#/$defs/Incident"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/EvidenceItem"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "verdict": {
+      "$ref": "#/$defs/Verdict"
+    },
+    "risk_score": {
+      "$ref": "#/$defs/RiskScore"
+    },
+    "policy_decisions": {
+      "items": {
+        "$ref": "#/$defs/PolicyDecision"
+      },
+      "title": "Policy Decisions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "run_id",
+    "case_id",
+    "contract_version",
+    "created_at",
+    "events",
+    "alerts",
+    "incident",
+    "evidence",
+    "verdict",
+    "risk_score",
+    "policy_decisions"
+  ],
+  "title": "IncidentRun",
+  "type": "object"
+}

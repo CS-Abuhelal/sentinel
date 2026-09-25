@@ -5,6 +5,36 @@ Write the entry the day the decision is made, not afterwards.
 
 ---
 
+## D-06 — Contracts 1.1.0: IncidentRun, Inventory, Verdict.stop_reason (2026-09-25)
+
+**Decision.** Add `IncidentRun` (one incident through every stage; the run file and the API
+response), `Inventory` with `AccountRecord` and `HostRecord` (roles, privileged and protected
+flags), `InvestigationStopReason`, and a required `Verdict.stop_reason`.
+
+**Why.** The vertical slice needs a run file shape, and it must live in `contracts/` rather
+than beside it. Correlation, risk scoring and the policy engine all read the inventory. The
+brief requires recording why each investigation stopped.
+
+**Consequence.** Every producer of a `Verdict` must state its stop reason. The frontend
+generates its types from `IncidentRun.schema.json`. JSON Schemas are now generated in
+serialization mode, so fields the API always sends are required in the generated types.
+
+---
+
+## D-05 — Vertical slice stores results as JSON run files (2026-09-25)
+
+**Decision.** `python -m pipeline.run` writes one `IncidentRun` JSON file per case to `runs/`.
+The API only reads those files. Postgres is deferred.
+
+**Why.** Docker is not installed on the dev machine, and the hosted replay-mode dashboard needs
+recorded runs served from files anyway. A database adds nothing until approvals and the audit
+log need durable, concurrent writes.
+
+**Consequence.** Postgres (still the planned store under D-00) comes in with the executor and
+approval flow. The pipeline stays callable without the API, which the eval harness needs.
+
+---
+
 ## D-04 — Continue as a solo portfolio project (2026-09-25)
 
 **Decision.** SENTINEL was not accepted as the team's graduation project. It continues as a

@@ -29,13 +29,14 @@ services:
     volumes:
       - ./contracts:/app/contracts:ro
       - ./backend:/app/backend
+      - ./runs:/app/runs:ro
 
   frontend:
-    image: node:22-alpine
+    image: node:24-alpine
     working_dir: /app
     command: sh -c "npm install && npm run dev -- --host"
     environment:
-      VITE_API_URL: http://localhost:8000
+      VITE_API_URL: http://backend:8000
     ports:
       - "5173:5173"
     volumes:

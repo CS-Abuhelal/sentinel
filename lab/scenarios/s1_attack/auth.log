@@ -1,0 +1,55 @@
+2026-09-21T09:02:11.127564+00:00 victim-web-01 sshd[1837]: Accepted password for jdoe from 10.77.0.50 port 50373 ssh2
+2026-09-21T09:02:11.132775+00:00 victim-web-01 sshd[1837]: pam_unix(sshd:session): session opened for user jdoe(uid=1001) by jdoe(uid=0)
+2026-09-21T17:05:11.127564+00:00 victim-web-01 sshd[1837]: pam_unix(sshd:session): session closed for user jdoe
+2026-09-21T17:17:01.002231+00:00 victim-web-01 CRON[2237]: pam_unix(cron:session): session opened for user root(uid=0) by root(uid=0)
+2026-09-22T08:57:40.128675+00:00 victim-web-01 sshd[1874]: Accepted password for jdoe from 10.77.0.50 port 50386 ssh2
+2026-09-22T08:57:40.133886+00:00 victim-web-01 sshd[1874]: pam_unix(sshd:session): session opened for user jdoe(uid=1001) by jdoe(uid=0)
+2026-09-22T17:00:40.128675+00:00 victim-web-01 sshd[1874]: pam_unix(sshd:session): session closed for user jdoe
+2026-09-22T17:17:01.002231+00:00 victim-web-01 CRON[2274]: pam_unix(cron:session): session opened for user root(uid=0) by root(uid=0)
+2026-09-23T09:10:03.129786+00:00 victim-web-01 sshd[1911]: Accepted password for jdoe from 10.77.0.50 port 50399 ssh2
+2026-09-23T09:10:03.134997+00:00 victim-web-01 sshd[1911]: pam_unix(sshd:session): session opened for user jdoe(uid=1001) by jdoe(uid=0)
+2026-09-23T17:13:03.129786+00:00 victim-web-01 sshd[1911]: pam_unix(sshd:session): session closed for user jdoe
+2026-09-23T17:17:01.002231+00:00 victim-web-01 CRON[2311]: pam_unix(cron:session): session opened for user root(uid=0) by root(uid=0)
+2026-09-24T09:05:27.130897+00:00 victim-web-01 sshd[1948]: Accepted password for jdoe from 10.77.0.50 port 50412 ssh2
+2026-09-24T09:05:27.136108+00:00 victim-web-01 sshd[1948]: pam_unix(sshd:session): session opened for user jdoe(uid=1001) by jdoe(uid=0)
+2026-09-24T17:08:27.130897+00:00 victim-web-01 sshd[1948]: pam_unix(sshd:session): session closed for user jdoe
+2026-09-24T17:17:01.002231+00:00 victim-web-01 CRON[2348]: pam_unix(cron:session): session opened for user root(uid=0) by root(uid=0)
+2026-09-25T02:10:12.301442+00:00 victim-web-01 sshd[1951]: Invalid user admin from 10.66.0.10 port 51230
+2026-09-25T02:10:14.419463+00:00 victim-web-01 sshd[1951]: Failed password for invalid user admin from 10.66.0.10 port 51230 ssh2
+2026-09-25T02:10:14.711781+00:00 victim-web-01 sshd[1951]: Connection closed by invalid user admin 10.66.0.10 port 51230 [preauth]
+2026-09-25T02:10:15.813555+00:00 victim-web-01 sshd[1954]: Invalid user test from 10.66.0.10 port 51237
+2026-09-25T02:10:17.931576+00:00 victim-web-01 sshd[1954]: Failed password for invalid user test from 10.66.0.10 port 51237 ssh2
+2026-09-25T02:10:18.223894+00:00 victim-web-01 sshd[1954]: Connection closed by invalid user test 10.66.0.10 port 51237 [preauth]
+2026-09-25T02:10:19.325668+00:00 victim-web-01 sshd[1957]: Invalid user oracle from 10.66.0.10 port 51244
+2026-09-25T02:10:21.443689+00:00 victim-web-01 sshd[1957]: Failed password for invalid user oracle from 10.66.0.10 port 51244 ssh2
+2026-09-25T02:10:21.736007+00:00 victim-web-01 sshd[1957]: Connection closed by invalid user oracle 10.66.0.10 port 51244 [preauth]
+2026-09-25T02:11:04.512031+00:00 victim-web-01 sshd[1958]: Failed password for jdoe from 10.66.0.10 port 51251 ssh2
+2026-09-25T02:11:19.467031+00:00 victim-web-01 sshd[1959]: Failed password for jdoe from 10.66.0.10 port 51251 ssh2
+2026-09-25T02:11:34.429950+00:00 victim-web-01 sshd[1960]: Failed password for jdoe from 10.66.0.10 port 51251 ssh2
+2026-09-25T02:11:49.400788+00:00 victim-web-01 sshd[1961]: Failed password for jdoe from 10.66.0.10 port 51251 ssh2
+2026-09-25T02:12:04.379545+00:00 victim-web-01 sshd[1962]: Failed password for jdoe from 10.66.0.10 port 51251 ssh2
+2026-09-25T02:12:19.366221+00:00 victim-web-01 sshd[1963]: Failed password for jdoe from 10.66.0.10 port 51251 ssh2
+2026-09-25T02:12:19.656335+00:00 victim-web-01 sshd[1963]: Connection closed by authenticating user jdoe 10.66.0.10 port 51251 [preauth]
+2026-09-25T02:12:34.360816+00:00 victim-web-01 sshd[1964]: Failed password for jdoe from 10.66.0.10 port 51254 ssh2
+2026-09-25T02:12:49.363330+00:00 victim-web-01 sshd[1965]: Failed password for jdoe from 10.66.0.10 port 51254 ssh2
+2026-09-25T02:13:04.373763+00:00 victim-web-01 sshd[1966]: Failed password for jdoe from 10.66.0.10 port 51254 ssh2
+2026-09-25T02:13:19.392115+00:00 victim-web-01 sshd[1967]: Failed password for jdoe from 10.66.0.10 port 51254 ssh2
+2026-09-25T02:13:34.418386+00:00 victim-web-01 sshd[1968]: Failed password for jdoe from 10.66.0.10 port 51254 ssh2
+2026-09-25T02:13:49.452576+00:00 victim-web-01 sshd[1969]: Failed password for jdoe from 10.66.0.10 port 51254 ssh2
+2026-09-25T02:13:49.742690+00:00 victim-web-01 sshd[1969]: Connection closed by authenticating user jdoe 10.66.0.10 port 51254 [preauth]
+2026-09-25T02:14:04.494685+00:00 victim-web-01 sshd[1970]: Failed password for jdoe from 10.66.0.10 port 51257 ssh2
+2026-09-25T02:14:19.454713+00:00 victim-web-01 sshd[1971]: Failed password for jdoe from 10.66.0.10 port 51257 ssh2
+2026-09-25T02:14:34.422660+00:00 victim-web-01 sshd[1972]: Failed password for jdoe from 10.66.0.10 port 51257 ssh2
+2026-09-25T02:14:49.398526+00:00 victim-web-01 sshd[1973]: Failed password for jdoe from 10.66.0.10 port 51257 ssh2
+2026-09-25T02:15:04.382311+00:00 victim-web-01 sshd[1974]: Failed password for jdoe from 10.66.0.10 port 51257 ssh2
+2026-09-25T02:15:19.374015+00:00 victim-web-01 sshd[1975]: Failed password for jdoe from 10.66.0.10 port 51257 ssh2
+2026-09-25T02:15:19.664129+00:00 victim-web-01 sshd[1975]: Connection closed by authenticating user jdoe 10.66.0.10 port 51257 [preauth]
+2026-09-25T02:15:34.373638+00:00 victim-web-01 sshd[1976]: Failed password for jdoe from 10.66.0.10 port 51260 ssh2
+2026-09-25T02:15:49.381180+00:00 victim-web-01 sshd[1977]: Failed password for jdoe from 10.66.0.10 port 51260 ssh2
+2026-09-25T02:16:04.396641+00:00 victim-web-01 sshd[1978]: Failed password for jdoe from 10.66.0.10 port 51260 ssh2
+2026-09-25T02:16:19.420021+00:00 victim-web-01 sshd[1979]: Failed password for jdoe from 10.66.0.10 port 51260 ssh2
+2026-09-25T02:16:34.451320+00:00 victim-web-01 sshd[1980]: Failed password for jdoe from 10.66.0.10 port 51260 ssh2
+2026-09-25T02:16:49.490538+00:00 victim-web-01 sshd[1981]: Failed password for jdoe from 10.66.0.10 port 51260 ssh2
+2026-09-25T02:16:49.780652+00:00 victim-web-01 sshd[1981]: Connection closed by authenticating user jdoe 10.66.0.10 port 51260 [preauth]
+2026-09-25T02:17:03.088412+00:00 victim-web-01 sshd[1982]: Accepted password for jdoe from 10.66.0.10 port 51268 ssh2
+2026-09-25T02:17:03.094532+00:00 victim-web-01 sshd[1982]: pam_unix(sshd:session): session opened for user jdoe(uid=1001) by jdoe(uid=0)
