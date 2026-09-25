@@ -22,7 +22,7 @@ the prompt-injection test, more agent tools. Each one comes after the slice.
 
 Approach A: an offline pipeline script, a read-only API, and a React page.
 
-- `pipeline.run_pipeline()` runs every stage in-process and returns `IncidentRun`s. The eval
+- `pipeline.run_pipeline()` runs every stage in-process and returns an `IncidentRun`. The eval
   harness will call the same function.
 - The CLI writes `runs/<case_id>.json`. `case_id` defaults to the log's parent folder name, and
   the recording defaults to `agent/recordings/<case_id>.handwritten.json`. The inventory
