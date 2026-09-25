@@ -64,6 +64,15 @@ export function RunDetail({ run }: { run: IncidentRun }) {
 }
 
 function ReplayNote({ modelName }: { modelName: string | null }) {
+  if (modelName?.startsWith("ollama:")) {
+    return (
+      <p className="replay replay--live">
+        Live AI: this investigation came from <span className="mono">{modelName.slice("ollama:".length)}</span>,
+        an open-weight model that ran inside GitHub Actions when this site was built. Nothing in it was
+        written by hand. The log it investigated is a prepared lab scenario.
+      </p>
+    );
+  }
   if (!modelName?.startsWith("replay:")) return null;
   const source = modelName.slice("replay:".length);
   return (

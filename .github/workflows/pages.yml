@@ -3,6 +3,7 @@ name: Dashboard demo
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -11,13 +12,22 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  SENTINEL_MODEL: qwen3:8b
 
 jobs:
   build:
-    name: Build replay dashboard
+    name: Investigate live and build the dashboard
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      ollama:
+        image: ollama/ollama:0.34.4
+        ports:
+          - 11434:11434
     steps:
       - uses: actions/checkout@v7
 
@@ -29,10 +39,31 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      - name: Run the S1 case through the pipeline
+      - name: Pull the model
         run: |
-          python -m pipeline.run lab/scenarios/s1_attack/auth.log
+          for attempt in $(seq 1 30); do
+            curl -sf http://localhost:11434/api/version && break
+            sleep 2
+          done
+          curl -sSf http://localhost:11434/api/pull \
+            -d "{\"model\": \"$SENTINEL_MODEL\", \"stream\": false}"
+
+      - name: Investigate each scenario with the live model
+        run: |
+          for log in lab/scenarios/*/auth.log; do
+            case_id=$(basename "$(dirname "$log")")
+            python -m pipeline.run "$log" --llm ollama --model "$SENTINEL_MODEL" \
+              --record "recordings/$case_id.json"
+          done
           python -m pipeline.export runs frontend/public/runs.json
+
+      - name: Keep the model's raw responses
+        uses: actions/upload-artifact@v7
+        with:
+          name: live-runs
+          path: |
+            runs/
+            recordings/
 
       - uses: actions/setup-node@v7
         with:
@@ -50,14 +81,17 @@ jobs:
           npm run build
 
       - uses: actions/configure-pages@v6
+        if: github.ref == 'refs/heads/main'
 
       - uses: actions/upload-pages-artifact@v5
+        if: github.ref == 'refs/heads/main'
         with:
           path: frontend/dist
 
   deploy:
     name: Deploy to GitHub Pages
     needs: build
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

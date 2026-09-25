@@ -316,6 +316,10 @@ a {
   border-radius: var(--radius);
 }
 
+.replay--live {
+  border-style: solid;
+}
+
 .spine {
   position: relative;
   list-style: none;
