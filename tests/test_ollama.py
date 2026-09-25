@@ -56,6 +56,7 @@ def test_request_shape() -> None:
     assert body["stream"] is False
     assert body["think"] is False
     assert body["options"]["temperature"] == 0
+    assert body["options"]["num_predict"] == 2048
     assert body["tools"] == [
         {
             "type": "function",
@@ -142,3 +143,15 @@ def test_live_investigation_end_to_end(s1) -> None:
     assert recording.model_name == "ollama:qwen3:8b"
     replayed, _ = investigate(s1.incident, s1.alerts, s1.events, ReplayClient(recording))
     assert replayed.classification is Classification.MALICIOUS
+
+
+def test_cut_off_answer_becomes_invalid_output(s1) -> None:
+    runaway = {
+        "role": "assistant",
+        "content": '{"classification": "malicious", "summary": "the the the',
+    }
+    fake = FakeOllama(_tool_reply("auth_history", {"account": "jdoe"}), runaway)
+    verdict, _ = investigate(s1.incident, s1.alerts, s1.events, fake.client())
+    assert verdict.stop_reason is InvestigationStopReason.INVALID_OUTPUT
+    assert verdict.classification is Classification.INCONCLUSIVE
+    assert verdict.proposed_actions == []
