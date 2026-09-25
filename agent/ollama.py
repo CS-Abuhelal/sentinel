@@ -9,7 +9,7 @@ import httpx
 from agent.llm import FinalAnswer, LLMResponse, Message, ToolCall, ToolSpec
 
 DEFAULT_URL = "http://localhost:11434"
-DEFAULT_MODEL = "qwen3:8b"
+DEFAULT_MODEL = "qwen3:14b"
 
 _THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
 _FENCE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)

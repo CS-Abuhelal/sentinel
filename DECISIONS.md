@@ -8,13 +8,14 @@ Write the entry the day the decision is made, not afterwards.
 ## D-08 — The live demo's agent is an open model running in GitHub Actions (2026-09-25)
 
 **Decision.** The published demo runs every scenario through the agent live, using an
-open-weight model (`qwen3:8b` by default) served by Ollama inside the GitHub Actions build. The
-LLM client interface stays provider-neutral, and hand-written recordings remain for offline runs
-and tests.
+open-weight model served by Ollama inside the GitHub Actions build: `qwen3:14b` with thinking
+off. The LLM client interface stays provider-neutral, and hand-written recordings remain for
+offline runs and tests.
 
 **Why.** Free, no account or API key, nothing leaves the pipeline, and it can't break when a
-provider changes its free tier (GitHub Models was retired on 2026-07-30). The cost is speed and
-judgment: the first live runs got the S1 attack right and called the benign twin malicious.
+provider changes its free tier (GitHub Models was retired on 2026-07-30). In the model trial
+(`docs/model-trial-2026-09-25.md`), `qwen3:8b` called the benign twin malicious and `qwen3:14b`
+got both cases right. The cost is build time: about 15 minutes for the two cases.
 
 **Consequence.** The dashboard shows each run's expected outcome next to the model's verdict, so
 a wrong verdict is visible rather than hidden. Stronger configurations are compared with the
