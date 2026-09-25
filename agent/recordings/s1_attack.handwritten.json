@@ -1,0 +1,53 @@
+{
+  "source": "handwritten",
+  "model_name": "replay:handwritten",
+  "responses": [
+    {
+      "type": "tool_call",
+      "tool": "auth_history",
+      "args": {"account": "jdoe", "lookback_hours": 168}
+    },
+    {
+      "type": "final",
+      "payload": {
+        "classification": "malicious",
+        "confidence": 0.9,
+        "summary": "10.66.0.10 made 24 failed SSH password attempts against jdoe on victim-web-01 in under six minutes, then logged in successfully. In the previous week jdoe had only logged in from 10.77.0.50. This is a successful password-guessing attack; treat jdoe's credentials as compromised.",
+        "techniques": ["T1110.001", "T1078"],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Credential Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force: Password Guessing",
+            "description": "24 consecutive failed SSH passwords for jdoe from 10.66.0.10.",
+            "evidence": ["E1"]
+          },
+          {
+            "order": 2,
+            "tactic": "Initial Access",
+            "technique_id": "T1078",
+            "technique_name": "Valid Accounts",
+            "description": "Successful SSH login as jdoe from 10.66.0.10 immediately after the failures, from a source jdoe had never used.",
+            "evidence": ["E1"]
+          }
+        ],
+        "cited_evidence": ["E1"],
+        "risk_factors": [
+          "Successful login directly after 24 consecutive failures",
+          "Source IP never used by jdoe before the incident"
+        ],
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "jdoe",
+            "justification": "The password was guessed and used from an unknown source. Disabling jdoe stops further access until the password is reset.",
+            "reversible": true,
+            "evidence": ["E1"]
+          }
+        ]
+      }
+    }
+  ]
+}
