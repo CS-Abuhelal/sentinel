@@ -27,6 +27,7 @@ class SentinelModel(BaseModel):
         use_enum_values=False,
         validate_assignment=True,
         protected_namespaces=(),
+        json_schema_serialization_defaults_required=True,
     )
 
 

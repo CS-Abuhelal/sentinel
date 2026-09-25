@@ -60,10 +60,13 @@
     }
   },
   "required": [
+    "action_id",
     "action_type",
     "target_type",
     "target_value",
-    "justification"
+    "justification",
+    "reversible",
+    "evidence_ids"
   ],
   "title": "ProposedAction",
   "type": "object"

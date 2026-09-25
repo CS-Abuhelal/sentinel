@@ -75,11 +75,16 @@
     }
   },
   "required": [
+    "evidence_id",
     "incident_id",
     "evidence_class",
     "tool_name",
+    "tool_query",
     "retrieved_at",
-    "summary"
+    "summary",
+    "content",
+    "source_event_ids",
+    "was_productive"
   ],
   "title": "EvidenceItem",
   "type": "object"

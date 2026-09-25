@@ -18,7 +18,8 @@
       },
       "required": [
         "entity_type",
-        "value"
+        "value",
+        "is_protected"
       ],
       "title": "Entity",
       "type": "object"
@@ -118,10 +119,16 @@
     }
   },
   "required": [
+    "incident_id",
     "title",
+    "status",
     "created_at",
+    "updated_at",
     "window_start",
-    "window_end"
+    "window_end",
+    "alert_ids",
+    "entities",
+    "case_id"
   ],
   "title": "Incident",
   "type": "object"

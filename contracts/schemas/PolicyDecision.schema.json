@@ -92,6 +92,7 @@
     }
   },
   "required": [
+    "decision_id",
     "action_id",
     "incident_id",
     "outcome",
@@ -99,7 +100,10 @@
     "risk_score",
     "matched_rule",
     "reason",
-    "decided_at"
+    "target_is_protected",
+    "decided_at",
+    "approved_by",
+    "approved_at"
   ],
   "title": "PolicyDecision",
   "type": "object"

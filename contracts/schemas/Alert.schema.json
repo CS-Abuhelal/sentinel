@@ -96,12 +96,18 @@
     }
   },
   "required": [
+    "alert_id",
     "rule_id",
     "rule_name",
     "rule_severity",
     "timestamp",
     "host",
-    "description"
+    "user",
+    "src_ip",
+    "description",
+    "event_ids",
+    "suggested_techniques",
+    "case_id"
   ],
   "title": "Alert",
   "type": "object"

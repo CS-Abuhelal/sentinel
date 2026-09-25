@@ -63,7 +63,10 @@
       "required": [
         "order",
         "tactic",
-        "description"
+        "technique_id",
+        "technique_name",
+        "description",
+        "evidence_ids"
       ],
       "title": "AttackChainStep",
       "type": "object"
@@ -144,10 +147,13 @@
         }
       },
       "required": [
+        "action_id",
         "action_type",
         "target_type",
         "target_value",
-        "justification"
+        "justification",
+        "reversible",
+        "evidence_ids"
       ],
       "title": "ProposedAction",
       "type": "object"
@@ -257,12 +263,23 @@
     }
   },
   "required": [
+    "verdict_id",
     "incident_id",
     "arm",
     "classification",
     "confidence",
     "summary",
+    "attack_chain",
+    "techniques",
+    "cited_evidence_ids",
+    "risk_factors",
+    "proposed_actions",
     "produced_at",
+    "model_name",
+    "tool_calls_made",
+    "input_tokens",
+    "output_tokens",
+    "latency_ms",
     "stop_reason"
   ],
   "title": "Verdict",

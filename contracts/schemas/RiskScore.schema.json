@@ -45,6 +45,7 @@
     "incident_id",
     "score",
     "severity",
+    "factors",
     "computed_at"
   ],
   "title": "RiskScore",

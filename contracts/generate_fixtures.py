@@ -204,8 +204,7 @@ evidence_change_window = EvidenceItem(
     tool_query={"host": HOST, "at": (T0 + timedelta(minutes=6)).isoformat()},
     retrieved_at=T0 + timedelta(minutes=10),
     summary=(
-        "No scheduled maintenance or approved change covered this host at the time of "
-        "the activity."
+        "No scheduled maintenance or approved change covered this host at the time of the activity."
     ),
     content={"in_change_window": False, "nearest_window": None},
     source_event_ids=[],
@@ -401,7 +400,8 @@ def main() -> None:
     for model in SCHEMA_MODELS:
         path = schemas_dir / f"{model.__name__}.schema.json"
         path.write_text(
-            json.dumps(model.model_json_schema(), indent=2, ensure_ascii=False) + "\n",
+            json.dumps(model.model_json_schema(mode="serialization"), indent=2, ensure_ascii=False)
+            + "\n",
             encoding="utf-8",
         )
         print(f"schema   {path.relative_to(OUT.parent)}")
@@ -418,8 +418,7 @@ def main() -> None:
                     for e in (failed_login, successful_login, post_login_process)
                 ],
                 "alerts": [
-                    json.loads(a.model_dump_json())
-                    for a in (alert_bruteforce, alert_encoded_ps)
+                    json.loads(a.model_dump_json()) for a in (alert_bruteforce, alert_encoded_ps)
                 ],
                 "incident": json.loads(incident.model_dump_json()),
                 "evidence": [

@@ -16,7 +16,8 @@ than beside it. Correlation, risk scoring and the policy engine all read the inv
 brief requires recording why each investigation stopped.
 
 **Consequence.** Every producer of a `Verdict` must state its stop reason. The frontend
-generates its types from `IncidentRun.schema.json`.
+generates its types from `IncidentRun.schema.json`. JSON Schemas are now generated in
+serialization mode, so fields the API always sends are required in the generated types.
 
 ---
 
