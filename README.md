@@ -75,11 +75,11 @@ cd frontend && VITE_BASE=/sentinel/ VITE_RUNS_URL=runs.json npm run build
 | `detection/` | Sigma rules, evaluator, correlation |
 | `agent/` | Investigation agent, read-only tools, prompt, LLM recordings |
 | `policy/` | Risk scoring and the policy engine |
+| `executor/` | Fixed-catalog executor, approval loading, hash-chained audit log |
+| `approvals/` | Human approvals, one file per case |
 | `pipeline/` | Runs every stage and writes the run file |
 | `backend/` | FastAPI, read-only runs API |
 | `frontend/` | React dashboard |
-| `eval/` | Experiment runner, arms, metrics |
-| `benchmark/` | Labeled cases and ground truth |
 
 Design decisions are logged in `DECISIONS.md`.
 

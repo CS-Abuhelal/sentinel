@@ -2,7 +2,7 @@
 
 Every fixture must load back into its model. If someone changes a model without
 regenerating fixtures, or hand-edits a fixture into a shape the model rejects, these
-fail immediately instead of in week 9.
+fail immediately instead of at integration.
 """
 
 from __future__ import annotations
