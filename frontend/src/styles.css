@@ -920,6 +920,44 @@ a {
   border-top: 1px solid var(--rule-soft);
 }
 
+.check {
+  padding: 1px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+}
+
+.check--right {
+  color: var(--allow);
+  background: var(--allow-wash);
+}
+
+.check--wrong {
+  color: var(--deny);
+  background: var(--deny-wash);
+}
+
+.expected {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--allow);
+  border-radius: var(--radius);
+}
+
+.expected--wrong {
+  border-left-color: var(--deny);
+}
+
+.expected p {
+  margin: 0 0 6px;
+}
+
+.expected p:last-child {
+  margin-bottom: 0;
+}
+
 .controls {
   display: flex;
   flex-wrap: wrap;

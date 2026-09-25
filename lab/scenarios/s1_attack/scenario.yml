@@ -1,0 +1,5 @@
+title: Password guessing leads to a compromised account
+description: >-
+  A host that jdoe has never logged in from makes 24 failed SSH password attempts against jdoe,
+  then logs in with the guessed password.
+expected_classification: malicious

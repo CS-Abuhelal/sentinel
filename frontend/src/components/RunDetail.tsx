@@ -1,6 +1,7 @@
 import { STATUS, evidenceRefs, utc } from "../format";
 import { usePlayback, type Playback } from "../playback";
 import type { IncidentRun } from "../types/contracts";
+import { ExpectedBadge } from "./Expected";
 import { Stage, stageState } from "./Stage";
 import { Correlation } from "./stages/Correlation";
 import { Detection } from "./stages/Detection";
@@ -43,6 +44,7 @@ export function RunDetail({ run }: { run: IncidentRun }) {
             <span>
               Verdict <strong className={`cls cls--${verdict.classification}`}>{verdict.classification}</strong>
             </span>
+            <ExpectedBadge run={run} />
             <span>
               Risk <strong>{risk.score}</strong> <span className={`sev sev--${risk.severity}`}>{risk.severity}</span>
             </span>

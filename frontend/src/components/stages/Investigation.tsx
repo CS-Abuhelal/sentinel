@@ -1,6 +1,7 @@
 import { ACTION, ENTITY, STOP_REASON } from "../../format";
 import type { IncidentRun } from "../../types/contracts";
 import { Cites } from "../Cites";
+import { ExpectedNote } from "../Expected";
 
 type EvidenceProps = { run: IncidentRun; refs: Map<string, string>; calling: boolean };
 
@@ -81,6 +82,7 @@ export function Investigation({ run, refs, phase }: Props) {
           <Cites ids={verdict.cited_evidence_ids} refs={refs} />
         </p>
         <p>{verdict.summary}</p>
+        <ExpectedNote run={run} />
         {verdict.attack_chain.length > 0 && (
           <ol className="chain" aria-label="Attack chain">
             {verdict.attack_chain.map((step) => (

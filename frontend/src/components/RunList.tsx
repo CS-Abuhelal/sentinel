@@ -1,4 +1,5 @@
 import { STATUS } from "../format";
+import { isCorrect } from "./Expected";
 import type { IncidentRun } from "../types/contracts";
 
 type Props = {
@@ -27,6 +28,7 @@ export function RunList({ runs, selectedId, onSelect }: Props) {
                   {run.verdict.classification}
                 </span>
                 <span>Risk {run.risk_score.score}</span>
+                {isCorrect(run) === false && <span className="check check--wrong">Wrong</span>}
                 <span>{STATUS[run.incident.status]}</span>
               </span>
             </button>

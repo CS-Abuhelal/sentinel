@@ -18,6 +18,7 @@ from contracts.models import (
     Inventory,
     PolicyDecision,
     PolicyOutcome,
+    Scenario,
     Verdict,
 )
 from detection.correlate import correlate
@@ -41,6 +42,12 @@ def load_inventory(path: Path) -> Inventory:
     return Inventory.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")) or {})
 
 
+def load_scenario(path: Path) -> Scenario | None:
+    if not path.is_file():
+        return None
+    return Scenario.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
+
+
 def run_pipeline(
     lines: list[str],
     case_id: str,
@@ -48,6 +55,7 @@ def run_pipeline(
     llm: LLMClient,
     rules: RuleSet | None = None,
     now: Callable[[], datetime] = utcnow,
+    scenario: Scenario | None = None,
 ) -> IncidentRun:
     events = parse_auth_log(lines, case_id)
     alerts = detect(events, rules or load_rules(RULES_DIR), case_id)
@@ -75,6 +83,7 @@ def run_pipeline(
         verdict=verdict,
         risk_score=risk,
         policy_decisions=decisions,
+        scenario=scenario,
     )
 
 
@@ -125,6 +134,7 @@ def main(argv: list[str] | None = None) -> int:
         case_id,
         load_inventory(args.inventory),
         recorder,
+        scenario=load_scenario(args.log.parent / "scenario.yml"),
     )
     if args.record:
         args.record.parent.mkdir(parents=True, exist_ok=True)

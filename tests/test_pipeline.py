@@ -15,8 +15,9 @@ from contracts.models import (
     PolicyOutcome,
 )
 from pipeline import run as run_module
-from pipeline.run import INVENTORY_FILE, load_inventory, main, run_pipeline
+from pipeline.run import INVENTORY_FILE, load_inventory, load_scenario, main, run_pipeline
 from tests.conftest import S1_LOG, S1_RECORDING
+from tests.test_investigate import Capturing
 from tests.test_ollama import FakeOllama
 
 NOW = datetime(2026, 9, 25, 2, 20, tzinfo=UTC)
@@ -50,6 +51,31 @@ def test_s1_end_to_end() -> None:
     assert decision.outcome is PolicyOutcome.REQUIRE_APPROVAL
     assert decision.matched_rule == "disable_account_requires_approval"
     assert IncidentRun.model_validate_json(run.model_dump_json()) == run
+
+
+def test_scenario_is_attached_but_never_shown_to_the_agent() -> None:
+    scenario = load_scenario(S1_LOG.parent / "scenario.yml")
+    assert scenario is not None
+    client = Capturing(ReplayClient.from_file(S1_RECORDING))
+    run = run_pipeline(
+        S1_LOG.read_text(encoding="utf-8").splitlines(),
+        "s1_attack",
+        load_inventory(INVENTORY_FILE),
+        client,
+        now=lambda: NOW,
+        scenario=scenario,
+    )
+    assert run.scenario == scenario
+    assert run.scenario.expected_classification is Classification.MALICIOUS
+    seen = " ".join(m.content for call in client.calls for m in call)
+    assert scenario.title not in seen
+    assert scenario.description not in seen
+    assert "expected_classification" not in seen
+
+
+def test_every_scenario_has_an_expected_outcome() -> None:
+    for log in sorted((S1_LOG.parents[1]).glob("*/auth.log")):
+        assert load_scenario(log.parent / "scenario.yml") is not None, log.parent.name
 
 
 def test_log_without_alerts_raises() -> None:

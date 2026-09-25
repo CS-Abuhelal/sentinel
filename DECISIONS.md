@@ -5,6 +5,36 @@ Write the entry the day the decision is made, not afterwards.
 
 ---
 
+## D-08 — The live demo's agent is an open model running in GitHub Actions (2026-09-25)
+
+**Decision.** The published demo runs every scenario through the agent live, using an
+open-weight model (`qwen3:8b` by default) served by Ollama inside the GitHub Actions build. The
+LLM client interface stays provider-neutral, and hand-written recordings remain for offline runs
+and tests.
+
+**Why.** Free, no account or API key, nothing leaves the pipeline, and it can't break when a
+provider changes its free tier (GitHub Models was retired on 2026-07-30). The cost is speed and
+judgment: the first live runs got the S1 attack right and called the benign twin malicious.
+
+**Consequence.** The dashboard shows each run's expected outcome next to the model's verdict, so
+a wrong verdict is visible rather than hidden. Stronger configurations are compared with the
+`Model trial` workflow before changing the default.
+
+---
+
+## D-07 — Contracts 1.2.0: Scenario with a hand-labelled expected outcome (2026-09-25)
+
+**Decision.** Add `Scenario` (title, description, expected classification) and an optional
+`IncidentRun.scenario`, loaded from `lab/scenarios/<case>/scenario.yml`.
+
+**Why.** With a live model the verdict can be wrong. Visitors need to see what the right answer
+was, and evaluation needs labelled cases.
+
+**Consequence.** The scenario is attached to the run after the fact and is never passed to the
+agent. A test checks that no part of it appears in the model's input.
+
+---
+
 ## D-06 — Contracts 1.1.0: IncidentRun, Inventory, Verdict.stop_reason (2026-09-25)
 
 **Decision.** Add `IncidentRun` (one incident through every stage; the run file and the API
