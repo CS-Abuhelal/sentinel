@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -9,21 +8,12 @@ from pydantic import ValidationError
 from agent.tools import TOOLS
 from agent.tools.auth_history import AuthHistoryParams, auth_history
 from agent.tools.base import ToolContext
-from contracts.models import EvidenceClass, Inventory
-from detection.correlate import correlate
-from detection.sigma import detect, load_rules
-from ingest.linux_auth import parse_auth_log
-
-REPO = Path(__file__).resolve().parents[1]
+from contracts.models import EvidenceClass
 
 
 @pytest.fixture(scope="module")
-def s1_context() -> ToolContext:
-    log = REPO / "lab" / "scenarios" / "s1_attack" / "auth.log"
-    events = parse_auth_log(log.read_text(encoding="utf-8").splitlines())
-    alerts = detect(events, load_rules(REPO / "detection" / "rules"))
-    [incident] = correlate(alerts, events, Inventory())
-    return ToolContext(incident=incident, events=events)
+def s1_context(s1) -> ToolContext:
+    return ToolContext(incident=s1.incident, events=s1.events)
 
 
 def test_s1_auth_history(s1_context: ToolContext) -> None:

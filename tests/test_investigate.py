@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ast
 import json
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -11,20 +10,12 @@ from agent.investigate import MAX_TOOL_CALLS, investigate
 from agent.llm import LLMResponse, Message, Recording, ReplayClient, ReplayExhausted, ToolSpec
 from contracts.models import (
     ActionType,
-    Alert,
     Classification,
     EvaluationArm,
-    Event,
-    Incident,
-    Inventory,
     InvestigationStopReason,
 )
-from detection.correlate import correlate
-from detection.sigma import detect, load_rules
-from ingest.linux_auth import parse_auth_log
+from tests.conftest import REPO, S1_RECORDING
 
-REPO = Path(__file__).resolve().parents[1]
-S1_RECORDING = REPO / "agent" / "recordings" / "s1_attack.handwritten.json"
 AUTH_CALL = {"type": "tool_call", "tool": "auth_history", "args": {"account": "jdoe"}}
 
 
@@ -40,15 +31,6 @@ class Capturing:
     def complete(self, messages: list[Message], tools: list[ToolSpec]) -> LLMResponse:
         self.calls.append(list(messages))
         return self.inner.complete(messages, tools)
-
-
-@pytest.fixture(scope="module")
-def s1() -> tuple[Incident, list[Alert], list[Event]]:
-    log = REPO / "lab" / "scenarios" / "s1_attack" / "auth.log"
-    events = parse_auth_log(log.read_text(encoding="utf-8").splitlines())
-    alerts = detect(events, load_rules(REPO / "detection" / "rules"))
-    [incident] = correlate(alerts, events, Inventory())
-    return incident, alerts, events
 
 
 def _client(*responses: dict[str, Any]) -> ReplayClient:
@@ -69,7 +51,7 @@ def _final(**overrides: Any) -> dict[str, Any]:
 
 
 def test_s1_recording_produces_malicious_verdict(s1) -> None:
-    incident, alerts, events = s1
+    incident, alerts, events = s1.incident, s1.alerts, s1.events
     verdict, evidence = investigate(incident, alerts, events, ReplayClient.from_file(S1_RECORDING))
     [item] = evidence
     assert item.tool_name == "auth_history"
@@ -90,7 +72,7 @@ def test_s1_recording_produces_malicious_verdict(s1) -> None:
 
 
 def test_tool_results_reach_the_model_as_json_data(s1) -> None:
-    incident, alerts, events = s1
+    incident, alerts, events = s1.incident, s1.alerts, s1.events
     client = Capturing(_client(AUTH_CALL, _final()))
     investigate(incident, alerts, events, client)
     first, second = client.calls
@@ -144,7 +126,7 @@ def test_tool_results_reach_the_model_as_json_data(s1) -> None:
     ],
 )
 def test_invalid_output_falls_back_to_inconclusive(s1, responses) -> None:
-    incident, alerts, events = s1
+    incident, alerts, events = s1.incident, s1.alerts, s1.events
     verdict, _ = investigate(incident, alerts, events, _client(*responses))
     assert verdict.stop_reason is InvestigationStopReason.INVALID_OUTPUT
     assert verdict.classification is Classification.INCONCLUSIVE
@@ -154,7 +136,7 @@ def test_invalid_output_falls_back_to_inconclusive(s1, responses) -> None:
 
 
 def test_tool_call_cap_stops_investigation(s1) -> None:
-    incident, alerts, events = s1
+    incident, alerts, events = s1.incident, s1.alerts, s1.events
     responses = [AUTH_CALL] * (MAX_TOOL_CALLS + 1)
     verdict, evidence = investigate(incident, alerts, events, _client(*responses))
     assert verdict.stop_reason is InvestigationStopReason.TOOL_CALL_CAP
@@ -164,7 +146,7 @@ def test_tool_call_cap_stops_investigation(s1) -> None:
 
 
 def test_benign_verdict_without_citations_is_accepted(s1) -> None:
-    incident, alerts, events = s1
+    incident, alerts, events = s1.incident, s1.alerts, s1.events
     responses = [_final(classification="benign", cited_evidence=[])]
     verdict, evidence = investigate(incident, alerts, events, _client(*responses))
     assert verdict.classification is Classification.BENIGN
@@ -173,7 +155,7 @@ def test_benign_verdict_without_citations_is_accepted(s1) -> None:
 
 
 def test_exhausted_replay_raises(s1) -> None:
-    incident, alerts, events = s1
+    incident, alerts, events = s1.incident, s1.alerts, s1.events
     with pytest.raises(ReplayExhausted):
         investigate(incident, alerts, events, _client(AUTH_CALL))
 
