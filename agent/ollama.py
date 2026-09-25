@@ -10,6 +10,7 @@ from agent.llm import FinalAnswer, LLMResponse, Message, ToolCall, ToolSpec
 
 DEFAULT_URL = "http://localhost:11434"
 DEFAULT_MODEL = "qwen3:14b"
+MAX_OUTPUT_TOKENS = 2048
 
 _THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
 _FENCE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
@@ -25,7 +26,7 @@ class OllamaClient:
         model: str = DEFAULT_MODEL,
         base_url: str = DEFAULT_URL,
         think: bool = False,
-        timeout: float = 2400.0,
+        timeout: float = 1200.0,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
         self._model = model
@@ -43,7 +44,7 @@ class OllamaClient:
             "tools": [_tool(spec) for spec in tools],
             "stream": False,
             "think": self._think,
-            "options": {"temperature": 0, "num_ctx": 16384},
+            "options": {"temperature": 0, "num_ctx": 16384, "num_predict": MAX_OUTPUT_TOKENS},
         }
         response = self._http.post("/api/chat", json=body)
         if response.status_code != 200:
