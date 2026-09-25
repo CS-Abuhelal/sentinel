@@ -114,6 +114,71 @@
       "title": "Alert",
       "type": "object"
     },
+    "Approval": {
+      "additionalProperties": false,
+      "description": "A human's answer to a decision that required approval. Nothing else can unlock one.",
+      "properties": {
+        "approval_id": {
+          "title": "Approval Id",
+          "type": "string"
+        },
+        "decision_id": {
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "action_id": {
+          "title": "Action Id",
+          "type": "string"
+        },
+        "incident_id": {
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "approved": {
+          "title": "Approved",
+          "type": "boolean"
+        },
+        "decided_by": {
+          "minLength": 1,
+          "title": "Decided By",
+          "type": "string"
+        },
+        "decided_at": {
+          "format": "date-time",
+          "title": "Decided At",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "approval_id",
+        "decision_id",
+        "action_id",
+        "incident_id",
+        "approved",
+        "decided_by",
+        "decided_at",
+        "source",
+        "note"
+      ],
+      "title": "Approval",
+      "type": "object"
+    },
     "AttackChainStep": {
       "additionalProperties": false,
       "properties": {
@@ -172,6 +237,73 @@
       "title": "AttackChainStep",
       "type": "object"
     },
+    "AuditKind": {
+      "enum": [
+        "proposal",
+        "decision",
+        "approval",
+        "execution"
+      ],
+      "title": "AuditKind",
+      "type": "string"
+    },
+    "AuditRecord": {
+      "additionalProperties": false,
+      "description": "One append-only audit entry. Each hash covers the previous one, so edits break the chain.",
+      "properties": {
+        "sequence": {
+          "minimum": 0,
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/AuditKind"
+        },
+        "incident_id": {
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "subject_id": {
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        },
+        "prev_hash": {
+          "title": "Prev Hash",
+          "type": "string"
+        },
+        "hash": {
+          "title": "Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sequence",
+        "recorded_at",
+        "kind",
+        "incident_id",
+        "subject_id",
+        "summary",
+        "payload",
+        "prev_hash",
+        "hash"
+      ],
+      "title": "AuditRecord",
+      "type": "object"
+    },
     "AutonomyLevel": {
       "enum": [
         "observe_only",
@@ -190,6 +322,35 @@
       ],
       "title": "Classification",
       "type": "string"
+    },
+    "CommandResult": {
+      "additionalProperties": false,
+      "properties": {
+        "argv": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Argv",
+          "type": "array"
+        },
+        "exit_code": {
+          "title": "Exit Code",
+          "type": "integer"
+        },
+        "output": {
+          "default": "",
+          "title": "Output",
+          "type": "string"
+        }
+      },
+      "required": [
+        "argv",
+        "exit_code",
+        "output"
+      ],
+      "title": "CommandResult",
+      "type": "object"
     },
     "Entity": {
       "additionalProperties": false,
@@ -485,6 +646,127 @@
       ],
       "title": "EvidenceItem",
       "type": "object"
+    },
+    "ExecutionResult": {
+      "additionalProperties": false,
+      "description": "What the executor did with one decision on one host. Rejected means nothing ran.",
+      "properties": {
+        "execution_id": {
+          "title": "Execution Id",
+          "type": "string"
+        },
+        "decision_id": {
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "action_id": {
+          "title": "Action Id",
+          "type": "string"
+        },
+        "incident_id": {
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "action_type": {
+          "$ref": "#/$defs/ActionType"
+        },
+        "target_type": {
+          "$ref": "#/$defs/EntityType"
+        },
+        "target_value": {
+          "title": "Target Value",
+          "type": "string"
+        },
+        "host": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Host"
+        },
+        "status": {
+          "$ref": "#/$defs/ExecutionStatus"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "dry_run": {
+          "default": false,
+          "title": "Dry Run",
+          "type": "boolean"
+        },
+        "commands": {
+          "items": {
+            "$ref": "#/$defs/CommandResult"
+          },
+          "title": "Commands",
+          "type": "array"
+        },
+        "verified": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verified"
+        },
+        "verification": {
+          "items": {
+            "$ref": "#/$defs/CommandResult"
+          },
+          "title": "Verification",
+          "type": "array"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "execution_id",
+        "decision_id",
+        "action_id",
+        "incident_id",
+        "action_type",
+        "target_type",
+        "target_value",
+        "host",
+        "status",
+        "reason",
+        "dry_run",
+        "commands",
+        "verified",
+        "verification",
+        "started_at",
+        "finished_at"
+      ],
+      "title": "ExecutionResult",
+      "type": "object"
+    },
+    "ExecutionStatus": {
+      "enum": [
+        "succeeded",
+        "failed",
+        "rejected"
+      ],
+      "title": "ExecutionStatus",
+      "type": "string"
     },
     "Incident": {
       "additionalProperties": false,
@@ -1180,7 +1462,7 @@
       "type": "string"
     },
     "contract_version": {
-      "default": "1.2.0",
+      "default": "1.3.0",
       "title": "Contract Version",
       "type": "string"
     },
@@ -1236,6 +1518,27 @@
         }
       ],
       "default": null
+    },
+    "approvals": {
+      "items": {
+        "$ref": "#/$defs/Approval"
+      },
+      "title": "Approvals",
+      "type": "array"
+    },
+    "executions": {
+      "items": {
+        "$ref": "#/$defs/ExecutionResult"
+      },
+      "title": "Executions",
+      "type": "array"
+    },
+    "audit": {
+      "items": {
+        "$ref": "#/$defs/AuditRecord"
+      },
+      "title": "Audit",
+      "type": "array"
     }
   },
   "required": [
@@ -1250,7 +1553,10 @@
     "verdict",
     "risk_score",
     "policy_decisions",
-    "scenario"
+    "scenario",
+    "approvals",
+    "executions",
+    "audit"
   ],
   "title": "IncidentRun",
   "type": "object"
