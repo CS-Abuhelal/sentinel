@@ -54,6 +54,25 @@ Open http://localhost:5173. The dashboard shows the run stage by stage: parsed e
 Sigma alert, the incident, the agent's evidence and verdict, the deterministic risk score, and
 the policy decision on each proposed action.
 
+### With the real AI and a real lab host
+
+The commands above replay recorded agent answers and only record what the executor would do.
+To have a live model investigate and the executor act on a real container, start Ollama (drop
+`--gpus all` if you have no NVIDIA GPU) and a victim container:
+
+```bash
+docker run -d --gpus all -p 11434:11434 -v ollama:/root/.ollama --name ollama ollama/ollama:0.34.4
+docker exec ollama ollama pull qwen3:14b
+docker build -t sentinel-victim lab/victim
+docker run -d --cap-add NET_ADMIN --name victim-web-01 sentinel-victim
+docker exec -d -u jdoe victim-web-01 sleep 3600
+python -m pipeline.run lab/scenarios/s1_attack/auth.log --llm ollama \
+  --target docker --container victim-web-01=victim-web-01
+docker exec victim-web-01 passwd --status jdoe                # L: locked
+```
+
+The executor only acts on approvals committed in `approvals/<case_id>.yml`.
+
 The live demo is the same dashboard built as a static site. The `Dashboard demo` workflow
 runs the pipeline, bundles the run files and deploys to GitHub Pages on every push to `main`.
 To build it yourself:
