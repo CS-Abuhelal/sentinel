@@ -33,7 +33,7 @@ def decide(
     now: datetime,
 ) -> PolicyDecision:
     protected = inventory.is_protected(action.target_type, action.target_value)
-    rule, outcome, reason = _evaluate(action, verdict, incident, protected)
+    rule, outcome, reason = _evaluate(action, verdict, incident, inventory, protected)
     return PolicyDecision(
         action_id=action.action_id,
         incident_id=incident.incident_id,
@@ -48,7 +48,11 @@ def decide(
 
 
 def _evaluate(
-    action: ProposedAction, verdict: Verdict, incident: Incident, protected: bool
+    action: ProposedAction,
+    verdict: Verdict,
+    incident: Incident,
+    inventory: Inventory,
+    protected: bool,
 ) -> tuple[str, PolicyOutcome, str]:
     kind = action.action_type
     target = f"{action.target_type.value} {action.target_value}"
@@ -82,6 +86,13 @@ def _evaluate(
             "target_not_in_incident",
             PolicyOutcome.DENY,
             f"The {target} is not an entity in this incident.",
+        )
+    known = inventory.accounts if action.target_type is EntityType.ACCOUNT else inventory.hosts
+    if action.target_value not in known:
+        return (
+            "target_not_in_inventory",
+            PolicyOutcome.DENY,
+            f"The {target} is not in the lab inventory, so it is not ours to act on.",
         )
     if verdict.classification is not Classification.MALICIOUS:
         return (

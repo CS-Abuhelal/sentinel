@@ -8,6 +8,7 @@ from contracts.models import (
     ActionType,
     AutonomyLevel,
     Classification,
+    Entity,
     EntityType,
     EvaluationArm,
     InvestigationStopReason,
@@ -156,3 +157,31 @@ def test_disable_account_is_never_allowed(s1, score, classification) -> None:
     action = _action(ActionType.DISABLE_ACCOUNT, ACCOUNT, "jdoe")
     decision = _decide(s1, action, classification, score)
     assert decision.outcome is not PolicyOutcome.ALLOW
+
+
+def test_targets_outside_the_inventory_are_denied(s1) -> None:
+    incident = s1.incident.model_copy(
+        update={
+            "entities": [
+                *s1.incident.entities,
+                Entity(entity_type=ACCOUNT, value="ghost"),
+                Entity(entity_type=HOST, value="unknown-host"),
+            ]
+        }
+    )
+    for action_type, target_type, value in [
+        (ActionType.DISABLE_ACCOUNT, ACCOUNT, "ghost"),
+        (ActionType.ISOLATE_HOST, HOST, "unknown-host"),
+    ]:
+        decision = decide(
+            _action(action_type, target_type, value),
+            _verdict(incident.incident_id, MALICIOUS),
+            incident,
+            _risk(incident.incident_id, 80),
+            s1.inventory,
+            NOW,
+        )
+        assert (decision.outcome, decision.matched_rule) == (
+            PolicyOutcome.DENY,
+            "target_not_in_inventory",
+        )
