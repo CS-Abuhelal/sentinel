@@ -29,8 +29,8 @@ Each phase gets its own implementation plan and ends with something that works.
 
 | Phase | Delivers | Done when |
 |---|---|---|
-| 1. Live feed | Wazuh in Docker, the PC enrolled, the SENTINEL service with Postgres, the ingest endpoint, backfill, and a "My PC → Alerts" page | Five wrong-password attempts at the Windows lock screen show up as alerts on the page within 10 seconds. Alerts sent while SENTINEL was stopped appear after it restarts. CI is green. |
-| 2. Alert investigations | Grouping alerts into incidents, the queue worker, four new read-only tools, the advice-only policy rule, and the incidents view | Enough wrong-password attempts within a few minutes to trigger Wazuh's multiple-logon-failure rule (60204, level 10) produce an incident. The model investigates it using at least one new tool, and every proposed action is denied with `personal_host_advice_only`. The new prompt-injection test passes. |
+| 1. Live feed | Wazuh in Docker, the PC enrolled, the SENTINEL service with Postgres, the ingest endpoint, backfill, and a "My PC → Alerts" page | Five failed logons show up as alerts on the page within 10 seconds. They come from `runas` with a user that does not exist, so no real account is locked out. Alerts sent while SENTINEL was stopped appear after it restarts. CI is green. |
+| 2. Alert investigations | Grouping alerts into incidents, the queue worker, four new read-only tools, the advice-only policy rule, and the incidents view | Enough failed logons within a few minutes to trigger Wazuh's multiple-logon-failure rule (60204, level 10) produce an incident. The model investigates it using at least one new tool, and every proposed action is denied with `personal_host_advice_only`. The new prompt-injection test passes. |
 | 3. Weak spots | Sync of vulnerabilities and failed CIS checks, the priority score, AI fix steps with the checker, and the "Fix these first" view | A rescan lists open findings sorted by priority, and the top 10 have checked fix steps. |
 | 4. Report, demo, accuracy | The report page, the sanitizer, the public sample page, and the accuracy script | The report prints to PDF, the sample is live on GitHub Pages, and `docs/pc-accuracy.md` reports results against about 10 hand labels. |
 
@@ -52,6 +52,12 @@ Windows PC ── Wazuh agent ──► Wazuh manager (Docker) ── custom-sen
 Wazuh is an external data source. SENTINEL reads from it and never depends on it at build or
 test time (D-11).
 
+The Wazuh manager, the Wazuh indexer and the SENTINEL backend share an external Docker network,
+`sentinel-wazuh`. There the backend has the alias `sentinel-backend`, and Wazuh is reached at
+`wazuh.manager` and `wazuh.indexer`. SENTINEL publishes its ports on `127.0.0.1` only. The
+network is added through `docker-compose.wazuh.yml`, so plain `docker compose up` still works
+without Wazuh.
+
 ## Wazuh side (`lab/wazuh/`)
 
 - `README.md`: setup steps for the wazuh-docker single-node deployment (tag `v4.14.x`):
@@ -67,7 +73,7 @@ test time (D-11).
 ```xml
 <integration>
   <name>custom-sentinel</name>
-  <hook_url>http://host.docker.internal:8000/api/ingest/wazuh</hook_url>
+  <hook_url>http://sentinel-backend:8000/api/ingest/wazuh</hook_url>
   <api_key>REPLACE_WITH_SENTINEL_INGEST_TOKEN</api_key>
   <level>3</level>
   <alert_format>json</alert_format>
@@ -92,6 +98,12 @@ file keeps the placeholder.
 - `HostAssessment(assessment_id, host, contract_version, created_at, synced_at, findings,
   recommendations, model_name)`.
 - `Verdict` gains `recommendations: list[Recommendation] = []`.
+- `LiveAlert(wazuh_id, received_at, level, event, alert)` is one stored alert as the live page
+  shows it.
+- `ServiceState(reachable, detail)`.
+- `PcStatus(checked_at, wazuh_api, backfill, alert_count, last_alert_at)`. Later phases add the
+  queue length and whether Ollama is reachable.
+- `PcFeed(status, alerts)` is what the live page polls.
 
 Fixtures, JSON Schemas and frontend types are regenerated as usual.
 
@@ -145,8 +157,9 @@ indexed columns for queries:
 
 ### Read API (`/api/pc/*`)
 
-`GET /status` (Wazuh API reachable, cached for 30 s; last sync; queue length; Ollama reachable),
-`GET /alerts?limit=200`, `GET /incidents`, `GET /incidents/{id}`,
+`GET /feed?limit=200` returns a `PcFeed`: the status (Wazuh API reachable, cached for 30 s;
+backfill result; alert count; last alert) and the newest alerts. Later phases add
+`GET /incidents`, `GET /incidents/{id}`,
 `POST /incidents/{id}/retry`, `GET /assessment` (latest), `POST /rescan`, and `GET /report`
 (printable HTML). Each endpoint arrives in the phase that needs it. The existing `/api/runs`
 endpoints stay as they are.
@@ -282,7 +295,7 @@ sample" banner.
   `tests/data/wazuh/`. Also unit tests for grouping and triage, the priority formula, the policy
   rule, the advice checker and the sanitizer.
 - **API tests** with FastAPI's TestClient against a real Postgres. CI adds a `postgres:16`
-  service, and the tests are skipped locally when `SENTINEL_DATABASE_URL` is not set.
+  service, and the tests are skipped locally when `SENTINEL_TEST_DATABASE_URL` is not set.
 - **Agent tests** replay recorded `qwen3:14b` responses for one incident and one fix-step run.
 - **A manual end-to-end check** for each phase, following the "done when" column.
 
