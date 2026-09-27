@@ -27,6 +27,12 @@ Read this file at the start of every session.
 - CI: ruff (pinned exact version), tests, stale-fixture check, dashboard typecheck and build.
 - Regenerate fixtures with `python -m contracts.generate_fixtures` (module form, not a file path),
   then the frontend types with `npm run gen:types` in `frontend/`.
+- Live advisor, phase 1 (`docs/superpowers/specs/2026-09-27-wazuh-live-advisor-design.md`):
+  Wazuh alerts arrive at `POST /api/ingest/wazuh` (token in `.env`), are converted by
+  `ingest/wazuh.py`, stored in PostgreSQL (`backend/app/db.py`, Alembic in `backend/migrations/`),
+  backfilled from the Wazuh indexer on start, and shown live at `?view=pc`. Wazuh setup:
+  `lab/wazuh/README.md`. Database tests run when `SENTINEL_TEST_DATABASE_URL` is set (CI sets
+  it; locally it must use `127.0.0.1`, not `localhost`).
 
 Contract changes are allowed, but always: change the model in `contracts/`,
 bump the version, regenerate fixtures and schemas, keep tests green, and log it in DECISIONS.md.
@@ -108,7 +114,8 @@ Stretch (only after the must-haves are done and demoed):
 - A local-model comparison.
 
 Out of scope:
-- Windows lab and Sysmon, more than two scenarios before the must-haves are done, extra
+- a Windows lab and Sysmon for the lab scenarios (the live advisor watches Ahmed's own Windows
+  PC through Wazuh, D-11), more than two scenarios before the must-haves are done, extra
   comparison arms, a large action catalog.
 
 ## LLM usage and cost
@@ -138,7 +145,8 @@ Out of scope:
 - No comments in code.
 - Log real decisions in `DECISIONS.md` (date, decision, why).
 - Ask before adding infrastructure. Do not use unless there is a real blocker: OpenSearch,
-  Kafka, Redis, Neo4j, LangGraph, Kubernetes, Wazuh, vector-RAG.
+  Kafka, Redis, Neo4j, LangGraph, Kubernetes, Wazuh, vector-RAG. Wazuh is used only as an
+  external data source for the live advisor (D-11).
 
 ## Portfolio deliverables (the real finish line)
 
