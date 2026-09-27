@@ -20,6 +20,17 @@ SENTINEL never changes anything on your PC. It only reads and advises.
 
   Then run `wsl --shutdown` and restart Docker Desktop.
 
+## 0. SENTINEL's settings
+
+From the SENTINEL repo, copy `.env.example` to `.env` and generate the ingest token:
+
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Put the result in `SENTINEL_INGEST_TOKEN` in `.env`. The same token goes into Wazuh's
+configuration in step 2.
+
 ## 1. The shared network
 
 ```powershell
@@ -55,7 +66,12 @@ Use the newest `v4.14.x` tag that `ls-remote` lists, in place of `v4.14.0`.
    ```
 
 The Wazuh dashboard is at `https://localhost`, with user `admin` and password `SecretPassword`.
-These are the wazuh-docker defaults, and they're only reachable from this PC.
+These are the wazuh-docker defaults. `docker-compose.override.yml` publishes only the dashboard
+(`127.0.0.1:443`) and the agent ports (`127.0.0.1:1514`, `127.0.0.1:1515`), all on `127.0.0.1`.
+The indexer (9200) and the API (55000) are not published at all; SENTINEL reaches them over the
+`sentinel-wazuh` network. Change the default passwords before connecting your PC: follow the
+wazuh-docker README's instructions for changing Wazuh users' passwords, then update
+`WAZUH_INDEXER_PASSWORD` in SENTINEL's `.env` to match.
 
 ## 3. SENTINEL
 
@@ -69,7 +85,8 @@ docker compose -f docker-compose.yml -f docker-compose.wazuh.yml up -d --build
 
 ## 4. The agent on this PC
 
-In an **administrator** PowerShell. Set `$version` to the tag you cloned in step 2, without the leading `v` (for `v4.14.2`, use `4.14.2`):
+In an **administrator** PowerShell. Set `$version` to the tag you cloned in step 2, without the
+leading `v` (for `v4.14.2`, use `4.14.2`):
 
 ```powershell
 $version = "4.14.0"

@@ -64,6 +64,11 @@ without Wazuh.
   `vm.max_map_count=262144` in the `docker-desktop` WSL distribution, certificate generation,
   `OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g` for the indexer, and the Windows agent installed with the
   manager at `127.0.0.1`.
+- `docker-compose.override.yml` overrides upstream wazuh-docker's port publishing, which
+  otherwise binds to all interfaces: only the dashboard and the agent ports are published, and
+  only on `127.0.0.1`. The indexer (9200), the API (55000) and the syslog port (514) are not
+  published at all; SENTINEL reaches the manager and the indexer over the `sentinel-wazuh`
+  network instead.
 - `custom-sentinel` and `custom-sentinel.py`: a Wazuh custom integration mounted into
   `/var/ossec/integrations/`. It reads the alert file path, API key and hook URL that Wazuh passes
   as arguments, and POSTs the alert JSON with `Authorization: Bearer <key>`. It sets a 5-second
