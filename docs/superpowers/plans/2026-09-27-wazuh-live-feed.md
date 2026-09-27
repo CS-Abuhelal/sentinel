@@ -3038,14 +3038,21 @@ git -c user.name="Ahmed Helal" -c user.email="abuh3lal@gmail.com" commit -m "Add
 This task needs Ahmed. Installing the agent needs an administrator shell. Nothing is committed
 except fixes found along the way.
 
-- [ ] **Step 1: Run the setup** in `lab/wazuh/README.md` sections 1–4. Record the exact
+- [ ] **Step 1: Clear test data.** Tasks 4 and 7 posted fixture alerts into the dev database;
+  truncate it before the real check:
+
+```powershell
+docker compose exec db psql -U sentinel -c "TRUNCATE wazuh_alerts;"
+```
+
+- [ ] **Step 2: Run the setup** in `lab/wazuh/README.md` sections 1–4. Record the exact
   wazuh-docker tag used.
 
-- [ ] **Step 2: Live check.** Run the `runas` loop from section 5.
+- [ ] **Step 3: Live check.** Run the `runas` loop from section 5.
   Expected: five `wazuh-60122` rows appear on `?view=pc` within 10 seconds, with severity `low`
   and user `sentinel-test-nobody`. The status bar shows Wazuh API "Online" and Backfill "Online".
 
-- [ ] **Step 3: Backfill check.**
+- [ ] **Step 4: Backfill check.**
 
 ```powershell
 docker compose -f docker-compose.yml -f docker-compose.wazuh.yml stop backend
@@ -3057,7 +3064,7 @@ Expected: within a minute, the three new alerts appear, and Backfill reads "Back
 alerts". N can be larger than 3, because the newest stored alert is included again (the insert is
 idempotent).
 
-- [ ] **Step 4: Check the converter against real alerts.** In a real 60122 alert, compare the
+- [ ] **Step 5: Check the converter against real alerts.** In a real 60122 alert, compare the
   fields shown on the page with the raw alert:
 
 ```powershell
@@ -3065,14 +3072,18 @@ docker compose exec db psql -U sentinel -c "SELECT payload->'data'->'win'->'even
 ```
 
 If `user`, the process or the IP is empty while the raw alert has it under a different key, add
-that key to `ingest/wazuh.py`. Add a test using a copy of the alert with every personal value
-replaced by `my-pc` or `user1`, then commit:
+that key to `ingest/wazuh.py`. Also compare the real alert's `rule.groups` against the stored
+event's `category` and `outcome`: run
+`docker compose exec db psql -U sentinel -c "SELECT payload->'rule'->'groups', event->'category', event->'outcome' FROM wazuh_alerts ORDER BY alert_time DESC LIMIT 1;"`
+and check the groups against `CATEGORY_GROUPS` and `_outcome` in `ingest/wazuh.py`. If a real
+group is missing from either, add it. Add a test using a copy of the alert with every personal
+value replaced by `my-pc` or `user1`, then commit:
 
 ```bash
 git -c user.name="Ahmed Helal" -c user.email="abuh3lal@gmail.com" commit -am "Map <field> from real Wazuh alerts"
 ```
 
-- [ ] **Step 5: Push and open the pull request**, once Ahmed agrees. Include the Task 7 screenshot,
+- [ ] **Step 6: Push and open the pull request**, once Ahmed agrees. Include the Task 7 screenshot,
   and one from this task with any personal detail cropped out.
 
 ```bash

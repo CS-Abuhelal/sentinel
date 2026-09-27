@@ -144,11 +144,14 @@ call happens in the request path.
 
 ### Backfill
 
-On service start, the backend asks the Wazuh indexer (`wazuh-alerts-4.x-*`) for alerts with
-`rule.level >= 3` and `timestamp` at or after the newest stored alert (alerts already
-stored are skipped by the idempotent insert). It inserts up to 5,000 with the same
-idempotent insert. If the indexer cannot be reached, it logs the reason and the status
-endpoint reports it.
+The cursor is computed at startup, before live alerts are accepted, so a live alert stored during
+backfill can never move it past a downtime gap: 10 minutes before the newest stored alert (or the
+start of time, if nothing is stored yet). The backend then asks the Wazuh indexer
+(`wazuh-alerts-4.x-*`) for alerts with `rule.level >= 3` and `timestamp` at or after that cursor,
+in pages of up to 5,000, advancing the cursor to the last page's newest timestamp and stopping
+when a page comes back short, for up to 20 pages. Alerts already stored are skipped by the
+idempotent insert, so pages can safely overlap. If the indexer cannot be reached, it logs the
+reason and the status endpoint reports it.
 
 ### Storage (`backend/app/db.py`, Alembic in `backend/migrations/`)
 
@@ -295,7 +298,7 @@ sample" banner.
 
 | Failure | Behaviour |
 |---|---|
-| Wazuh down | The status shows it as offline since the last successful check. The sync records the error. |
+| Wazuh down | The status shows the Wazuh API as offline with the last error. The sync records the error. |
 | SENTINEL down | Missed alerts are backfilled from the indexer on start. |
 | Ollama down | Incidents stay `queued`. |
 | Model gives bad output | `investigation_failed`, with a retry endpoint. |
