@@ -90,5 +90,12 @@ def test_invalid_json_is_never_sent(tmp_path: Path) -> None:
     assert receiver.requests == []
 
 
+def test_a_missing_alert_file_is_a_failure(tmp_path: Path) -> None:
+    with Receiver(202) as receiver:
+        code = _script().main(["custom-sentinel", str(tmp_path / "gone.json"), "tok", receiver.url])
+    assert code == 1
+    assert receiver.requests == []
+
+
 def test_bad_usage() -> None:
     assert _script().main(["custom-sentinel"]) == 2

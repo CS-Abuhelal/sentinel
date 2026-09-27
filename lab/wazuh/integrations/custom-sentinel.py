@@ -7,8 +7,11 @@ TIMEOUT_SECONDS = 5
 
 
 def send(alert_file: str, api_key: str, hook_url: str) -> int:
-    with open(alert_file, encoding="utf-8") as handle:
-        body = handle.read().encode("utf-8")
+    try:
+        with open(alert_file, "rb") as handle:
+            body = handle.read()
+    except OSError:
+        return 1
     try:
         json.loads(body)
     except ValueError:

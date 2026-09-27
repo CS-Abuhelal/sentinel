@@ -69,10 +69,11 @@ docker compose -f docker-compose.yml -f docker-compose.wazuh.yml up -d --build
 
 ## 4. The agent on this PC
 
-In an **administrator** PowerShell, using the same version as the Wazuh tag:
+In an **administrator** PowerShell. Set `$version` to the tag you cloned in step 2, without the leading `v` (for `v4.14.2`, use `4.14.2`):
 
 ```powershell
-Invoke-WebRequest -Uri https://packages.wazuh.com/4.x/windows/wazuh-agent-4.14.0-1.msi -OutFile $env:TEMP\wazuh-agent.msi
+$version = "4.14.0"
+Invoke-WebRequest -Uri "https://packages.wazuh.com/4.x/windows/wazuh-agent-$version-1.msi" -OutFile $env:TEMP\wazuh-agent.msi
 msiexec.exe /i $env:TEMP\wazuh-agent.msi /q WAZUH_MANAGER="127.0.0.1" WAZUH_AGENT_NAME="my-pc"
 NET START Wazuh
 ```
@@ -103,14 +104,20 @@ alerts.
 
 - **No alerts arrive.** Run
   `docker compose exec wazuh.manager grep -i integrat /var/ossec/logs/ossec.log`.
-  If the integration isn't executable, copy both files in and fix their permissions:
+  If it says the integration can't be run (a Windows bind mount can lose the executable bit),
+  copy the files in instead of mounting them:
+  1. In `docker-compose.override.yml`, delete the `volumes:` block under `wazuh.manager` (the two
+     `custom-sentinel` lines), then run `docker compose up -d` to recreate the manager.
+  2. Copy the files in and fix their permissions:
 
-  ```powershell
-  docker compose cp ..\..\SENTINEL\lab\wazuh\integrations\. wazuh.manager:/var/ossec/integrations/
-  docker compose exec wazuh.manager chmod 750 /var/ossec/integrations/custom-sentinel /var/ossec/integrations/custom-sentinel.py
-  docker compose exec wazuh.manager chown root:wazuh /var/ossec/integrations/custom-sentinel /var/ossec/integrations/custom-sentinel.py
-  docker compose restart wazuh.manager
-  ```
+     ```powershell
+     docker compose cp $env:USERPROFILE\projects\SENTINEL\lab\wazuh\integrations\. wazuh.manager:/var/ossec/integrations/
+     docker compose exec wazuh.manager chmod 750 /var/ossec/integrations/custom-sentinel /var/ossec/integrations/custom-sentinel.py
+     docker compose exec wazuh.manager chown root:wazuh /var/ossec/integrations/custom-sentinel /var/ossec/integrations/custom-sentinel.py
+     docker compose restart wazuh.manager
+     ```
+
+  Repeat step 2 whenever the integration script changes.
 
 - **The page says the backfill failed.** Read the detail line. A TLS error means
   `WAZUH_CERTS_DIR` is wrong. A 401 means the indexer password in `.env` is wrong.
