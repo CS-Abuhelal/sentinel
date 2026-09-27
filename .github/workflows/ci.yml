@@ -9,6 +9,20 @@ jobs:
   contracts:
     name: Contracts and tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sentinel
+          POSTGRES_PASSWORD: sentinel_dev
+          POSTGRES_DB: sentinel_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sentinel"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v7
 
@@ -28,6 +42,7 @@ jobs:
       - name: Tests, including containment in real lab containers
         env:
           SENTINEL_DOCKER: docker
+          SENTINEL_TEST_DATABASE_URL: postgresql+psycopg://sentinel:sentinel_dev@localhost:5432/sentinel_test
         run: pytest -q -rs
 
       - name: Fixtures match the models
