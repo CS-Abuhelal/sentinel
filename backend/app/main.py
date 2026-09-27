@@ -10,7 +10,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 
-from backend.app.backfill import IndexerSettings, backfill
+from backend.app.backfill import IndexerSettings, backfill, backfill_cursor
 from backend.app.db import get_engine
 from backend.app.ingest import router as ingest_router
 from backend.app.pc import router as pc_router
@@ -20,10 +20,12 @@ REPO = Path(__file__).resolve().parents[2]
 logger = logging.getLogger(__name__)
 
 
-def _backfill_in_background(app: FastAPI, settings: IndexerSettings) -> None:
+def _backfill_in_background(
+    app: FastAPI, settings: IndexerSettings, since: datetime | None
+) -> None:
     try:
         with settings.client() as client:
-            app.state.backfill = backfill(get_engine(), client, datetime.now(UTC))
+            app.state.backfill = backfill(get_engine(), client, datetime.now(UTC), since)
     except Exception as error:
         logger.warning("Wazuh backfill failed: %s", error)
         app.state.backfill = ServiceState(reachable=False, detail=f"Backfill failed: {error}")
@@ -35,10 +37,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if settings is None:
         app.state.backfill = ServiceState(reachable=False, detail="WAZUH_INDEXER_URL is not set.")
     else:
-        app.state.backfill = ServiceState(reachable=False, detail="Backfill is running.")
-        threading.Thread(
-            target=_backfill_in_background, args=(app, settings), daemon=True
-        ).start()
+        try:
+            since = backfill_cursor(get_engine())
+        except Exception as error:
+            logger.warning("Wazuh backfill failed: %s", error)
+            app.state.backfill = ServiceState(reachable=False, detail=f"Backfill failed: {error}")
+        else:
+            app.state.backfill = ServiceState(reachable=False, detail="Backfill is running.")
+            threading.Thread(
+                target=_backfill_in_background, args=(app, settings, since), daemon=True
+            ).start()
     yield
 
 

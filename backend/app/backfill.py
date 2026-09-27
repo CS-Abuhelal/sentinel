@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import logging
 import os
+import ssl
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 import httpx
@@ -11,13 +12,15 @@ from sqlalchemy.engine import Engine
 
 from backend.app.store import insert_alert, newest_alert_time
 from contracts.models import ServiceState
-from ingest.wazuh import WazuhAlertError, live_alert
+from ingest.wazuh import WazuhAlertError, live_alert, parse_timestamp
 
 logger = logging.getLogger(__name__)
 
 ALERTS_INDEX = "wazuh-alerts-4.x-*"
 MIN_LEVEL = 3
 LIMIT = 5000
+LOOKBACK = timedelta(minutes=10)
+MAX_PAGES = 20
 
 
 @dataclass(frozen=True)
@@ -40,10 +43,13 @@ class IndexerSettings:
         )
 
     def client(self) -> httpx.Client:
+        verify: ssl.SSLContext | bool = True
+        if self.ca_cert:
+            verify = ssl.create_default_context(cafile=self.ca_cert)
         return httpx.Client(
             base_url=self.url,
             auth=(self.user, self.password),
-            verify=self.ca_cert or True,
+            verify=verify,
             timeout=10.0,
         )
 
@@ -67,20 +73,49 @@ def fetch_alerts(
     return [hit["_source"] for hit in response.json()["hits"]["hits"]]
 
 
-def backfill(engine: Engine, client: httpx.Client, now: datetime) -> ServiceState:
-    try:
-        payloads = fetch_alerts(client, newest_alert_time(engine))
-    except (httpx.HTTPError, KeyError, TypeError, ValueError) as error:
-        logger.warning("Wazuh backfill failed: %s", error)
-        return ServiceState(reachable=False, detail=f"Backfill failed: {error}")
-    stored = 0
-    for payload in payloads:
+def backfill_cursor(engine: Engine) -> datetime | None:
+    newest = newest_alert_time(engine)
+    if newest is None:
+        return None
+    return newest - LOOKBACK
+
+
+def backfill(
+    engine: Engine, client: httpx.Client, now: datetime, since: datetime | None
+) -> ServiceState:
+    cursor = since
+    stored_total = 0
+    fetched_total = 0
+    pages = 0
+    hit_page_limit = False
+    while True:
         try:
-            live = live_alert(payload, received_at=now)
+            payloads = fetch_alerts(client, cursor, LIMIT)
+        except (httpx.HTTPError, KeyError, TypeError, ValueError) as error:
+            logger.warning("Wazuh backfill failed: %s", error)
+            return ServiceState(reachable=False, detail=f"Backfill failed: {error}")
+        pages += 1
+        fetched_total += len(payloads)
+        for payload in payloads:
+            try:
+                live = live_alert(payload, received_at=now)
+            except WazuhAlertError:
+                continue
+            stored_total += insert_alert(engine, live, payload)
+        if len(payloads) < LIMIT:
+            break
+        if pages >= MAX_PAGES:
+            hit_page_limit = True
+            break
+        try:
+            next_cursor = parse_timestamp(str(payloads[-1]["timestamp"]))
         except WazuhAlertError:
-            continue
-        stored += insert_alert(engine, live, payload)
-    return ServiceState(
-        reachable=True,
-        detail=f"Backfilled {stored} of {len(payloads)} alerts at {now:%H:%M:%S} UTC.",
-    )
+            break
+        if cursor is not None and next_cursor <= cursor:
+            break
+        cursor = next_cursor
+    detail = f"Backfilled {stored_total} of {fetched_total} alerts at {now:%H:%M:%S} UTC."
+    if hit_page_limit:
+        logger.warning("Wazuh backfill stopped at the %s-page limit.", MAX_PAGES)
+        detail = f"{detail} Stopped at the {MAX_PAGES}-page limit."
+    return ServiceState(reachable=True, detail=detail)
