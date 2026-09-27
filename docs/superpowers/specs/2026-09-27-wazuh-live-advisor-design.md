@@ -30,7 +30,7 @@ Each phase gets its own implementation plan and ends with something that works.
 | Phase | Delivers | Done when |
 |---|---|---|
 | 1. Live feed | Wazuh in Docker, the PC enrolled, the SENTINEL service with Postgres, the ingest endpoint, backfill, and a "My PC → Alerts" page | Five failed logons show up as alerts on the page within 10 seconds. They come from `runas` with a user that does not exist, so no real account is locked out. Alerts sent while SENTINEL was stopped appear after it restarts. CI is green. |
-| 2. Alert investigations | Grouping alerts into incidents, the queue worker, four new read-only tools, the advice-only policy rule, and the incidents view | Enough failed logons within a few minutes to trigger Wazuh's multiple-logon-failure rule (60204, level 10) produce an incident. The model investigates it using at least one new tool, and every proposed action is denied with `personal_host_advice_only`. The new prompt-injection test passes. |
+| 2. Alert investigations | Grouping alerts into incidents, the queue worker, three new read-only tools, AI recommendations with the step checker, the advice-only policy rule, and the incidents view | Enough failed logons within a few minutes to trigger Wazuh's multiple-logon-failure rule (60204, level 10) produce an incident. The model investigates it using at least one new tool, and every proposed action is denied with `personal_host_advice_only`. The new prompt-injection test passes. |
 | 3. Weak spots | Sync of vulnerabilities and failed CIS checks, the priority score, AI fix steps with the checker, and the "Fix these first" view | A rescan lists open findings sorted by priority, and the top 10 have checked fix steps. |
 | 4. Report, demo, accuracy | The report page, the sanitizer, the public sample page, and the accuracy script | The report prints to PDF, the sample is live on GitHub Pages, and `docs/pc-accuracy.md` reports results against about 10 hand labels. |
 
@@ -184,7 +184,9 @@ It runs in a loop every 10 seconds:
 
 1. **Group.** Each new alert joins the open incident with the same key if it came within 60
    minutes of that incident's last alert. Otherwise it starts a new incident. The key is the host
-   plus the first MITRE technique, or the Wazuh rule id when there is none.
+   plus the first MITRE technique, or the Wazuh rule id when there is none. Alerts in the `sca`
+   or `vulnerability-detector` groups are weak spots, not incidents: they are marked as grouped
+   without an incident and handled by phase 3.
 2. **Triage.** An incident whose highest alert level is below 7 gets `low_priority` and is not
    investigated. It stays visible. Anything else is `queued`.
 3. **Investigate.** If Ollama is reachable, the oldest queued incident is investigated with the
@@ -194,16 +196,24 @@ It runs in a loop every 10 seconds:
    `invalid_output` or `tool_call_cap` without a verdict, the status becomes
    `investigation_failed`. `POST /api/pc/incidents/{id}/retry` puts it back in the queue.
 
+The worker runs as the `worker` service in `docker-compose.yml` and reaches Ollama at
+`OLLAMA_URL` (default `http://host.docker.internal:11434`). Investigations of the PC use their
+own system prompt (`agent/prompts/pc.md`): the model writes `recommendations` (advice the owner
+carries out) and leaves `proposed_actions` empty. Every recommendation must cite evidence, and the
+step checker (`policy/advice.py`, the deny-list under "Fix steps") drops any step that would weaken
+the PC's security before the run is saved.
+
 ### New read-only tools (phase 2)
 
-All tools read Postgres through the tool context. They never call Wazuh or the network.
+All tools read Postgres through a `HostHistory` on the tool context. They never call Wazuh or
+the network. `host_posture` and `finding_details` arrive in phase 3 with the findings table.
 
 | Tool | Parameters | Returns | Evidence class |
 |---|---|---|---|
 | `related_alerts` | `hours` (1–72), optional `rule_group` | other alerts on the host around the incident window, grouped by rule, with counts | `related_alerts` |
 | `process_activity` | `process` (image name or path), `hours` | alerts and events for the same process or parent, with command lines | `process_lineage` |
 | `rule_context` | `rule_id` | rule description, groups, MITRE mapping, and how often it fired on this host over the last 30 days | `baseline_comparison` |
-| `host_posture` | optional `package` | open findings on the host, filtered by package when given | `entity_context` |
+| `host_posture` (phase 3) | optional `package` | open findings on the host, filtered by package when given | `entity_context` |
 | `finding_details` (phase 3, fix steps only) | `finding_id` | the full finding, including Wazuh's rationale, remediation and references | `entity_context` |
 
 `auth_history` also works for Windows logon events, because the converter maps them to the
@@ -316,6 +326,13 @@ sample" banner.
   service, and the tests are skipped locally when `SENTINEL_TEST_DATABASE_URL` is not set.
 - **Agent tests** replay recorded `qwen3:14b` responses for one incident and one fix-step run.
 - **A manual end-to-end check** for each phase, following the "done when" column.
+
+## Contracts 1.5.0 (D-13, phase 2)
+
+- `PcIncidentSummary(incident, alert_count, max_level, classification, recommendation_count)`.
+- `PcStatus` gains `queue_length` (default 0) and `model: ServiceState` (Ollama reachability).
+- `PcFeed` gains `incidents: list[PcIncidentSummary]`.
+- `Inventory.is_personal(host)`.
 
 ## Decision log entries
 
