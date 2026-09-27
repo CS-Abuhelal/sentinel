@@ -5,11 +5,13 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 
+from backend.app.ingest import router as ingest_router
 from contracts.models import CONTRACT_VERSION, IncidentRun
 
 REPO = Path(__file__).resolve().parents[2]
 
 app = FastAPI(title="SENTINEL API", version="0.1.0")
+app.include_router(ingest_router)
 
 
 def runs_dir() -> Path:
