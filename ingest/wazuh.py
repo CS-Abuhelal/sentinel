@@ -164,7 +164,12 @@ def _eventdata(payload: dict[str, Any]) -> dict[str, Any]:
     data = payload.get("data")
     win = data.get("win") if isinstance(data, dict) else None
     eventdata = win.get("eventdata") if isinstance(win, dict) else None
-    return eventdata if isinstance(eventdata, dict) else {}
+    if not isinstance(eventdata, dict):
+        return {}
+    return {
+        key: value.replace("\\\\", "\\") if isinstance(value, str) else value
+        for key, value in eventdata.items()
+    }
 
 
 def _groups(rule: dict[str, Any]) -> list[str]:

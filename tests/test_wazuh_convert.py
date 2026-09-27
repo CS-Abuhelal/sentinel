@@ -52,6 +52,31 @@ def test_logon_failure_records_the_program_that_tried_to_log_on() -> None:
     assert (event.process.command_line, event.process.parent_name) == (None, None)
 
 
+def test_real_wazuh_alert_normalizes_doubled_backslashes() -> None:
+    payload = _payload("logon_failure_real")
+    event, alert = convert(payload)
+    assert event.category is EventCategory.AUTHENTICATION
+    assert event.outcome == "failure"
+    assert event.user == "sentinel-test-nobody"
+    assert event.host == "my-pc"
+    assert alert.rule_id == "wazuh-60122"
+    assert alert.rule_severity is Severity.LOW
+    assert event.process is not None
+    assert event.process.name == "C:\\Windows\\System32\\svchost.exe"
+    assert event.raw == payload
+
+
+def test_eventdata_doubled_backslashes_become_single() -> None:
+    payload = _payload("logon_failure")
+    payload["data"]["win"]["eventdata"]["image"] = r"C:\\Temp\\a.exe"
+    payload["data"]["win"]["eventdata"]["commandLine"] = r"\\\\srv\\share\\x.ps1"
+    event, _ = convert(payload)
+    assert event.process is not None
+    assert event.process.name == r"C:\Temp\a.exe"
+    assert event.process.command_line == r"\\srv\share\x.ps1"
+    assert payload["data"]["win"]["eventdata"]["image"] == r"C:\\Temp\\a.exe"
+
+
 def test_process_alert_keeps_the_process_details() -> None:
     event, alert = convert(_payload("process_sysmon"))
     assert event.category is EventCategory.PROCESS

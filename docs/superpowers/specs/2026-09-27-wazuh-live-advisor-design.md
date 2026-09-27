@@ -141,6 +141,9 @@ call happens in the request path.
 - `Alert.rule_id = "wazuh-<rule.id>"`, `rule_name = rule.description`,
   `suggested_techniques = rule.mitre.id`. Severity comes from `rule.level`: 0–3 info, 4–6 low,
   7–9 medium, 10–12 high, 13–15 critical.
+- Wazuh doubles every backslash in `data.win.eventdata` values; the converter turns them back
+  into single backslashes (the event's `raw` keeps the original). Verified against Wazuh 4.14.8,
+  whose rule 60122 carries the group `authentication_failed`.
 
 ### Backfill
 
