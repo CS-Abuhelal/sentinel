@@ -14,7 +14,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-CONTRACT_VERSION = "1.4.0"
+CONTRACT_VERSION = "1.5.0"
 
 
 def _new_id(prefix: str) -> str:
@@ -428,6 +428,10 @@ class Inventory(SentinelModel):
             return False
         return record is not None and record.protected
 
+    def is_personal(self, host: str) -> bool:
+        record = self.hosts.get(host)
+        return record is not None and record.personal
+
     def is_privileged(self, account: str) -> bool:
         record = self.accounts.get(account)
         return record is not None and record.privileged
@@ -501,6 +505,20 @@ class PcStatus(SentinelModel):
     backfill: ServiceState
     alert_count: int = Field(ge=0)
     last_alert_at: datetime | None = None
+    queue_length: int = Field(default=0, ge=0)
+    model: ServiceState = Field(
+        default_factory=lambda: ServiceState(reachable=False, detail="Not checked.")
+    )
+
+
+class PcIncidentSummary(SentinelModel):
+    """One incident on a monitored PC, as the live page lists it."""
+
+    incident: Incident
+    alert_count: int = Field(ge=0)
+    max_level: int = Field(ge=0, le=15)
+    classification: Classification | None = None
+    recommendation_count: int = Field(default=0, ge=0)
 
 
 class PcFeed(SentinelModel):
@@ -508,6 +526,7 @@ class PcFeed(SentinelModel):
 
     status: PcStatus
     alerts: list[LiveAlert] = Field(default_factory=list)
+    incidents: list[PcIncidentSummary] = Field(default_factory=list)
 
 
 class IncidentRun(SentinelModel):
@@ -564,6 +583,7 @@ __all__ = [
     "LiveAlert",
     "NetworkInfo",
     "PcFeed",
+    "PcIncidentSummary",
     "PcStatus",
     "PolicyDecision",
     "PolicyOutcome",

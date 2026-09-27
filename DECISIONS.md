@@ -6,6 +6,21 @@ Superseded entries are removed, and numbers are never reused.
 
 ---
 
+## D-13 — Contracts 1.5.0: incidents on the live page (2026-09-28)
+
+**Decision.** Add `PcIncidentSummary`, `PcStatus.queue_length` and `PcStatus.model` (Ollama
+reachability), `PcFeed.incidents`, and `Inventory.is_personal`.
+
+**Why.** Phase 2 groups the PC's alerts into incidents that the AI investigates from a queue. The
+live page has to list them, show how many wait, and show whether the model is reachable. The policy
+engine needs to know which hosts are personal.
+
+**Consequence.** The feed carries incident summaries only; a full `IncidentRun` is fetched on demand
+from `GET /api/pc/incidents/{id}`. Security-check alerts never become incidents (phase 3 handles
+them).
+
+---
+
 ## D-11 — A live advisor mode that reads from Wazuh (2026-09-27)
 
 **Decision.** SENTINEL gets a live mode for Ahmed's own Windows PC. Wazuh 4.14 (single-node

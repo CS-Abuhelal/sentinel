@@ -3,6 +3,7 @@ export type Reachable = boolean;
 export type Detail = string | null;
 export type AlertCount = number;
 export type LastAlertAt = string | null;
+export type QueueLength = number;
 export type WazuhId = string;
 export type ReceivedAt = string;
 export type Level = number;
@@ -59,6 +60,35 @@ export type EventIds = [string, ...string[]];
 export type SuggestedTechniques = string[];
 export type CaseId1 = string | null;
 export type Alerts = LiveAlert[];
+export type IncidentId = string;
+export type Title = string;
+export type IncidentStatus =
+  | "new"
+  | "investigating"
+  | "awaiting_approval"
+  | "resolved"
+  | "closed_benign"
+  | "queued"
+  | "low_priority"
+  | "investigation_failed";
+export type CreatedAt = string;
+export type UpdatedAt = string | null;
+export type WindowStart = string;
+export type WindowEnd = string;
+/**
+ * @minItems 1
+ */
+export type AlertIds = [string, ...string[]];
+export type EntityType = "host" | "account" | "ip_address" | "process" | "file";
+export type Value = string;
+export type IsProtected = boolean;
+export type Entities = Entity[];
+export type CaseId2 = string | null;
+export type AlertCount1 = number;
+export type MaxLevel = number;
+export type Classification = "malicious" | "benign" | "inconclusive";
+export type RecommendationCount = number;
+export type Incidents = PcIncidentSummary[];
 
 /**
  * What the live My PC page polls for.
@@ -66,6 +96,7 @@ export type Alerts = LiveAlert[];
 export interface PcFeed {
   status: PcStatus;
   alerts: Alerts;
+  incidents: Incidents;
 }
 export interface PcStatus {
   checked_at: CheckedAt;
@@ -73,6 +104,8 @@ export interface PcStatus {
   backfill: ServiceState;
   alert_count: AlertCount;
   last_alert_at: LastAlertAt;
+  queue_length: QueueLength;
+  model: ServiceState;
 }
 export interface ServiceState {
   reachable: Reachable;
@@ -147,4 +180,34 @@ export interface Alert {
   event_ids: EventIds;
   suggested_techniques: SuggestedTechniques;
   case_id: CaseId1;
+}
+/**
+ * One incident on a monitored PC, as the live page lists it.
+ */
+export interface PcIncidentSummary {
+  incident: Incident;
+  alert_count: AlertCount1;
+  max_level: MaxLevel;
+  classification: Classification | null;
+  recommendation_count: RecommendationCount;
+}
+/**
+ * Correlated group of alerts. The unit the agent investigates.
+ */
+export interface Incident {
+  incident_id: IncidentId;
+  title: Title;
+  status: IncidentStatus;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+  window_start: WindowStart;
+  window_end: WindowEnd;
+  alert_ids: AlertIds;
+  entities: Entities;
+  case_id: CaseId2;
+}
+export interface Entity {
+  entity_type: EntityType;
+  value: Value;
+  is_protected: IsProtected;
 }

@@ -8,6 +8,7 @@ fail immediately instead of at integration.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -32,11 +33,14 @@ from contracts.models import (
     Inventory,
     LiveAlert,
     PcFeed,
+    PcIncidentSummary,
+    PcStatus,
     PolicyDecision,
     PolicyOutcome,
     ProposedAction,
     Recommendation,
     RiskScore,
+    ServiceState,
     Verdict,
 )
 
@@ -64,6 +68,7 @@ FIXTURE_MODEL_MAP = {
     "audit_record": AuditRecord,
     "live_alert": LiveAlert,
     "pc_feed": PcFeed,
+    "pc_incident_summary": PcIncidentSummary,
     "finding_vulnerability": Finding,
     "finding_configuration": Finding,
     "recommendation": Recommendation,
@@ -214,3 +219,26 @@ def test_live_alert_level_stays_in_wazuh_range() -> None:
     payload["level"] = 16
     with pytest.raises(ValidationError):
         LiveAlert.model_validate(payload)
+
+
+def test_pc_status_defaults_to_an_empty_queue_and_an_unchecked_model() -> None:
+    status = PcStatus(
+        checked_at=datetime(2026, 9, 28, tzinfo=UTC),
+        wazuh_api=ServiceState(reachable=True),
+        backfill=ServiceState(reachable=True),
+        alert_count=0,
+    )
+    assert status.queue_length == 0
+    assert status.model == ServiceState(reachable=False, detail="Not checked.")
+
+
+def test_inventory_knows_personal_hosts() -> None:
+    inventory = Inventory(
+        hosts={
+            "my-pc": HostRecord(role="monitored PC", personal=True),
+            "web": HostRecord(role="web server"),
+        }
+    )
+    assert inventory.is_personal("my-pc") is True
+    assert inventory.is_personal("web") is False
+    assert inventory.is_personal("unknown") is False
