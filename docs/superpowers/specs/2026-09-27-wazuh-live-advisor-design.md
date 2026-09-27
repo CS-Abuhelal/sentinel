@@ -72,7 +72,7 @@ without Wazuh.
 - `custom-sentinel` and `custom-sentinel.py`: a Wazuh custom integration mounted into
   `/var/ossec/integrations/`. It reads the alert file path, API key and hook URL that Wazuh passes
   as arguments, and POSTs the alert JSON with `Authorization: Bearer <key>`. It sets a 5-second
-  timeout and never retries. Backfill covers any gaps.
+  timeout and never retries. The backfill on start covers downtime and the last 10 minutes.
 - `ossec-integration.xml`: the block added to the manager configuration:
 
 ```xml

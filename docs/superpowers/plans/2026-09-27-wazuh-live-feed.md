@@ -3060,9 +3060,10 @@ docker compose -f docker-compose.yml -f docker-compose.wazuh.yml stop backend
 docker compose -f docker-compose.yml -f docker-compose.wazuh.yml start backend
 ```
 
-Expected: within a minute, the three new alerts appear, and Backfill reads "Backfilled 3 of N
-alerts". N can be larger than 3, because the newest stored alert is included again (the insert is
-idempotent).
+Expected: within a minute, the three new alerts appear, and Backfill reads "Backfilled M of N
+alerts" with M at least 3. N also counts alerts from the 10-minute look-back that were already
+stored (the insert is idempotent). M can be above 3 if the PC raised other alerts of level 3 or
+higher while SENTINEL was stopped.
 
 - [ ] **Step 5: Check the converter against real alerts.** In a real 60122 alert, compare the
   fields shown on the page with the raw alert:

@@ -75,7 +75,8 @@ wazuh-docker README's instructions for changing Wazuh users' passwords, then upd
 
 ## 3. SENTINEL
 
-In SENTINEL's `.env` (copied from `.env.example`), set `WAZUH_INDEXER_PASSWORD=SecretPassword`.
+In SENTINEL's `.env` (copied from `.env.example`), set `WAZUH_INDEXER_PASSWORD` to the indexer
+`admin` password you set in step 2.
 Check that `WAZUH_CERTS_DIR` points to `wazuh-docker\single-node\config\wazuh_indexer_ssl_certs`.
 Then, from the SENTINEL repo:
 
