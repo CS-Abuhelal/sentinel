@@ -7,7 +7,13 @@
     "mitre": {"id": ["T1531"], "tactic": ["Impact"], "technique": ["Account Access Removal"]},
     "firedtimes": 1,
     "mail": false,
-    "groups": ["windows", "windows_security", "authentication_failed"]
+    "groups": [
+      "windows",
+      "windows_security",
+      "win_authentication_failed",
+      "pci_dss_10.2.4",
+      "gdpr_IV_35.7.d"
+    ]
   },
   "agent": {"id": "001", "name": "my-pc", "ip": "127.0.0.1"},
   "manager": {"name": "wazuh.manager"},

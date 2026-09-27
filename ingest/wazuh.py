@@ -4,6 +4,8 @@ import re
 from datetime import datetime
 from typing import Any
 
+from pydantic import ValidationError
+
 from contracts.models import (
     Alert,
     Event,
@@ -17,10 +19,14 @@ from contracts.models import (
 
 REQUIRED_FIELDS = ("id", "timestamp", "rule", "agent")
 
+AUTHENTICATION_FAILURE_GROUPS = frozenset(
+    {"authentication_failed", "authentication_failures", "win_authentication_failed"}
+)
+
 CATEGORY_GROUPS: tuple[tuple[EventCategory, frozenset[str]], ...] = (
     (
         EventCategory.AUTHENTICATION,
-        frozenset({"authentication_failed", "authentication_success", "win_authentication"}),
+        AUTHENTICATION_FAILURE_GROUPS | frozenset({"authentication_success"}),
     ),
     (EventCategory.PROCESS, frozenset({"sysmon_event1", "process"})),
     (EventCategory.FILE, frozenset({"syscheck"})),
@@ -68,6 +74,9 @@ def convert(payload: dict[str, Any]) -> tuple[Event, Alert]:
     missing = [field for field in REQUIRED_FIELDS if field not in payload]
     if missing:
         raise WazuhAlertError(f"Wazuh alert is missing: {', '.join(missing)}.")
+    alert_id = _text(payload.get("id"))
+    if alert_id is None:
+        raise WazuhAlertError("Wazuh alert needs a non-empty id.")
     rule = _mapping(payload, "rule")
     agent = _mapping(payload, "agent")
     rule_id = _text(rule.get("id"))
@@ -75,53 +84,59 @@ def convert(payload: dict[str, Any]) -> tuple[Event, Alert]:
     if rule_id is None or host is None:
         raise WazuhAlertError("Wazuh alert needs rule.id and agent.name.")
     level = _level(rule)
-    groups = [str(group) for group in rule.get("groups") or []]
+    groups = _groups(rule)
     description = _text(rule.get("description")) or f"Wazuh rule {rule_id}"
     timestamp = parse_timestamp(str(payload["timestamp"]))
     eventdata = _eventdata(payload)
     user = _text(eventdata.get("targetUserName"))
     src_ip = _text(eventdata.get("ipAddress"))
-    slug = re.sub(r"[^A-Za-z0-9]", "_", str(payload["id"]))
-    event = Event(
-        event_id=f"evt_wz_{slug}",
-        timestamp=timestamp,
-        source=TelemetrySource.WAZUH,
-        category=category_for_groups(groups),
-        event_type=f"wazuh:{rule_id}",
-        host=host,
-        user=user,
-        outcome=_outcome(groups),
-        process=_process(eventdata),
-        network=NetworkInfo(src_ip=src_ip) if src_ip else None,
-        file_path=_file_path(payload),
-        message=description,
-        raw=payload,
-    )
-    alert = Alert(
-        alert_id=f"alr_wz_{slug}",
-        rule_id=f"wazuh-{rule_id}",
-        rule_name=description,
-        rule_severity=severity_for_level(level),
-        timestamp=timestamp,
-        host=host,
-        user=user,
-        src_ip=src_ip,
-        description=description,
-        event_ids=[event.event_id],
-        suggested_techniques=_techniques(rule),
-    )
+    slug = re.sub(r"[^A-Za-z0-9]", "_", alert_id)
+    try:
+        event = Event(
+            event_id=f"evt_wz_{slug}",
+            timestamp=timestamp,
+            source=TelemetrySource.WAZUH,
+            category=category_for_groups(groups),
+            event_type=f"wazuh:{rule_id}",
+            host=host,
+            user=user,
+            outcome=_outcome(groups),
+            process=_process(eventdata),
+            network=NetworkInfo(src_ip=src_ip) if src_ip else None,
+            file_path=_file_path(payload),
+            message=description,
+            raw=payload,
+        )
+        alert = Alert(
+            alert_id=f"alr_wz_{slug}",
+            rule_id=f"wazuh-{rule_id}",
+            rule_name=description,
+            rule_severity=severity_for_level(level),
+            timestamp=timestamp,
+            host=host,
+            user=user,
+            src_ip=src_ip,
+            description=description,
+            event_ids=[event.event_id],
+            suggested_techniques=_techniques(rule),
+        )
+    except ValidationError as error:
+        raise WazuhAlertError(str(error)) from error
     return event, alert
 
 
 def live_alert(payload: dict[str, Any], received_at: datetime) -> LiveAlert:
     event, alert = convert(payload)
-    return LiveAlert(
-        wazuh_id=str(payload["id"]),
-        received_at=received_at,
-        level=_level(_mapping(payload, "rule")),
-        event=event,
-        alert=alert,
-    )
+    try:
+        return LiveAlert(
+            wazuh_id=str(payload["id"]),
+            received_at=received_at,
+            level=_level(_mapping(payload, "rule")),
+            event=event,
+            alert=alert,
+        )
+    except ValidationError as error:
+        raise WazuhAlertError(str(error)) from error
 
 
 def _mapping(payload: dict[str, Any], key: str) -> dict[str, Any]:
@@ -152,8 +167,17 @@ def _eventdata(payload: dict[str, Any]) -> dict[str, Any]:
     return eventdata if isinstance(eventdata, dict) else {}
 
 
+def _groups(rule: dict[str, Any]) -> list[str]:
+    value = rule.get("groups")
+    if value is None:
+        return []
+    if isinstance(value, list) and all(isinstance(item, str) for item in value):
+        return value
+    raise WazuhAlertError("rule.groups must be a list of strings.")
+
+
 def _outcome(groups: list[str]) -> str:
-    if "authentication_failed" in groups or "win_authentication_failed" in groups:
+    if AUTHENTICATION_FAILURE_GROUPS & set(groups):
         return "failure"
     if "authentication_success" in groups:
         return "success"

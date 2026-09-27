@@ -94,6 +94,25 @@ def test_unknown_groups_are_other() -> None:
     assert category_for_groups(["ossec", "rootcheck"]) is EventCategory.OTHER
 
 
+@pytest.mark.parametrize(
+    "group,category",
+    [
+        ("authentication_failed", EventCategory.AUTHENTICATION),
+        ("authentication_success", EventCategory.AUTHENTICATION),
+        ("authentication_failures", EventCategory.AUTHENTICATION),
+        ("win_authentication_failed", EventCategory.AUTHENTICATION),
+        ("sysmon_event1", EventCategory.PROCESS),
+        ("syscheck", EventCategory.FILE),
+        ("adduser", EventCategory.ACCOUNT_MANAGEMENT),
+        ("group_changed", EventCategory.ACCOUNT_MANAGEMENT),
+        ("account_changed", EventCategory.ACCOUNT_MANAGEMENT),
+        ("privilege", EventCategory.PRIVILEGE),
+    ],
+)
+def test_category_for_groups_covers_each_real_group(group: str, category: EventCategory) -> None:
+    assert category_for_groups([group]) is category
+
+
 def test_timestamps_accept_compact_and_z_offsets() -> None:
     expected = datetime(2026, 9, 27, 9, 30, tzinfo=UTC)
     assert parse_timestamp("2026-09-27T12:30:00+0300") == expected
@@ -123,6 +142,28 @@ def test_missing_required_field_is_rejected(field: str) -> None:
 def test_bad_level_is_rejected(level: object) -> None:
     payload = _payload("logon_failure")
     payload["rule"]["level"] = level
+    with pytest.raises(WazuhAlertError):
+        convert(payload)
+
+
+@pytest.mark.parametrize("groups", [1, "authentication_failed"])
+def test_non_list_groups_are_rejected(groups: object) -> None:
+    payload = _payload("logon_failure")
+    payload["rule"]["groups"] = groups
+    with pytest.raises(WazuhAlertError):
+        convert(payload)
+
+
+def test_groups_with_non_string_items_are_rejected() -> None:
+    payload = _payload("logon_failure")
+    payload["rule"]["groups"] = ["windows", 1]
+    with pytest.raises(WazuhAlertError):
+        convert(payload)
+
+
+def test_empty_id_is_rejected() -> None:
+    payload = _payload("logon_failure")
+    payload["id"] = ""
     with pytest.raises(WazuhAlertError):
         convert(payload)
 

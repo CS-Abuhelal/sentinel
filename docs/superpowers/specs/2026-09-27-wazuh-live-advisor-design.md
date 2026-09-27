@@ -127,10 +127,11 @@ call happens in the request path.
   `newProcessName` or `processName` (the program that tried to log on, in logon events) →
   `process.name`; `commandLine` → `process.command_line`; `parentImage` →
   `process.parent_name`; `ipAddress` → `network.src_ip`. `syscheck.path` → `file_path`.
-- Category from `rule.groups`: `authentication_failed`, `authentication_success` or
-  `win_authentication` → authentication; `sysmon_event1` or `process` → process; `syscheck` →
-  file; `adduser`, `group_changed` or `account_changed` → account_management; `privilege` →
-  privilege; anything else → other. The outcome is `failure` for `authentication_failed`, and
+- Category from `rule.groups`: `authentication_failed`, `authentication_success`,
+  `authentication_failures` or `win_authentication_failed` → authentication; `sysmon_event1` or
+  `process` → process; `syscheck` → file; `adduser`, `group_changed` or `account_changed` →
+  account_management; `privilege` → privilege; anything else → other. The outcome is `failure`
+  for `authentication_failed`, `authentication_failures` or `win_authentication_failed`, and
   `success` for `authentication_success`.
 - `Alert.rule_id = "wazuh-<rule.id>"`, `rule_name = rule.description`,
   `suggested_techniques = rule.mitre.id`. Severity comes from `rule.level`: 0–3 info, 4–6 low,
