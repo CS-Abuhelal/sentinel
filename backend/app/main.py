@@ -13,6 +13,7 @@ from fastapi import FastAPI, HTTPException
 from backend.app.backfill import IndexerSettings, backfill
 from backend.app.db import get_engine
 from backend.app.ingest import router as ingest_router
+from backend.app.pc import router as pc_router
 from contracts.models import CONTRACT_VERSION, IncidentRun, ServiceState
 
 REPO = Path(__file__).resolve().parents[2]
@@ -43,6 +44,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="SENTINEL API", version="0.1.0", lifespan=lifespan)
 app.include_router(ingest_router)
+app.include_router(pc_router)
 
 
 def runs_dir() -> Path:
