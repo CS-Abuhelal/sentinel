@@ -1,0 +1,35 @@
+{
+  "timestamp": "2026-09-27T12:30:00.123+0300",
+  "rule": {
+    "level": 5,
+    "description": "Logon failure - Unknown user or bad password.",
+    "id": "60122",
+    "mitre": {"id": ["T1531"], "tactic": ["Impact"], "technique": ["Account Access Removal"]},
+    "firedtimes": 1,
+    "mail": false,
+    "groups": ["windows", "windows_security", "authentication_failed"]
+  },
+  "agent": {"id": "001", "name": "my-pc", "ip": "127.0.0.1"},
+  "manager": {"name": "wazuh.manager"},
+  "id": "1790501400.1042",
+  "decoder": {"name": "windows_eventchannel"},
+  "data": {
+    "win": {
+      "system": {
+        "eventID": "4625",
+        "providerName": "Microsoft-Windows-Security-Auditing",
+        "channel": "Security"
+      },
+      "eventdata": {
+        "targetUserName": "user1",
+        "targetDomainName": "MY-PC",
+        "logonType": "2",
+        "ipAddress": "127.0.0.1",
+        "processName": "C:\\Windows\\System32\\svchost.exe",
+        "status": "0xc000006d",
+        "subStatus": "0xc000006a"
+      }
+    }
+  },
+  "location": "EventChannel"
+}

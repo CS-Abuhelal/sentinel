@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-09-27T09:45:00.000+0000",
+  "rule": {
+    "level": 7,
+    "description": "Integrity checksum changed.",
+    "id": "550",
+    "mitre": {"id": ["T1565.001"], "tactic": ["Impact"], "technique": ["Stored Data Manipulation"]},
+    "groups": ["ossec", "syscheck", "syscheck_entry_modified", "syscheck_file"]
+  },
+  "agent": {"id": "001", "name": "my-pc", "ip": "127.0.0.1"},
+  "id": "1790502300.2210",
+  "syscheck": {"path": "c:\\windows\\system32\\drivers\\etc\\hosts", "event": "modified"},
+  "location": "syscheck"
+}
