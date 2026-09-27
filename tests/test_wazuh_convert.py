@@ -45,6 +45,13 @@ def test_logon_failure_becomes_an_authentication_failure() -> None:
     )
 
 
+def test_logon_failure_records_the_program_that_tried_to_log_on() -> None:
+    event, _ = convert(_payload("logon_failure"))
+    assert event.process is not None
+    assert event.process.name == "C:\\Windows\\System32\\svchost.exe"
+    assert (event.process.command_line, event.process.parent_name) == (None, None)
+
+
 def test_process_alert_keeps_the_process_details() -> None:
     event, alert = convert(_payload("process_sysmon"))
     assert event.category is EventCategory.PROCESS

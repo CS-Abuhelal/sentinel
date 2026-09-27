@@ -123,8 +123,9 @@ call happens in the request path.
 
 - `Event.source = wazuh`, `host = agent.name`, `timestamp = alert.timestamp`,
   `event_type = "wazuh:<rule.id>"`, `message = rule.description`, and `raw` is the full alert.
-- Fields come from `data.win.eventdata` when present: `targetUserName` → `user`; `image` or
-  `newProcessName` → `process.name`; `commandLine` → `process.command_line`; `parentImage` →
+- Fields come from `data.win.eventdata` when present: `targetUserName` → `user`; `image`,
+  `newProcessName` or `processName` (the program that tried to log on, in logon events) →
+  `process.name`; `commandLine` → `process.command_line`; `parentImage` →
   `process.parent_name`; `ipAddress` → `network.src_ip`. `syscheck.path` → `file_path`.
 - Category from `rule.groups`: `authentication_failed`, `authentication_success` or
   `win_authentication` → authentication; `sysmon_event1` or `process` → process; `syscheck` →
