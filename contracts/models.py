@@ -9,12 +9,12 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-CONTRACT_VERSION = "1.3.0"
+CONTRACT_VERSION = "1.4.0"
 
 
 def _new_id(prefix: str) -> str:
@@ -40,6 +40,7 @@ class TelemetrySource(StrEnum):
     ZEEK_CONN = "zeek_conn"
     ZEEK_DNS = "zeek_dns"
     ZEEK_HTTP = "zeek_http"
+    WAZUH = "wazuh"
 
 
 class EventCategory(StrEnum):
@@ -67,6 +68,9 @@ class IncidentStatus(StrEnum):
     AWAITING_APPROVAL = "awaiting_approval"
     RESOLVED = "resolved"
     CLOSED_BENIGN = "closed_benign"
+    QUEUED = "queued"
+    LOW_PRIORITY = "low_priority"
+    INVESTIGATION_FAILED = "investigation_failed"
 
 
 class EntityType(StrEnum):
@@ -146,6 +150,16 @@ class EvaluationArm(StrEnum):
     A2B_FULL_CONTEXT = "a2b_full_context"
     A2C_ORACLE_BUNDLE = "a2c_oracle_bundle"
     A3_TOOL_USING_AGENT = "a3_tool_using_agent"
+
+
+class FindingKind(StrEnum):
+    VULNERABILITY = "vulnerability"
+    CONFIGURATION = "configuration"
+
+
+class FindingStatus(StrEnum):
+    OPEN = "open"
+    RESOLVED = "resolved"
 
 
 class ProcessInfo(SentinelModel):
@@ -264,6 +278,22 @@ class ProposedAction(SentinelModel):
     evidence_ids: list[str] = Field(default_factory=list)
 
 
+FixStep = Annotated[str, StringConstraints(min_length=1, max_length=300)]
+
+
+class Recommendation(SentinelModel):
+    """Plain-language advice for the owner of a monitored PC. SENTINEL never carries it out."""
+
+    recommendation_id: str = Field(default_factory=lambda: _new_id("rec"))
+    title: str
+    priority: int = Field(ge=0, le=100)
+    steps: list[FixStep] = Field(default_factory=list, max_length=10)
+    finding_ids: list[str] = Field(default_factory=list)
+    evidence_ids: list[str] = Field(default_factory=list)
+    official_remediation: str | None = None
+    dropped_steps: list[str] = Field(default_factory=list)
+
+
 class Verdict(SentinelModel):
     """The agent's structured conclusion about an incident."""
 
@@ -278,6 +308,7 @@ class Verdict(SentinelModel):
     cited_evidence_ids: list[str] = Field(default_factory=list)
     risk_factors: list[str] = Field(default_factory=list)
     proposed_actions: list[ProposedAction] = Field(default_factory=list)
+    recommendations: list[Recommendation] = Field(default_factory=list)
     produced_at: datetime
     model_name: str | None = None
     tool_calls_made: int = 0
@@ -379,6 +410,7 @@ class AccountRecord(SentinelModel):
 class HostRecord(SentinelModel):
     role: str
     protected: bool = False
+    personal: bool = False
 
 
 class Inventory(SentinelModel):
@@ -407,6 +439,75 @@ class Scenario(SentinelModel):
     title: str
     description: str
     expected_classification: Classification
+
+
+class Finding(SentinelModel):
+    """One weak spot on a monitored PC: a vulnerable package or a failed CIS check."""
+
+    finding_id: str = Field(default_factory=lambda: _new_id("fnd"))
+    kind: FindingKind
+    key: str = Field(min_length=1)
+    host: str
+    title: str
+    severity: Severity
+    priority: int = Field(ge=0, le=100)
+    status: FindingStatus = FindingStatus.OPEN
+    cve: str | None = None
+    package: str | None = None
+    installed_version: str | None = None
+    cvss: float | None = Field(default=None, ge=0.0, le=10.0)
+    policy_id: str | None = None
+    check_id: str | None = None
+    rationale: str | None = None
+    official_remediation: str | None = None
+    references: list[str] = Field(default_factory=list)
+    related_alert_count: int = Field(default=0, ge=0)
+    first_seen: datetime
+    last_seen: datetime
+    raw: dict[str, Any] = Field(default_factory=dict)
+
+
+class HostAssessment(SentinelModel):
+    """The weak spots found on one PC and the advice written for them."""
+
+    assessment_id: str = Field(default_factory=lambda: _new_id("asm"))
+    host: str
+    contract_version: str = CONTRACT_VERSION
+    created_at: datetime
+    synced_at: datetime
+    findings: list[Finding] = Field(default_factory=list)
+    recommendations: list[Recommendation] = Field(default_factory=list)
+    model_name: str | None = None
+
+
+class LiveAlert(SentinelModel):
+    """A Wazuh alert from the live feed, with the event and alert it was converted into."""
+
+    wazuh_id: str = Field(min_length=1)
+    received_at: datetime
+    level: int = Field(ge=0, le=15)
+    event: Event
+    alert: Alert
+
+
+class ServiceState(SentinelModel):
+    reachable: bool
+    detail: str | None = None
+
+
+class PcStatus(SentinelModel):
+    checked_at: datetime
+    wazuh_api: ServiceState
+    backfill: ServiceState
+    alert_count: int = Field(ge=0)
+    last_alert_at: datetime | None = None
+
+
+class PcFeed(SentinelModel):
+    """What the live My PC page polls for."""
+
+    status: PcStatus
+    alerts: list[LiveAlert] = Field(default_factory=list)
 
 
 class IncidentRun(SentinelModel):
@@ -450,19 +551,28 @@ __all__ = [
     "EvidenceItem",
     "ExecutionResult",
     "ExecutionStatus",
+    "Finding",
+    "FindingKind",
+    "FindingStatus",
+    "HostAssessment",
     "HostRecord",
     "Incident",
     "IncidentRun",
     "IncidentStatus",
     "InvestigationStopReason",
     "Inventory",
+    "LiveAlert",
     "NetworkInfo",
+    "PcFeed",
+    "PcStatus",
     "PolicyDecision",
     "PolicyOutcome",
     "ProcessInfo",
     "ProposedAction",
+    "Recommendation",
     "RiskScore",
     "Scenario",
+    "ServiceState",
     "Severity",
     "TelemetrySource",
     "Verdict",

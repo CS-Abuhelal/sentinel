@@ -32,17 +32,25 @@ from contracts.models import (
     EvidenceItem,
     ExecutionResult,
     ExecutionStatus,
+    Finding,
+    FindingKind,
+    HostAssessment,
     Incident,
     IncidentRun,
     IncidentStatus,
     InvestigationStopReason,
+    LiveAlert,
     NetworkInfo,
+    PcFeed,
+    PcStatus,
     PolicyDecision,
     PolicyOutcome,
     ProcessInfo,
     ProposedAction,
+    Recommendation,
     RiskScore,
     Scenario,
+    ServiceState,
     Severity,
     TelemetrySource,
     Verdict,
@@ -418,6 +426,111 @@ audit_record = AuditRecord(
     hash="0" * 64,
 )
 
+WZ_T0 = datetime(2026, 9, 27, 9, 30, 0, tzinfo=UTC)
+PC = "my-pc"
+
+wazuh_event = Event(
+    event_id="evt_wz_1790501400_1042",
+    timestamp=WZ_T0,
+    source=TelemetrySource.WAZUH,
+    category=EventCategory.AUTHENTICATION,
+    event_type="wazuh:60122",
+    host=PC,
+    user="user1",
+    outcome="failure",
+    network=NetworkInfo(src_ip="127.0.0.1"),
+    message="Logon failure - Unknown user or bad password.",
+    raw={"id": "1790501400.1042", "rule": {"id": "60122", "level": 5}},
+)
+
+wazuh_alert = Alert(
+    alert_id="alr_wz_1790501400_1042",
+    rule_id="wazuh-60122",
+    rule_name="Logon failure - Unknown user or bad password.",
+    rule_severity=Severity.LOW,
+    timestamp=WZ_T0,
+    host=PC,
+    user="user1",
+    src_ip="127.0.0.1",
+    description="Logon failure - Unknown user or bad password.",
+    event_ids=[wazuh_event.event_id],
+    suggested_techniques=["T1531"],
+)
+
+live_alert = LiveAlert(
+    wazuh_id="1790501400.1042",
+    received_at=WZ_T0 + timedelta(seconds=2),
+    level=5,
+    event=wazuh_event,
+    alert=wazuh_alert,
+)
+
+pc_feed = PcFeed(
+    status=PcStatus(
+        checked_at=WZ_T0 + timedelta(seconds=5),
+        wazuh_api=ServiceState(reachable=True, detail="Wazuh API answered HTTP 401."),
+        backfill=ServiceState(reachable=True, detail="Backfilled 0 of 0 alerts at 09:29:40 UTC."),
+        alert_count=1,
+        last_alert_at=WZ_T0,
+    ),
+    alerts=[live_alert],
+)
+
+finding_vulnerability = Finding(
+    finding_id="fnd_3c9a1e7b2d40",
+    kind=FindingKind.VULNERABILITY,
+    key="cve:CVE-2025-55130:node.js",
+    host=PC,
+    title="Node.js 22.11.0 is affected by CVE-2025-55130",
+    severity=Severity.CRITICAL,
+    priority=91,
+    cve="CVE-2025-55130",
+    package="node.js",
+    installed_version="22.11.0",
+    cvss=9.1,
+    references=["https://nvd.nist.gov/vuln/detail/CVE-2025-55130"],
+    first_seen=WZ_T0 - timedelta(days=3),
+    last_seen=WZ_T0,
+)
+
+finding_configuration = Finding(
+    finding_id="fnd_8f21c04d6e11",
+    kind=FindingKind.CONFIGURATION,
+    key="sca:cis_win11_enterprise:26001",
+    host=PC,
+    title="Ensure 'Windows Firewall: Public: Firewall state' is set to 'On (recommended)'.",
+    severity=Severity.HIGH,
+    priority=70,
+    policy_id="cis_win11_enterprise",
+    check_id="26001",
+    rationale="With the public profile firewall off, the PC accepts unsolicited connections.",
+    official_remediation="Set Windows Defender Firewall public profile state to On.",
+    first_seen=WZ_T0 - timedelta(days=3),
+    last_seen=WZ_T0,
+)
+
+recommendation = Recommendation(
+    recommendation_id="rec_5b7d2e9a0c13",
+    title="Update Node.js",
+    priority=91,
+    steps=[
+        "Download the current Node.js LTS installer from nodejs.org.",
+        "Run it to replace version 22.11.0.",
+        "Run node --version to confirm the new version.",
+    ],
+    finding_ids=[finding_vulnerability.finding_id],
+)
+
+host_assessment = HostAssessment(
+    assessment_id="asm_1e4f7a2c9b30",
+    host=PC,
+    created_at=WZ_T0,
+    synced_at=WZ_T0 - timedelta(minutes=2),
+    findings=[finding_vulnerability, finding_configuration],
+    recommendations=[recommendation],
+    model_name="qwen3:14b",
+)
+
 FIXTURES = {
     "event_failed_login": failed_login,
     "event_successful_login": successful_login,
@@ -438,6 +551,12 @@ FIXTURES = {
     "approval": approval,
     "execution_result": execution_result,
     "audit_record": audit_record,
+    "live_alert": live_alert,
+    "pc_feed": pc_feed,
+    "finding_vulnerability": finding_vulnerability,
+    "finding_configuration": finding_configuration,
+    "recommendation": recommendation,
+    "host_assessment": host_assessment,
 }
 
 SCHEMA_MODELS = [
@@ -450,6 +569,8 @@ SCHEMA_MODELS = [
     PolicyDecision,
     RiskScore,
     IncidentRun,
+    PcFeed,
+    HostAssessment,
 ]
 
 

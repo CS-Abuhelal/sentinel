@@ -1,0 +1,72 @@
+{
+  "status": {
+    "checked_at": "2026-09-27T09:30:05Z",
+    "wazuh_api": {
+      "reachable": true,
+      "detail": "Wazuh API answered HTTP 401."
+    },
+    "backfill": {
+      "reachable": true,
+      "detail": "Backfilled 0 of 0 alerts at 09:29:40 UTC."
+    },
+    "alert_count": 1,
+    "last_alert_at": "2026-09-27T09:30:00Z"
+  },
+  "alerts": [
+    {
+      "wazuh_id": "1790501400.1042",
+      "received_at": "2026-09-27T09:30:02Z",
+      "level": 5,
+      "event": {
+        "event_id": "evt_wz_1790501400_1042",
+        "timestamp": "2026-09-27T09:30:00Z",
+        "ingested_at": null,
+        "source": "wazuh",
+        "category": "authentication",
+        "event_type": "wazuh:60122",
+        "host": "my-pc",
+        "user": "user1",
+        "outcome": "failure",
+        "process": null,
+        "network": {
+          "src_ip": "127.0.0.1",
+          "src_port": null,
+          "dst_ip": null,
+          "dst_port": null,
+          "protocol": null,
+          "bytes_sent": null,
+          "bytes_received": null,
+          "domain": null
+        },
+        "file_path": null,
+        "message": "Logon failure - Unknown user or bad password.",
+        "raw": {
+          "id": "1790501400.1042",
+          "rule": {
+            "id": "60122",
+            "level": 5
+          }
+        },
+        "case_id": null
+      },
+      "alert": {
+        "alert_id": "alr_wz_1790501400_1042",
+        "rule_id": "wazuh-60122",
+        "rule_name": "Logon failure - Unknown user or bad password.",
+        "rule_severity": "low",
+        "timestamp": "2026-09-27T09:30:00Z",
+        "host": "my-pc",
+        "user": "user1",
+        "src_ip": "127.0.0.1",
+        "description": "Logon failure - Unknown user or bad password.",
+        "event_ids": [
+          "evt_wz_1790501400_1042"
+        ],
+        "suggested_techniques": [
+          "T1531"
+        ],
+        "case_id": null
+      }
+    }
+  ]
+}

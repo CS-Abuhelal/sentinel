@@ -322,6 +322,7 @@
         ]
       }
     ],
+    "recommendations": [],
     "produced_at": "2026-03-14T02:21:30Z",
     "model_name": "frontier-llm-v1",
     "tool_calls_made": 4,

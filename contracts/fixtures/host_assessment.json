@@ -1,0 +1,76 @@
+{
+  "assessment_id": "asm_1e4f7a2c9b30",
+  "host": "my-pc",
+  "contract_version": "1.4.0",
+  "created_at": "2026-09-27T09:30:00Z",
+  "synced_at": "2026-09-27T09:28:00Z",
+  "findings": [
+    {
+      "finding_id": "fnd_3c9a1e7b2d40",
+      "kind": "vulnerability",
+      "key": "cve:CVE-2025-55130:node.js",
+      "host": "my-pc",
+      "title": "Node.js 22.11.0 is affected by CVE-2025-55130",
+      "severity": "critical",
+      "priority": 91,
+      "status": "open",
+      "cve": "CVE-2025-55130",
+      "package": "node.js",
+      "installed_version": "22.11.0",
+      "cvss": 9.1,
+      "policy_id": null,
+      "check_id": null,
+      "rationale": null,
+      "official_remediation": null,
+      "references": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-55130"
+      ],
+      "related_alert_count": 0,
+      "first_seen": "2026-09-24T09:30:00Z",
+      "last_seen": "2026-09-27T09:30:00Z",
+      "raw": {}
+    },
+    {
+      "finding_id": "fnd_8f21c04d6e11",
+      "kind": "configuration",
+      "key": "sca:cis_win11_enterprise:26001",
+      "host": "my-pc",
+      "title": "Ensure 'Windows Firewall: Public: Firewall state' is set to 'On (recommended)'.",
+      "severity": "high",
+      "priority": 70,
+      "status": "open",
+      "cve": null,
+      "package": null,
+      "installed_version": null,
+      "cvss": null,
+      "policy_id": "cis_win11_enterprise",
+      "check_id": "26001",
+      "rationale": "With the public profile firewall off, the PC accepts unsolicited connections.",
+      "official_remediation": "Set Windows Defender Firewall public profile state to On.",
+      "references": [],
+      "related_alert_count": 0,
+      "first_seen": "2026-09-24T09:30:00Z",
+      "last_seen": "2026-09-27T09:30:00Z",
+      "raw": {}
+    }
+  ],
+  "recommendations": [
+    {
+      "recommendation_id": "rec_5b7d2e9a0c13",
+      "title": "Update Node.js",
+      "priority": 91,
+      "steps": [
+        "Download the current Node.js LTS installer from nodejs.org.",
+        "Run it to replace version 22.11.0.",
+        "Run node --version to confirm the new version."
+      ],
+      "finding_ids": [
+        "fnd_3c9a1e7b2d40"
+      ],
+      "evidence_ids": [],
+      "official_remediation": null,
+      "dropped_steps": []
+    }
+  ],
+  "model_name": "qwen3:14b"
+}

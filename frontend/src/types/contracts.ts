@@ -13,7 +13,8 @@ export type TelemetrySource =
   | "linux_auditd"
   | "zeek_conn"
   | "zeek_dns"
-  | "zeek_http";
+  | "zeek_http"
+  | "wazuh";
 export type EventCategory =
   "authentication" | "process" | "network" | "file" | "account_management" | "privilege" | "persistence" | "other";
 export type EventType = string;
@@ -57,7 +58,15 @@ export type CaseId2 = string | null;
 export type Alerts = Alert[];
 export type IncidentId = string;
 export type Title = string;
-export type IncidentStatus = "new" | "investigating" | "awaiting_approval" | "resolved" | "closed_benign";
+export type IncidentStatus =
+  | "new"
+  | "investigating"
+  | "awaiting_approval"
+  | "resolved"
+  | "closed_benign"
+  | "queued"
+  | "low_priority"
+  | "investigation_failed";
 export type CreatedAt1 = string;
 export type UpdatedAt = string | null;
 export type WindowStart = string;
@@ -120,6 +129,29 @@ export type Justification = string;
 export type Reversible = boolean;
 export type EvidenceIds1 = string[];
 export type ProposedActions = ProposedAction[];
+export type RecommendationId = string;
+export type Title1 = string;
+export type Priority = number;
+/**
+ * @maxItems 10
+ */
+export type Steps =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string];
+export type FindingIds = string[];
+export type EvidenceIds2 = string[];
+export type OfficialRemediation = string | null;
+export type DroppedSteps = string[];
+export type Recommendations = Recommendation[];
 export type ProducedAt = string;
 export type ModelName = string | null;
 export type ToolCallsMade = number;
@@ -143,7 +175,7 @@ export type DecidedAt = string;
 export type ApprovedBy = string | null;
 export type ApprovedAt = string | null;
 export type PolicyDecisions = PolicyDecision[];
-export type Title1 = string;
+export type Title2 = string;
 export type Description2 = string;
 export type ApprovalId = string;
 export type DecisionId1 = string;
@@ -323,6 +355,7 @@ export interface Verdict {
   cited_evidence_ids: CitedEvidenceIds;
   risk_factors: RiskFactors;
   proposed_actions: ProposedActions;
+  recommendations: Recommendations;
   produced_at: ProducedAt;
   model_name: ModelName;
   tool_calls_made: ToolCallsMade;
@@ -350,6 +383,19 @@ export interface ProposedAction {
   justification: Justification;
   reversible: Reversible;
   evidence_ids: EvidenceIds1;
+}
+/**
+ * Plain-language advice for the owner of a monitored PC. SENTINEL never carries it out.
+ */
+export interface Recommendation {
+  recommendation_id: RecommendationId;
+  title: Title1;
+  priority: Priority;
+  steps: Steps;
+  finding_ids: FindingIds;
+  evidence_ids: EvidenceIds2;
+  official_remediation: OfficialRemediation;
+  dropped_steps: DroppedSteps;
 }
 /**
  * Deterministic. Computed in Python from evidence-derived factors. Never by an LLM.
@@ -385,7 +431,7 @@ export interface PolicyDecision {
  * A prepared lab case with its hand-labelled expected outcome. Never shown to the agent.
  */
 export interface Scenario {
-  title: Title1;
+  title: Title2;
   description: Description2;
   expected_classification: Classification;
 }

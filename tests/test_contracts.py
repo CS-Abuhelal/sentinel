@@ -24,13 +24,18 @@ from contracts.models import (
     EvidenceItem,
     ExecutionResult,
     ExecutionStatus,
+    Finding,
+    HostAssessment,
     HostRecord,
     Incident,
     IncidentRun,
     Inventory,
+    LiveAlert,
+    PcFeed,
     PolicyDecision,
     PolicyOutcome,
     ProposedAction,
+    Recommendation,
     RiskScore,
     Verdict,
 )
@@ -57,6 +62,12 @@ FIXTURE_MODEL_MAP = {
     "approval": Approval,
     "execution_result": ExecutionResult,
     "audit_record": AuditRecord,
+    "live_alert": LiveAlert,
+    "pc_feed": PcFeed,
+    "finding_vulnerability": Finding,
+    "finding_configuration": Finding,
+    "recommendation": Recommendation,
+    "host_assessment": HostAssessment,
 }
 
 
@@ -185,3 +196,21 @@ def test_approval_needs_a_person() -> None:
     payload["decided_by"] = ""
     with pytest.raises(ValidationError):
         Approval.model_validate(payload)
+
+
+def test_recommendation_caps_steps() -> None:
+    with pytest.raises(ValidationError):
+        Recommendation(title="Too many steps", priority=50, steps=["Do it."] * 11)
+    with pytest.raises(ValidationError):
+        Recommendation(title="Step too long", priority=50, steps=["x" * 301])
+
+
+def test_host_record_is_not_personal_by_default() -> None:
+    assert HostRecord(role="web server").personal is False
+
+
+def test_live_alert_level_stays_in_wazuh_range() -> None:
+    payload = _load("live_alert")
+    payload["level"] = 16
+    with pytest.raises(ValidationError):
+        LiveAlert.model_validate(payload)

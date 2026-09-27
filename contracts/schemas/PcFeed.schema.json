@@ -1,0 +1,631 @@
+{
+  "$defs": {
+    "Alert": {
+      "additionalProperties": false,
+      "description": "A detection rule fired. High recall by design; severity here is rule-declared,\nnot the final risk score.",
+      "properties": {
+        "alert_id": {
+          "title": "Alert Id",
+          "type": "string"
+        },
+        "rule_id": {
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "rule_name": {
+          "title": "Rule Name",
+          "type": "string"
+        },
+        "rule_severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "host": {
+          "title": "Host",
+          "type": "string"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User"
+        },
+        "src_ip": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Src Ip"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "event_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Event Ids",
+          "type": "array"
+        },
+        "suggested_techniques": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Suggested Techniques",
+          "type": "array"
+        },
+        "case_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Case Id"
+        }
+      },
+      "required": [
+        "alert_id",
+        "rule_id",
+        "rule_name",
+        "rule_severity",
+        "timestamp",
+        "host",
+        "user",
+        "src_ip",
+        "description",
+        "event_ids",
+        "suggested_techniques",
+        "case_id"
+      ],
+      "title": "Alert",
+      "type": "object"
+    },
+    "Event": {
+      "additionalProperties": false,
+      "description": "One normalized telemetry record. The atomic unit of evidence.",
+      "properties": {
+        "event_id": {
+          "title": "Event Id",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "ingested_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ingested At"
+        },
+        "source": {
+          "$ref": "#/$defs/TelemetrySource"
+        },
+        "category": {
+          "$ref": "#/$defs/EventCategory"
+        },
+        "event_type": {
+          "title": "Event Type",
+          "type": "string"
+        },
+        "host": {
+          "title": "Host",
+          "type": "string"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User"
+        },
+        "outcome": {
+          "default": "unknown",
+          "enum": [
+            "success",
+            "failure",
+            "unknown"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "process": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProcessInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "network": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NetworkInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "file_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "File Path"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message"
+        },
+        "raw": {
+          "additionalProperties": true,
+          "title": "Raw",
+          "type": "object"
+        },
+        "case_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Case Id"
+        }
+      },
+      "required": [
+        "event_id",
+        "timestamp",
+        "ingested_at",
+        "source",
+        "category",
+        "event_type",
+        "host",
+        "user",
+        "outcome",
+        "process",
+        "network",
+        "file_path",
+        "message",
+        "raw",
+        "case_id"
+      ],
+      "title": "Event",
+      "type": "object"
+    },
+    "EventCategory": {
+      "enum": [
+        "authentication",
+        "process",
+        "network",
+        "file",
+        "account_management",
+        "privilege",
+        "persistence",
+        "other"
+      ],
+      "title": "EventCategory",
+      "type": "string"
+    },
+    "LiveAlert": {
+      "additionalProperties": false,
+      "description": "A Wazuh alert from the live feed, with the event and alert it was converted into.",
+      "properties": {
+        "wazuh_id": {
+          "minLength": 1,
+          "title": "Wazuh Id",
+          "type": "string"
+        },
+        "received_at": {
+          "format": "date-time",
+          "title": "Received At",
+          "type": "string"
+        },
+        "level": {
+          "maximum": 15,
+          "minimum": 0,
+          "title": "Level",
+          "type": "integer"
+        },
+        "event": {
+          "$ref": "#/$defs/Event"
+        },
+        "alert": {
+          "$ref": "#/$defs/Alert"
+        }
+      },
+      "required": [
+        "wazuh_id",
+        "received_at",
+        "level",
+        "event",
+        "alert"
+      ],
+      "title": "LiveAlert",
+      "type": "object"
+    },
+    "NetworkInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "src_ip": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Src Ip"
+        },
+        "src_port": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Src Port"
+        },
+        "dst_ip": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dst Ip"
+        },
+        "dst_port": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dst Port"
+        },
+        "protocol": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Protocol"
+        },
+        "bytes_sent": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bytes Sent"
+        },
+        "bytes_received": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bytes Received"
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Domain"
+        }
+      },
+      "required": [
+        "src_ip",
+        "src_port",
+        "dst_ip",
+        "dst_port",
+        "protocol",
+        "bytes_sent",
+        "bytes_received",
+        "domain"
+      ],
+      "title": "NetworkInfo",
+      "type": "object"
+    },
+    "PcStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "checked_at": {
+          "format": "date-time",
+          "title": "Checked At",
+          "type": "string"
+        },
+        "wazuh_api": {
+          "$ref": "#/$defs/ServiceState"
+        },
+        "backfill": {
+          "$ref": "#/$defs/ServiceState"
+        },
+        "alert_count": {
+          "minimum": 0,
+          "title": "Alert Count",
+          "type": "integer"
+        },
+        "last_alert_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Alert At"
+        }
+      },
+      "required": [
+        "checked_at",
+        "wazuh_api",
+        "backfill",
+        "alert_count",
+        "last_alert_at"
+      ],
+      "title": "PcStatus",
+      "type": "object"
+    },
+    "ProcessInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "pid": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pid"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "command_line": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Command Line"
+        },
+        "parent_pid": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Pid"
+        },
+        "parent_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Name"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User"
+        },
+        "hash_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hash Sha256"
+        }
+      },
+      "required": [
+        "pid",
+        "name",
+        "command_line",
+        "parent_pid",
+        "parent_name",
+        "user",
+        "hash_sha256"
+      ],
+      "title": "ProcessInfo",
+      "type": "object"
+    },
+    "ServiceState": {
+      "additionalProperties": false,
+      "properties": {
+        "reachable": {
+          "title": "Reachable",
+          "type": "boolean"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        }
+      },
+      "required": [
+        "reachable",
+        "detail"
+      ],
+      "title": "ServiceState",
+      "type": "object"
+    },
+    "Severity": {
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "TelemetrySource": {
+      "enum": [
+        "windows_security",
+        "windows_sysmon",
+        "linux_auth",
+        "linux_syslog",
+        "linux_auditd",
+        "zeek_conn",
+        "zeek_dns",
+        "zeek_http",
+        "wazuh"
+      ],
+      "title": "TelemetrySource",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "What the live My PC page polls for.",
+  "properties": {
+    "status": {
+      "$ref": "#/$defs/PcStatus"
+    },
+    "alerts": {
+      "items": {
+        "$ref": "#/$defs/LiveAlert"
+      },
+      "title": "Alerts",
+      "type": "array"
+    }
+  },
+  "required": [
+    "status",
+    "alerts"
+  ],
+  "title": "PcFeed",
+  "type": "object"
+}

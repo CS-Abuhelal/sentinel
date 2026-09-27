@@ -6,6 +6,23 @@ Superseded entries are removed, and numbers are never reused.
 
 ---
 
+## D-12 — Contracts 1.4.0: live alerts, findings and advice (2026-09-27)
+
+**Decision.** Add `TelemetrySource.WAZUH`; `IncidentStatus` values `queued`, `low_priority` and
+`investigation_failed`; `HostRecord.personal`; `FindingKind`, `FindingStatus`, `Finding`,
+`Recommendation` and `HostAssessment`; `LiveAlert`, `ServiceState`, `PcStatus` and `PcFeed`; and
+`Verdict.recommendations`.
+
+**Why.** The live advisor (D-11) needs shapes for stored alerts, the live page, weak spots and
+advice. Defining them all at once keeps a single version bump for the feature, and lets the
+dashboard generate its types from them.
+
+**Consequence.** `Recommendation` caps its steps at 10, each at most 300 characters, in the
+contract itself. The dashboard gets a second generated type file, `src/types/pc.ts`, from
+`PcFeed.schema.json`.
+
+---
+
 ## D-10 — The policy engine denies targets outside the lab inventory (2026-09-26)
 
 **Decision.** A new policy rule, `target_not_in_inventory`, denies any action whose account or
