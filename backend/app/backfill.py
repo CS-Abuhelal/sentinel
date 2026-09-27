@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
@@ -11,6 +12,8 @@ from sqlalchemy.engine import Engine
 from backend.app.store import insert_alert, newest_alert_time
 from contracts.models import ServiceState
 from ingest.wazuh import WazuhAlertError, live_alert
+
+logger = logging.getLogger(__name__)
 
 ALERTS_INDEX = "wazuh-alerts-4.x-*"
 MIN_LEVEL = 3
@@ -67,7 +70,8 @@ def fetch_alerts(
 def backfill(engine: Engine, client: httpx.Client, now: datetime) -> ServiceState:
     try:
         payloads = fetch_alerts(client, newest_alert_time(engine))
-    except (httpx.HTTPError, KeyError, ValueError) as error:
+    except (httpx.HTTPError, KeyError, TypeError, ValueError) as error:
+        logger.warning("Wazuh backfill failed: %s", error)
         return ServiceState(reachable=False, detail=f"Backfill failed: {error}")
     stored = 0
     for payload in payloads:

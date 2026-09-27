@@ -139,8 +139,9 @@ call happens in the request path.
 ### Backfill
 
 On service start, the backend asks the Wazuh indexer (`wazuh-alerts-4.x-*`) for alerts with
-`rule.level >= 3` and `timestamp` later than the newest stored alert. It inserts up to 5,000 with
-the same idempotent insert. If the indexer cannot be reached, it logs the reason and the status
+`rule.level >= 3` and `timestamp` at or after the newest stored alert (alerts already
+stored are skipped by the idempotent insert). It inserts up to 5,000 with the same
+idempotent insert. If the indexer cannot be reached, it logs the reason and the status
 endpoint reports it.
 
 ### Storage (`backend/app/db.py`, Alembic in `backend/migrations/`)
@@ -271,6 +272,10 @@ sample" banner.
 - Secrets live in `.env`, which is git-ignored: `SENTINEL_INGEST_TOKEN`, `WAZUH_API_URL`,
   `WAZUH_API_USER`, `WAZUH_API_PASSWORD`, `WAZUH_INDEXER_URL`, `WAZUH_INDEXER_USER` and
   `WAZUH_INDEXER_PASSWORD`. A blank `.env.example` is committed.
+- The Wazuh API liveness check in the status bar does not verify TLS. It sends no credentials
+  and reads no data, and the manager's API certificate is self-signed rather than issued by the
+  indexer CA. Every call that sends credentials (the backfill now, the sync in phase 3) verifies
+  TLS against `WAZUH_CA_CERT`.
 - Alert text is data, never instructions. A new injection test puts instructions in
   `data.win.eventdata.commandLine`, and the classification, policy outcome and executions must not
   change.

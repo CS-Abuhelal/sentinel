@@ -79,11 +79,21 @@ def test_backfill_starts_from_the_newest_stored_alert(db: Engine) -> None:
     assert datetime.fromisoformat(since) == datetime(2026, 9, 27, 9, 5, tzinfo=UTC)
 
 
-def test_backfill_reports_an_unreachable_indexer(db: Engine) -> None:
+def test_backfill_reports_an_unreachable_indexer(
+    db: Engine, caplog: pytest.LogCaptureFixture
+) -> None:
     def refuse(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("connection refused", request=request)
 
     state = backfill(db, _client(refuse), NOW)
+    assert state.reachable is False
+    assert state.detail is not None and state.detail.startswith("Backfill failed")
+    assert "Wazuh backfill failed" in caplog.text
+
+
+def test_backfill_reports_a_malformed_answer(db: Engine) -> None:
+    client = _client(lambda request: httpx.Response(200, json={"hits": {"hits": None}}))
+    state = backfill(db, client, NOW)
     assert state.reachable is False
     assert state.detail is not None and state.detail.startswith("Backfill failed")
 

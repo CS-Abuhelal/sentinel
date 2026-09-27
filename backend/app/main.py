@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import threading
 from collections.abc import AsyncIterator
@@ -15,6 +16,7 @@ from backend.app.ingest import router as ingest_router
 from contracts.models import CONTRACT_VERSION, IncidentRun, ServiceState
 
 REPO = Path(__file__).resolve().parents[2]
+logger = logging.getLogger(__name__)
 
 
 def _backfill_in_background(app: FastAPI, settings: IndexerSettings) -> None:
@@ -22,6 +24,7 @@ def _backfill_in_background(app: FastAPI, settings: IndexerSettings) -> None:
         with settings.client() as client:
             app.state.backfill = backfill(get_engine(), client, datetime.now(UTC))
     except Exception as error:
+        logger.warning("Wazuh backfill failed: %s", error)
         app.state.backfill = ServiceState(reachable=False, detail=f"Backfill failed: {error}")
 
 
