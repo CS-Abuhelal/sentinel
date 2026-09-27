@@ -70,6 +70,16 @@ def test_oversized_alert_is_rejected(offline: TestClient) -> None:
     assert offline.post(URL, content=body, headers=AUTH).status_code == 413
 
 
+def test_oversized_alert_without_a_declared_length_is_rejected(offline: TestClient) -> None:
+    def chunks() -> Iterator[bytes]:
+        yield b'{"padding": "'
+        for _ in range(11):
+            yield b"a" * 100_000
+        yield b'"}'
+
+    assert offline.post(URL, content=chunks(), headers=AUTH).status_code == 413
+
+
 @pytest.mark.parametrize("body", [b"not json", b"[]", b'{"id": "1"}'])
 def test_malformed_alert_is_rejected(offline: TestClient, body: bytes) -> None:
     assert offline.post(URL, content=body, headers=AUTH).status_code == 422

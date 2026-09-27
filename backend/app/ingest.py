@@ -15,6 +15,7 @@ from backend.app.store import insert_alert
 from ingest.wazuh import WazuhAlertError, live_alert
 
 MAX_BODY_BYTES = 1_000_000
+TOO_LARGE = "Alert is larger than 1 MB."
 
 router = APIRouter()
 
@@ -31,10 +32,12 @@ def _check_token(request: Request) -> None:
 async def _read_json(request: Request) -> dict[str, Any]:
     declared = request.headers.get("content-length", "")
     if declared.isdigit() and int(declared) > MAX_BODY_BYTES:
-        raise HTTPException(413, "Alert is larger than 1 MB.")
-    body = await request.body()
-    if len(body) > MAX_BODY_BYTES:
-        raise HTTPException(413, "Alert is larger than 1 MB.")
+        raise HTTPException(413, TOO_LARGE)
+    body = bytearray()
+    async for chunk in request.stream():
+        body.extend(chunk)
+        if len(body) > MAX_BODY_BYTES:
+            raise HTTPException(413, TOO_LARGE)
     try:
         payload = json.loads(body)
     except ValueError as error:
