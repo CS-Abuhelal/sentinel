@@ -227,8 +227,9 @@ def _verdict(draft: VerdictDraft, refs: dict[str, str], common: dict[str, Any]) 
 
 
 def _recommendation(advice: RecommendationDraft, refs: dict[str, str]) -> Recommendation:
-    fitting = [step for step in advice.steps if len(step) <= MAX_STEP_CHARS]
-    too_long = [f"Too long: {step}" for step in advice.steps if len(step) > MAX_STEP_CHARS]
+    steps = [step.strip() for step in advice.steps if step.strip()]
+    fitting = [step for step in steps if len(step) <= MAX_STEP_CHARS]
+    too_long = [f"Too long: {step}" for step in steps if len(step) > MAX_STEP_CHARS]
     return Recommendation(
         title=advice.title,
         priority=advice.priority,

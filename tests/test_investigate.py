@@ -208,6 +208,35 @@ def test_uncited_recommendation_is_invalid_output(s1: S1Case) -> None:
     assert verdict.stop_reason is InvestigationStopReason.INVALID_OUTPUT
 
 
+def test_steps_over_the_limit_are_set_aside(s1: S1Case) -> None:
+    steps = [f"Step {n}." for n in range(1, 13)] + ["   "]
+    model = _client(
+        AUTH_CALL,
+        _final(
+            classification="inconclusive",
+            cited_evidence=[],
+            recommendations=[{"title": "Many", "steps": steps, "evidence": ["E1"]}],
+        ),
+    )
+    verdict, _ = investigate(s1.incident, s1.alerts, s1.events, model)
+    [advice] = verdict.recommendations
+    assert advice.steps == [f"Step {n}." for n in range(1, 11)]
+    assert advice.dropped_steps == ["Over the limit: Step 11.", "Over the limit: Step 12."]
+
+
+def test_advice_citing_unknown_evidence_is_invalid_output(s1: S1Case) -> None:
+    model = _client(
+        AUTH_CALL,
+        _final(
+            classification="inconclusive",
+            cited_evidence=[],
+            recommendations=[{"title": "Do it", "steps": ["Do it."], "evidence": ["E9"]}],
+        ),
+    )
+    verdict, _ = investigate(s1.incident, s1.alerts, s1.events, model)
+    assert verdict.stop_reason is InvestigationStopReason.INVALID_OUTPUT
+
+
 def test_system_prompt_can_be_replaced(s1: S1Case) -> None:
     model = Capturing(_client(_final(classification="benign", cited_evidence=[])))
     investigate(s1.incident, s1.alerts, s1.events, model, system_prompt="PC {max_tool_calls}")

@@ -14,6 +14,12 @@ WEAKENING = tuple(
         r"disable\s+(the\s+)?(windows\s+)?(defender|firewall|uac|antivirus)",
         r"Set-ExecutionPolicy\s+(Unrestricted|Bypass)",
         r"bcdedit",
+        r"Add-MpPreference\s+-Exclusion",
+        r"(add|create)\s+(an?\s+)?(defender\s+|antivirus\s+)?exclusion",
+        r"uninstall\s+(the\s+)?(windows\s+)?(defender|antivirus|firewall)",
+        r"(stop|kill)\s+(the\s+)?(windows\s+)?(defender|antivirus|firewall)",
+        r"(Stop-Service|sc(\.exe)?\s+(stop|delete))\b.*\bWinDefend\b",
+        r"start=\s*disabled",
     )
 )
 

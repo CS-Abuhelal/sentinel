@@ -56,6 +56,12 @@ Spec: `docs/superpowers/specs/2026-09-27-wazuh-live-advisor-design.md` (phase 2 
   - `disable\s+(the\s+)?(windows\s+)?(defender|firewall|uac|antivirus)`
   - `Set-ExecutionPolicy\s+(Unrestricted|Bypass)`
   - `bcdedit`
+  - `Add-MpPreference\s+-Exclusion`
+  - `(add|create)\s+(an?\s+)?(defender\s+|antivirus\s+)?exclusion`
+  - `uninstall\s+(the\s+)?(windows\s+)?(defender|antivirus|firewall)`
+  - `(stop|kill)\s+(the\s+)?(windows\s+)?(defender|antivirus|firewall)`
+  - `(Stop-Service|sc(\.exe)?\s+(stop|delete))\b.*\bWinDefend\b`
+  - `start=\s*disabled`
 - Nothing personal in committed files. Test data uses `my-pc`, `user1` and `sentinel-test-nobody`.
 - SENTINEL never acts on the PC. The policy rule is `personal_host_advice_only`, and personal hosts
   get no runner.

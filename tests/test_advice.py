@@ -16,6 +16,12 @@ from policy.advice import vet, weakens_security
         "Disable UAC to stop the prompts",
         "Set-ExecutionPolicy Unrestricted",
         "bcdedit /set nointegritychecks on",
+        "Add-MpPreference -ExclusionPath C:\\Users\\Public",
+        "Add an exclusion for that folder in Defender",
+        "Uninstall Windows Defender and use nothing",
+        "Stop the Windows Defender service",
+        "sc stop WinDefend",
+        "sc config WinDefend start= disabled",
     ],
 )
 def test_weakening_steps_are_caught(step: str) -> None:
@@ -25,6 +31,8 @@ def test_weakening_steps_are_caught(step: str) -> None:
 def test_normal_steps_pass() -> None:
     assert not weakens_security("Change the password of the account user1.")
     assert not weakens_security("Check that Windows Defender real-time protection is on.")
+    assert not weakens_security("Run a full scan with Windows Defender.")
+    assert not weakens_security("Stop the process evil.exe in Task Manager.")
 
 
 def test_vet_moves_weakening_steps_aside() -> None:
