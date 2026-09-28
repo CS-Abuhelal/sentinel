@@ -10,7 +10,7 @@ from sqlalchemy.engine import Engine
 
 import pipeline.worker as worker_module
 from agent.llm import Recording, ReplayClient
-from backend.app.incidents import get_run, incident_status, incident_summaries
+from backend.app.incidents import get_run, incident_status, incident_summaries, set_status
 from backend.app.store import insert_alert
 from contracts.models import (
     Classification,
@@ -18,6 +18,7 @@ from contracts.models import (
     InvestigationStopReason,
     PolicyOutcome,
 )
+from pipeline.grouping import group_new_alerts
 from pipeline.worker import main, model_state, pc_inventory, run_once
 from tests.conftest import REPO, make_wazuh_alert
 
@@ -131,6 +132,20 @@ def test_main_runs_one_cycle(
     argv = ["--once", "--llm", "replay", "--recording", str(_recording_file(tmp_path))]
     assert main(argv) == 0
     assert len(incident_summaries(db)) == 1
+
+
+def test_main_requeues_investigations_cut_short(
+    db: Engine, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _store(db, "16.1", 1, **BURST)
+    group_new_alerts(db, NOW)
+    [summary] = incident_summaries(db)
+    incident_id = summary.incident.incident_id
+    set_status(db, incident_id, IncidentStatus.INVESTIGATING, NOW)
+    monkeypatch.setattr(worker_module, "get_engine", lambda: db)
+    argv = ["--once", "--llm", "replay", "--recording", str(_recording_file(tmp_path))]
+    assert main(argv) == 0
+    assert get_run(db, incident_id) is not None
 
 
 def test_main_survives_a_failing_cycle(

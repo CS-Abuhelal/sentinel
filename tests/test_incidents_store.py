@@ -15,6 +15,7 @@ from backend.app.incidents import (
     mark_grouped,
     next_queued_incident,
     queue_length,
+    requeue,
     rule_count,
     save_incident,
     save_run,
@@ -128,3 +129,26 @@ def test_unfinished_incidents_are_investigating_without_a_run(db: Engine) -> Non
     save_incident(db, _incident("inc_u", 5, IncidentStatus.INVESTIGATING), "my-pc", "k", 1, 9, NOW)
     save_incident(db, _incident("inc_q", 6, IncidentStatus.QUEUED), "my-pc", "j", 1, 9, NOW)
     assert unfinished_incidents(db) == ["inc_u"]
+
+
+def test_requeue_forgets_the_run(db: Engine) -> None:
+    fixture = REPO / "contracts" / "fixtures" / "incident_run.json"
+    run = IncidentRun.model_validate_json(fixture.read_text(encoding="utf-8"))
+    failed = run.model_copy(
+        update={
+            "incident": run.incident.model_copy(
+                update={"status": IncidentStatus.INVESTIGATION_FAILED}
+            )
+        }
+    )
+    save_incident(db, failed.incident, "my-pc", "k", 2, 9, NOW)
+    save_run(db, failed, NOW)
+    later = NOW + timedelta(minutes=5)
+    requeue(db, failed.incident.incident_id, later)
+    assert get_run(db, failed.incident.incident_id) is None
+    assert incident_status(db, failed.incident.incident_id) is IncidentStatus.QUEUED
+    [summary] = incident_summaries(db)
+    assert summary.incident.status is IncidentStatus.QUEUED
+    assert summary.incident.updated_at == later
+    assert summary.classification is None
+    assert queue_length(db) == 1

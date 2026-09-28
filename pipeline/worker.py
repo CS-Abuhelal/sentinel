@@ -22,6 +22,7 @@ from backend.app.incidents import (
     host_alerts,
     incident_alerts,
     next_queued_incident,
+    requeue,
     save_run,
     set_status,
     unfinished_incidents,
@@ -175,7 +176,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             if not requeued:
                 for incident_id in unfinished_incidents(engine):
-                    set_status(engine, incident_id, IncidentStatus.QUEUED, utcnow())
+                    requeue(engine, incident_id, utcnow())
                 requeued = True
             cycle(engine, args)
         except Exception:

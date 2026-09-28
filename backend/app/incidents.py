@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import func, select, update
-from sqlalchemy.dialects.postgresql import insert
+from pydantic import TypeAdapter
+from sqlalchemy import func, null, select, type_coerce, update
+from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.engine import Engine
 
 from backend.app.db import incidents, wazuh_alerts
@@ -125,6 +126,23 @@ def set_status(engine: Engine, incident_id: str, status: IncidentStatus, now: da
                 status=status.value, incident=incident.model_dump(mode="json"), updated_at=now
             )
         )
+
+
+def requeue(engine: Engine, incident_id: str, now: datetime) -> None:
+    queued = IncidentStatus.QUEUED.value
+    patch = {"status": queued, "updated_at": TypeAdapter(datetime).dump_python(now, mode="json")}
+    statement = (
+        update(incidents)
+        .where(incidents.c.incident_id == incident_id)
+        .values(
+            status=queued,
+            run=null(),
+            incident=incidents.c.incident.op("||")(type_coerce(patch, JSONB)),
+            updated_at=now,
+        )
+    )
+    with engine.begin() as connection:
+        connection.execute(statement)
 
 
 def incident_status(engine: Engine, incident_id: str) -> IncidentStatus | None:

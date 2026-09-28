@@ -12,7 +12,7 @@ from backend.app.incidents import (
     incident_status,
     incident_summaries,
     queue_length,
-    set_status,
+    requeue,
 )
 from backend.app.probes import HttpProbe, get_model_probe, get_wazuh_probe
 from backend.app.store import alert_count, latest_alerts, newest_alert_time
@@ -66,5 +66,5 @@ def retry(incident_id: str, engine: Annotated[Engine, Depends(get_engine)]) -> d
         raise HTTPException(404, f"No incident {incident_id}.")
     if status is not IncidentStatus.INVESTIGATION_FAILED:
         raise HTTPException(409, "Only a failed investigation can be retried.")
-    set_status(engine, incident_id, IncidentStatus.QUEUED, datetime.now(UTC))
+    requeue(engine, incident_id, datetime.now(UTC))
     return {"status": "queued"}
