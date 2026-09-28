@@ -3,7 +3,8 @@ from __future__ import annotations
 import pytest
 
 from contracts.models import Recommendation
-from policy.advice import vet, weakens_security
+from policy.advice import check_fix, vet, weakens_security
+from tests.conftest import make_finding
 
 
 @pytest.mark.parametrize(
@@ -104,3 +105,30 @@ def test_a_cis_policy_named_like_a_weakening_step_is_an_accepted_false_positive(
 )
 def test_safe_phrasings_about_protections_pass(step: str) -> None:
     assert not weakens_security(step)
+
+
+def _fix(steps: list[str], finding_ids: list[str], title: str = "Update it") -> Recommendation:
+    return Recommendation(title=title, priority=90, steps=steps, finding_ids=finding_ids)
+
+
+def test_check_fix_keeps_advice_about_its_own_finding() -> None:
+    finding = make_finding("cve:CVE-2026-1:app", cve="CVE-2026-1", package="app")
+    checked = check_fix(
+        _fix(["Update app to fix CVE-2026-1.", "Turn off the firewall."], [finding.finding_id]),
+        {finding.finding_id: finding},
+    )
+    assert checked is not None
+    assert checked.steps == ["Update app to fix CVE-2026-1."]
+    assert checked.dropped_steps == ["Turn off the firewall."]
+
+
+def test_check_fix_drops_advice_that_cites_nothing_or_other_cves() -> None:
+    finding = make_finding("cve:CVE-2026-1:app", cve="CVE-2026-1", package="app")
+    known = {finding.finding_id: finding}
+    assert check_fix(_fix(["Update."], []), known) is None
+    assert check_fix(_fix(["Update."], ["fnd_missing"]), known) is None
+    assert check_fix(_fix(["Also patch cve-2025-9999."], [finding.finding_id]), known) is None
+    assert (
+        check_fix(_fix(["Update."], [finding.finding_id], title="Fix CVE-2024-1234"), known)
+        is None
+    )
