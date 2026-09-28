@@ -19,7 +19,7 @@ from agent.ollama import DEFAULT_MODEL, OllamaClient
 from agent.ollama import model_state as model_state
 from agent.tools import WAZUH_TOOLS
 from backend.app.db import get_engine
-from backend.app.findings import next_finding_to_advise, set_advice
+from backend.app.findings import next_finding_to_advise, set_advice, unit_findings
 from backend.app.incidents import (
     StoreHistory,
     host_auth_events,
@@ -115,15 +115,20 @@ def advise_next(engine: Engine, llm: LLMClient, now: Callable[[], datetime]) -> 
     finding = next_finding_to_advise(engine, FIX_TOP)
     if finding is None:
         return None
+    unit = unit_findings(engine, finding)
+    other = [f.cve for f in unit if f.cve and f.cve != finding.cve]
     try:
-        result = write_fix(finding, llm)
+        result = write_fix(finding, llm, other)
     except Exception as error:
         logger.warning("Fix steps for %s failed: %s", finding.finding_id, error)
         set_advice(engine, finding.finding_id, None, llm.model_name, now())
         return finding.finding_id
     checked = None
     if result.recommendation is not None:
-        checked = check_fix(result.recommendation, {finding.finding_id: finding})
+        rec = result.recommendation.model_copy(
+            update={"finding_ids": [f.finding_id for f in unit]}
+        )
+        checked = check_fix(rec, {f.finding_id: f for f in unit})
     set_advice(engine, finding.finding_id, checked, result.model_name, now())
     return finding.finding_id
 

@@ -7,6 +7,7 @@ import type { ServiceState } from "../types/pc";
 const POLL_MS = 30000;
 const RESCAN_REFRESH_MS = 3000;
 const VISIBLE_ROWS = 20;
+const ADVICE_TOP = 10;
 
 type Load =
   | { state: "loading" }
@@ -20,9 +21,31 @@ function toLoad(assessment: HostAssessment | null): Load {
   return assessment ? { state: "ready", assessment } : { state: "empty" };
 }
 
+function adviceUnit(finding: Finding): string {
+  if (finding.kind === "vulnerability" && finding.package) {
+    return `package:${finding.package.toLowerCase()}`;
+  }
+  return `finding:${finding.finding_id}`;
+}
+
+function firstUnits(findings: Finding[], limit: number): Set<string> {
+  const units = new Set<string>();
+  for (const finding of findings) {
+    const unit = adviceUnit(finding);
+    if (units.has(unit) || units.size < limit) {
+      units.add(unit);
+    }
+  }
+  return units;
+}
+
 function subtitle(finding: Finding): string {
   if (finding.kind === "vulnerability") {
-    return `${finding.cve ?? "—"} · ${finding.package ?? "—"} ${finding.installed_version ?? "—"}`;
+    const parts: string[] = [];
+    if (finding.cvss != null) parts.push(`CVSS ${finding.cvss}`);
+    if (finding.official_remediation) parts.push(`Wazuh: ${finding.official_remediation}`);
+    if (parts.length > 0) return parts.join(" · ");
+    return `${finding.package ?? "—"} ${finding.installed_version ?? "—"}`;
   }
   return `CIS check ${finding.check_id ?? "—"}`;
 }
@@ -144,6 +167,7 @@ function FixTable({
   const recommendedFindingIds = new Set(
     assessment.recommendations.flatMap((recommendation) => recommendation.finding_ids),
   );
+  const beingWrittenUnits = firstUnits(assessment.findings, ADVICE_TOP);
 
   return (
     <>
@@ -164,7 +188,7 @@ function FixTable({
             );
             const fixStatus = recommendedFindingIds.has(finding.finding_id)
               ? "Ready"
-              : rank <= 10
+              : beingWrittenUnits.has(adviceUnit(finding))
                 ? "Being written"
                 : "—";
             return (

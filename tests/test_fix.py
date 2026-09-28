@@ -54,6 +54,18 @@ def test_bad_answers_give_no_recommendation() -> None:
     assert write_fix(finding, bad_extra).recommendation is None
 
 
+def test_finding_message_includes_other_cves_only_when_given() -> None:
+    finding = make_finding("cve:CVE-2026-1:MongoDB", cve="CVE-2026-1", package="MongoDB")
+    without = json.loads(finding_message(finding).split("\n", 1)[1])
+    assert "other_cves_in_this_program" not in without
+    with_others = json.loads(
+        finding_message(finding, ["CVE-2026-2", "CVE-2026-3"]).split("\n", 1)[1]
+    )
+    assert with_others["other_cves_in_this_program"] == ["CVE-2026-2", "CVE-2026-3"]
+    empty = json.loads(finding_message(finding, []).split("\n", 1)[1])
+    assert "other_cves_in_this_program" not in empty
+
+
 def test_the_finding_goes_to_the_model_as_data() -> None:
     finding = make_finding("sca:p:1", kind=FindingKind.CONFIGURATION).model_copy(
         update={"title": INJECTED, "raw": {"secret": "not sent"}}

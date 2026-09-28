@@ -18,7 +18,8 @@ At most 10 steps, each under 300 characters, most important first.
   fixes it. Never invent a version number.
 - For a failed CIS check: follow Wazuh's remediation text. Windows Home has no Local Group
   Policy Editor, so also give the Settings or registry route when there is one.
-- Mention no CVE other than the one in the finding.
+- Mention no CVE other than the finding's own and those listed in other_cves_in_this_program.
+  Updating the program fixes all of them.
 - Never tell the owner to turn off Windows Defender, the firewall, User Account Control or any
   other protection.
 

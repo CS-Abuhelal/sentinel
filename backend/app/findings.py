@@ -9,7 +9,7 @@ from sqlalchemy.engine import Engine
 from backend.app.db import findings as findings_table
 from backend.app.db import sync_runs, wazuh_alerts
 from backend.app.incidents import IS_POSTURE
-from contracts.models import Finding, FindingStatus, HostAssessment, Recommendation
+from contracts.models import Finding, FindingKind, FindingStatus, HostAssessment, Recommendation
 from policy.priority import sort_key
 
 ADVICE_READY = "ready"
@@ -114,13 +114,31 @@ def advice_states(engine: Engine, host: str) -> dict[str, str]:
         return {row.finding_id: row.advice_state for row in connection.execute(statement)}
 
 
+def advice_unit(finding: Finding) -> str:
+    if finding.kind is FindingKind.VULNERABILITY and finding.package:
+        return "package:" + finding.package.lower()
+    return "finding:" + finding.finding_id
+
+
 def next_finding_to_advise(engine: Engine, top: int = 10) -> Finding | None:
     for host in finding_hosts(engine):
         states = advice_states(engine, host)
-        for finding in open_findings(engine, host)[:top]:
-            if finding.finding_id not in states:
-                return finding
+        units: dict[str, list[Finding]] = {}
+        for finding in open_findings(engine, host):
+            unit = advice_unit(finding)
+            if unit in units:
+                units[unit].append(finding)
+            elif len(units) < top:
+                units[unit] = [finding]
+        for members in units.values():
+            if not any(f.finding_id in states for f in members):
+                return members[0]
     return None
+
+
+def unit_findings(engine: Engine, finding: Finding) -> list[Finding]:
+    unit = advice_unit(finding)
+    return [f for f in open_findings(engine, finding.host) if advice_unit(f) == unit]
 
 
 def set_advice(

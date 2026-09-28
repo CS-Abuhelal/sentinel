@@ -8,6 +8,7 @@ from backend.app.findings import (
     ADVICE_FAILED,
     ADVICE_READY,
     advice_states,
+    advice_unit,
     assessment,
     finding_hosts,
     last_successful_sync,
@@ -16,6 +17,7 @@ from backend.app.findings import (
     record_sync,
     related_alert_count,
     set_advice,
+    unit_findings,
     upsert_findings,
 )
 from backend.app.store import insert_alert
@@ -75,6 +77,81 @@ def test_hosts_and_the_next_finding_to_advise(db: Engine) -> None:
         set_advice(db, finding.finding_id, _advice(finding.finding_id), "test", NOW)
     assert seen == [f"k{n}" for n in range(10)] + ["only"]
     assert next_finding_to_advise(db, top=10) is None
+
+
+def test_units_group_the_same_package_case_insensitively(db: Engine) -> None:
+    upsert_findings(
+        db,
+        "my-pc",
+        [
+            make_finding("a", priority=90, package="MongoDB", cve="CVE-2026-1"),
+            make_finding("b", priority=80, package="mongodb", cve="CVE-2026-2"),
+            make_finding("c", priority=70, package="Steam", cve="CVE-2026-3"),
+        ],
+        NOW,
+    )
+    [a, b, c] = open_findings(db, "my-pc")
+    assert advice_unit(a) == advice_unit(b) == "package:mongodb"
+    assert advice_unit(c) == "package:steam"
+
+
+def test_next_finding_to_advise_returns_each_unit_lead_once(db: Engine) -> None:
+    upsert_findings(
+        db,
+        "my-pc",
+        [
+            make_finding("a", priority=90, package="MongoDB", cve="CVE-2026-1"),
+            make_finding("b", priority=80, package="MongoDB", cve="CVE-2026-2"),
+            make_finding("c", priority=70, package="Steam", cve="CVE-2026-3"),
+        ],
+        NOW,
+    )
+    [a, _b, c] = open_findings(db, "my-pc")
+    lead = next_finding_to_advise(db, top=10)
+    assert lead is not None and lead.finding_id == a.finding_id
+    set_advice(db, a.finding_id, _advice(a.finding_id), "test", NOW)
+    lead = next_finding_to_advise(db, top=10)
+    assert lead is not None and lead.finding_id == c.finding_id
+
+
+def test_top_counts_units_not_findings(db: Engine) -> None:
+    findings = []
+    priority = 99
+    for package in ("MongoDB", "Steam", "Code"):
+        for n in range(4):
+            findings.append(
+                make_finding(
+                    f"{package}-{n}", priority=priority, package=package,
+                    cve=f"CVE-2026-{package}-{n}",
+                )
+            )
+            priority -= 1
+    upsert_findings(db, "my-pc", findings, NOW)
+    leads = set()
+    for _ in range(3):
+        finding = next_finding_to_advise(db, top=2)
+        if finding is None:
+            break
+        leads.add(finding.finding_id)
+        set_advice(db, finding.finding_id, _advice(finding.finding_id), "test", NOW)
+    assert len(leads) == 2
+    assert next_finding_to_advise(db, top=2) is None
+
+
+def test_unit_findings_returns_the_whole_unit_in_order(db: Engine) -> None:
+    upsert_findings(
+        db,
+        "my-pc",
+        [
+            make_finding("a", priority=90, package="MongoDB", cve="CVE-2026-1"),
+            make_finding("c", priority=70, package="Steam", cve="CVE-2026-3"),
+            make_finding("b", priority=80, package="mongodb", cve="CVE-2026-2"),
+        ],
+        NOW,
+    )
+    [a, b, c] = open_findings(db, "my-pc")
+    assert [f.key for f in unit_findings(db, a)] == ["a", "b"]
+    assert [f.key for f in unit_findings(db, c)] == ["c"]
 
 
 def test_advice_is_stored_and_failed_advice_is_retried_after_a_sync(db: Engine) -> None:

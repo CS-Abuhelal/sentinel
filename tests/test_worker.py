@@ -345,6 +345,51 @@ def test_advice_about_another_cve_is_rejected(db: Engine) -> None:
     assert advice_states(db, "my-pc") == {finding.finding_id: ADVICE_FAILED}
 
 
+def test_advice_covers_every_finding_in_the_program_and_accepts_its_other_cve(
+    db: Engine,
+) -> None:
+    upsert_findings(
+        db,
+        "my-pc",
+        [
+            make_finding("a", priority=90, cve="CVE-2026-1", package="MongoDB"),
+            make_finding("b", priority=80, cve="CVE-2026-2", package="MongoDB"),
+        ],
+        NOW,
+    )
+    [a, b] = open_findings(db, "my-pc")
+    fix = {
+        "type": "final",
+        "payload": {
+            "title": "Update MongoDB",
+            "steps": ["Update MongoDB to fix CVE-2026-1 and CVE-2026-2."],
+        },
+    }
+    result = run_once(db, _model(fix), lambda: NOW, model_ready=True)
+    assert result["advised"] == a.finding_id
+    assert advice_states(db, "my-pc") == {a.finding_id: ADVICE_READY}
+    view = assessment(db, "my-pc", NOW)
+    assert view is not None
+    [advice] = view.recommendations
+    assert advice.finding_ids == [a.finding_id, b.finding_id]
+
+
+def test_advice_about_a_cve_from_another_package_is_rejected(db: Engine) -> None:
+    upsert_findings(
+        db,
+        "my-pc",
+        [
+            make_finding("a", priority=90, cve="CVE-2026-1", package="MongoDB"),
+            make_finding("b", priority=80, cve="CVE-2026-2", package="MongoDB"),
+        ],
+        NOW,
+    )
+    [a, _b] = open_findings(db, "my-pc")
+    bad = {"type": "final", "payload": {"title": "Patch CVE-2020-0001", "steps": ["Patch."]}}
+    run_once(db, _model(bad), lambda: NOW, model_ready=True)
+    assert advice_states(db, "my-pc") == {a.finding_id: ADVICE_FAILED}
+
+
 def test_no_fix_steps_without_the_model(db: Engine) -> None:
     upsert_findings(db, "my-pc", [make_finding("a", priority=90)], NOW)
     result = run_once(db, _model(FIX), lambda: NOW, model_ready=False)
