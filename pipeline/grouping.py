@@ -18,16 +18,15 @@ from contracts.models import (
     LiveAlert,
     PcIncidentSummary,
 )
+from ingest.wazuh import POSTURE_GROUPS as POSTURE_GROUPS
+from ingest.wazuh import is_posture as _payload_is_posture
 
 WINDOW = timedelta(minutes=60)
 INVESTIGATE_LEVEL = 7
-POSTURE_GROUPS = frozenset({"sca", "vulnerability-detector"})
 
 
 def is_posture(live: LiveAlert) -> bool:
-    rule = live.event.raw.get("rule")
-    groups = rule.get("groups") if isinstance(rule, dict) else None
-    return isinstance(groups, list) and bool(POSTURE_GROUPS.intersection(groups))
+    return _payload_is_posture(live.event.raw)
 
 
 def group_key(live: LiveAlert) -> str:

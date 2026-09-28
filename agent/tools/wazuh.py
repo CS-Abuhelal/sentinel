@@ -7,11 +7,13 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from agent.tools.base import Tool, ToolContext, ToolResult
 from contracts.models import EvidenceClass, LiveAlert
+from ingest.wazuh import is_posture, rule_groups
 
 BASELINE_DAYS = 30
 MAX_RULES = 25
 MAX_MATCHES = 25
 MAX_SOURCES = 200
+MAX_DETAIL_CHARS = 600
 NO_HISTORY = ToolResult(
     summary="There is no alert history for this host.", content={}, source_event_ids=[]
 )
@@ -43,6 +45,11 @@ def related_alerts(params: RelatedAlertsParams, context: ToolContext) -> ToolRes
     alerts = context.history.alerts(incident.window_start - span, incident.window_end + span)
     if params.rule_group:
         alerts = [a for a in alerts if params.rule_group in _groups(a)]
+        posture_alerts_skipped = 0
+    else:
+        before_posture_skip = len(alerts)
+        alerts = [a for a in alerts if not is_posture(a.event.raw)]
+        posture_alerts_skipped = before_posture_skip - len(alerts)
     own = set(incident.alert_ids)
     rules: dict[str, dict[str, Any]] = {}
     for live in alerts:
@@ -63,13 +70,22 @@ def related_alerts(params: RelatedAlertsParams, context: ToolContext) -> ToolRes
         entry["last_seen"] = live.event.timestamp.isoformat()
         entry["in_incident"] = entry["in_incident"] or live.alert.alert_id in own
     ordered = sorted(rules.values(), key=lambda e: (-e["count"], e["rule_id"]))[:MAX_RULES]
-    content = {"hours": params.hours, "total_alerts": len(alerts), "rules": ordered}
+    content = {
+        "hours": params.hours,
+        "total_alerts": len(alerts),
+        "rules": ordered,
+        "posture_alerts_skipped": posture_alerts_skipped,
+    }
     parts = [
         f"{len(alerts)} alerts on the host within {params.hours} h of the incident."
     ]
     parts += [
         f"{e['rule_id']} x{e['count']}: {e['description']}" for e in ordered[:5]
     ]
+    if posture_alerts_skipped:
+        parts.append(
+            "Security-check results are left out; ask with rule_group 'sca' to see them."
+        )
     return ToolResult(
         summary=" ".join(parts),
         content=content,
@@ -143,6 +159,7 @@ def rule_context(params: RuleContextParams, context: ToolContext) -> ToolResult:
         "fired_in_incident_window": in_window,
         "fired_in_previous_30_days": before,
         "average_per_day_before": round(before / BASELINE_DAYS, 2),
+        "example": _detail(sample),
     }
     return ToolResult(
         summary=(
@@ -155,9 +172,24 @@ def rule_context(params: RuleContextParams, context: ToolContext) -> ToolResult:
 
 
 def _groups(live: LiveAlert) -> list[str]:
-    rule = live.event.raw.get("rule")
-    groups = rule.get("groups") if isinstance(rule, dict) else None
-    return [str(g) for g in groups] if isinstance(groups, list) else []
+    return rule_groups(live.event.raw)
+
+
+def _detail(live: LiveAlert | None) -> str | None:
+    if live is None:
+        return None
+    raw = live.event.raw
+    full_log = raw.get("full_log")
+    text = full_log if isinstance(full_log, str) and full_log else None
+    if text is None:
+        data = raw.get("data")
+        win = data.get("win") if isinstance(data, dict) else None
+        system = win.get("system") if isinstance(win, dict) else None
+        message = system.get("message") if isinstance(system, dict) else None
+        text = message if isinstance(message, str) and message else None
+    if text is None:
+        return None
+    return " ".join(text.split())[:MAX_DETAIL_CHARS]
 
 
 def _process_fields(live: LiveAlert) -> list[str | None]:
@@ -171,8 +203,9 @@ RELATED_ALERTS = Tool(
     name="related_alerts",
     description=(
         "Other Wazuh alerts on the same PC around the incident window, grouped by rule "
-        "with counts. Optionally filter by a Wazuh rule group such as 'sysmon' or "
-        "'syscheck'."
+        "with counts. Security-check (SCA) results are left out unless rule_group asks "
+        "for them. Optionally filter by a Wazuh rule group such as 'sysmon', 'syscheck' "
+        "or 'sca'."
     ),
     params=RelatedAlertsParams,
     evidence_class=EvidenceClass.RELATED_ALERTS,
@@ -193,8 +226,9 @@ PROCESS_ACTIVITY = Tool(
 RULE_CONTEXT = Tool(
     name="rule_context",
     description=(
-        "What a Wazuh rule means (description, groups, MITRE) and how often it fired "
-        "on this PC in the incident window compared with the 30 days before."
+        "What a Wazuh rule means (description, groups, MITRE), an example of the "
+        "alert's own text, and how often it fired on this PC in the incident window "
+        "compared with the 30 days before."
     ),
     params=RuleContextParams,
     evidence_class=EvidenceClass.BASELINE_COMPARISON,

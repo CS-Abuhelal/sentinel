@@ -34,6 +34,8 @@ CATEGORY_GROUPS: tuple[tuple[EventCategory, frozenset[str]], ...] = (
     (EventCategory.PRIVILEGE, frozenset({"privilege"})),
 )
 
+POSTURE_GROUPS = frozenset({"sca", "vulnerability-detector"})
+
 
 class WazuhAlertError(ValueError):
     pass
@@ -57,6 +59,18 @@ def category_for_groups(groups: list[str]) -> EventCategory:
         if present & names:
             return category
     return EventCategory.OTHER
+
+
+def rule_groups(payload: dict[str, Any]) -> list[str]:
+    rule = payload.get("rule")
+    groups = rule.get("groups") if isinstance(rule, dict) else None
+    if not isinstance(groups, list):
+        return []
+    return [group for group in groups if isinstance(group, str)]
+
+
+def is_posture(payload: dict[str, Any]) -> bool:
+    return bool(POSTURE_GROUPS.intersection(rule_groups(payload)))
 
 
 def parse_timestamp(value: str) -> datetime:

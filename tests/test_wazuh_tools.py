@@ -9,8 +9,9 @@ from agent.tools import WAZUH_TOOLS
 from agent.tools.base import ToolContext
 from agent.tools.wazuh import PROCESS_ACTIVITY, RELATED_ALERTS, RULE_CONTEXT
 from contracts.models import EvidenceClass, LiveAlert
+from ingest.wazuh import live_alert
 from pipeline.grouping import new_incident
-from tests.conftest import make_wazuh_alert
+from tests.conftest import RECEIVED_AT, make_wazuh_alert
 
 
 class FakeHistory:
@@ -49,6 +50,9 @@ SHELL = make_wazuh_alert(
 OLD = make_wazuh_alert("9.20", 10, rule_id="60204", hour=1)[0]
 HISTORY = FakeHistory([BURST, *(a for a, _ in FAILS), SHELL, OLD])
 
+SCA = make_wazuh_alert("9.30", 11, level=7, rule_id="19007", groups=["sca"], techniques=[])[0]
+POSTURE_HISTORY = FakeHistory([BURST, *(a for a, _ in FAILS), SHELL, OLD, SCA])
+
 
 def test_wazuh_toolset() -> None:
     assert set(WAZUH_TOOLS) == {
@@ -77,6 +81,24 @@ def test_related_alerts_can_filter_by_group() -> None:
     assert [entry["rule_id"] for entry in result.content["rules"]] == ["wazuh-92052"]
 
 
+def test_related_alerts_skips_posture_alerts_by_default() -> None:
+    params = RELATED_ALERTS.params.model_validate({"hours": 1})
+    result = RELATED_ALERTS.run(params, _context(POSTURE_HISTORY, BURST))
+    rule_ids = {entry["rule_id"] for entry in result.content["rules"]}
+    assert "wazuh-19007" not in rule_ids
+    assert result.content["posture_alerts_skipped"] == 1
+    assert result.content["total_alerts"] == 7
+    assert "security-check" in result.summary.lower()
+
+
+def test_related_alerts_can_still_ask_for_posture_alerts() -> None:
+    params = RELATED_ALERTS.params.model_validate({"hours": 1, "rule_group": "sca"})
+    result = RELATED_ALERTS.run(params, _context(POSTURE_HISTORY, BURST))
+    rule_ids = {entry["rule_id"] for entry in result.content["rules"]}
+    assert "wazuh-19007" in rule_ids
+    assert result.content["posture_alerts_skipped"] == 0
+
+
 def test_process_activity_matches_name_case_insensitively() -> None:
     params = PROCESS_ACTIVITY.params.model_validate(
         {"process": "PowerShell.exe", "hours": 2}
@@ -97,6 +119,47 @@ def test_rule_context_compares_with_the_baseline() -> None:
     assert content["fired_in_incident_window"] == 1
     assert content["fired_in_previous_30_days"] == 1
     assert RULE_CONTEXT.evidence_class is EvidenceClass.BASELINE_COMPARISON
+
+
+def test_rule_context_example_is_none_without_a_sample() -> None:
+    params = RULE_CONTEXT.params.model_validate({"rule_id": "99999"})
+    result = RULE_CONTEXT.run(params, _context(HISTORY, BURST))
+    assert result.content["example"] is None
+
+
+def test_rule_context_returns_example_text_from_full_log() -> None:
+    live, payload = make_wazuh_alert("9.40", 15, rule_id="19010", groups=["sca"], techniques=[])
+    payload["full_log"] = (
+        "  NTFS Alternate data stream found:  'C:\\WINDOWS\\tracing:?'.   "
+        "Possible hidden content. "
+    )
+    live = live_alert(payload, received_at=RECEIVED_AT)
+    history = FakeHistory([live])
+    params = RULE_CONTEXT.params.model_validate({"rule_id": "19010"})
+    result = RULE_CONTEXT.run(params, _context(history, live))
+    assert result.content["example"] == (
+        "NTFS Alternate data stream found: 'C:\\WINDOWS\\tracing:?'. Possible hidden content."
+    )
+
+
+def test_rule_context_falls_back_to_the_windows_event_message() -> None:
+    live, payload = make_wazuh_alert("9.41", 16, rule_id="19011", groups=["sca"], techniques=[])
+    payload["data"]["win"]["system"]["message"] = "Some   collapsed   message   from windows."
+    live = live_alert(payload, received_at=RECEIVED_AT)
+    history = FakeHistory([live])
+    params = RULE_CONTEXT.params.model_validate({"rule_id": "19011"})
+    result = RULE_CONTEXT.run(params, _context(history, live))
+    assert result.content["example"] == "Some collapsed message from windows."
+
+
+def test_rule_context_example_is_truncated_to_600_chars() -> None:
+    live, payload = make_wazuh_alert("9.42", 17, rule_id="19012", groups=["sca"], techniques=[])
+    payload["full_log"] = "x" * 700
+    live = live_alert(payload, received_at=RECEIVED_AT)
+    history = FakeHistory([live])
+    params = RULE_CONTEXT.params.model_validate({"rule_id": "19012"})
+    result = RULE_CONTEXT.run(params, _context(history, live))
+    assert result.content["example"] == "x" * 600
 
 
 def test_tools_say_so_when_there_is_no_history() -> None:
