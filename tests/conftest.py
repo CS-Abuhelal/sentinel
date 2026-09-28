@@ -4,7 +4,7 @@ import json
 import os
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -14,7 +14,16 @@ from alembic.config import Config
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
-from contracts.models import Alert, Event, Incident, Inventory, LiveAlert
+from contracts.models import (
+    Alert,
+    Event,
+    Finding,
+    FindingKind,
+    Incident,
+    Inventory,
+    LiveAlert,
+    Severity,
+)
 from detection.correlate import correlate
 from detection.sigma import detect, load_rules
 from ingest.linux_auth import parse_auth_log
@@ -78,7 +87,7 @@ def pg_engine() -> Iterator[Engine]:
 @pytest.fixture
 def db(pg_engine: Engine) -> Engine:
     with pg_engine.begin() as connection:
-        connection.execute(text("TRUNCATE wazuh_alerts, incidents"))
+        connection.execute(text("TRUNCATE wazuh_alerts, incidents, findings, sync_runs"))
     return pg_engine
 
 
@@ -112,3 +121,30 @@ def make_wazuh_alert(
     if command_line is not None:
         eventdata["commandLine"] = command_line
     return live_alert(payload, received_at=RECEIVED_AT), payload
+
+
+def make_finding(
+    key: str,
+    *,
+    priority: int = 50,
+    kind: FindingKind = FindingKind.VULNERABILITY,
+    cve: str | None = None,
+    package: str | None = None,
+    host: str = "my-pc",
+    days: int = 0,
+) -> Finding:
+    moment = datetime(2026, 9, 28, 9, 0, tzinfo=UTC) - timedelta(days=days)
+    return Finding(
+        kind=kind,
+        key=key,
+        host=host,
+        title=f"Weak spot {key}",
+        severity=Severity.MEDIUM,
+        priority=priority,
+        cve=cve,
+        package=package,
+        official_remediation=None if kind is FindingKind.VULNERABILITY else "Set it.",
+        first_seen=moment,
+        last_seen=moment,
+        raw={"note": "raw is kept in the database only"},
+    )
