@@ -12,12 +12,14 @@ from pathlib import Path
 from sqlalchemy import func, select
 from sqlalchemy.engine import Connection, Engine
 
+from agent.fix import write_fix
 from agent.investigate import PC_PROMPT
 from agent.llm import LLMClient, RecordingClient, ReplayClient
 from agent.ollama import DEFAULT_MODEL, OllamaClient
 from agent.ollama import model_state as model_state
 from agent.tools import WAZUH_TOOLS
 from backend.app.db import get_engine
+from backend.app.findings import next_finding_to_advise, set_advice
 from backend.app.incidents import (
     StoreHistory,
     host_auth_events,
@@ -39,12 +41,14 @@ from contracts.models import (
 )
 from pipeline.grouping import group_new_alerts
 from pipeline.run import run_incident
+from policy.advice import check_fix
 
 logger = logging.getLogger(__name__)
 
 INTERVAL_SECONDS = 10
 WORKER_LOCK = 0x53454E54
 LOOKBACK = timedelta(days=30)
+FIX_TOP = 10
 
 
 def utcnow() -> datetime:
@@ -107,6 +111,23 @@ def investigate_next(
     return incident_id
 
 
+def advise_next(engine: Engine, llm: LLMClient, now: Callable[[], datetime]) -> str | None:
+    finding = next_finding_to_advise(engine, FIX_TOP)
+    if finding is None:
+        return None
+    try:
+        result = write_fix(finding, llm)
+    except Exception as error:
+        logger.warning("Fix steps for %s failed: %s", finding.finding_id, error)
+        set_advice(engine, finding.finding_id, None, llm.model_name, now())
+        return finding.finding_id
+    checked = None
+    if result.recommendation is not None:
+        checked = check_fix(result.recommendation, {finding.finding_id: finding})
+    set_advice(engine, finding.finding_id, checked, result.model_name, now())
+    return finding.finding_id
+
+
 def acquire_worker_lock(engine: Engine) -> Connection | None:
     connection = engine.connect()
     try:
@@ -134,7 +155,8 @@ def run_once(
 ) -> dict[str, object]:
     grouped = group_new_alerts(engine, now())
     investigated = investigate_next(engine, llm, now) if model_ready else None
-    return {"grouped": grouped, "investigated": investigated}
+    advised = advise_next(engine, llm, now) if model_ready and investigated is None else None
+    return {"grouped": grouped, "investigated": investigated, "advised": advised}
 
 
 def cycle(
@@ -151,11 +173,17 @@ def cycle(
             logger.info("%s", state.detail)
     recorder = RecordingClient(base)
     result = run_once(engine, recorder, utcnow, ready)
-    if result["grouped"] or result["investigated"]:
-        logger.info("grouped %s, investigated %s", result["grouped"], result["investigated"])
-    if args.record_dir and result["investigated"]:
+    if result["grouped"] or result["investigated"] or result["advised"]:
+        logger.info(
+            "grouped %s, investigated %s, advised %s",
+            result["grouped"],
+            result["investigated"],
+            result["advised"],
+        )
+    recorded = result["investigated"] or result["advised"]
+    if args.record_dir and recorded:
         args.record_dir.mkdir(parents=True, exist_ok=True)
-        path = args.record_dir / f"{result['investigated']}.json"
+        path = args.record_dir / f"{recorded}.json"
         path.write_text(
             recorder.recording().model_dump_json(indent=2) + "\n", encoding="utf-8"
         )

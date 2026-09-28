@@ -11,6 +11,14 @@ from sqlalchemy.engine import Engine
 
 import pipeline.worker as worker_module
 from agent.llm import Recording, ReplayClient
+from backend.app.findings import (
+    ADVICE_FAILED,
+    ADVICE_READY,
+    advice_states,
+    assessment,
+    open_findings,
+    upsert_findings,
+)
 from backend.app.incidents import get_run, incident_status, incident_summaries, set_status
 from backend.app.store import insert_alert
 from contracts.models import (
@@ -29,7 +37,7 @@ from pipeline.worker import (
     release_worker_lock,
     run_once,
 )
-from tests.conftest import REPO, make_wazuh_alert
+from tests.conftest import REPO, make_finding, make_wazuh_alert
 
 NOW = datetime(2026, 9, 27, 12, 0, tzinfo=UTC)
 PC_RECORDING = REPO / "tests" / "data" / "pc_incident.qwen3-14b.json"
@@ -94,7 +102,7 @@ def test_run_once_groups_and_investigates(db: Engine) -> None:
 def test_without_the_model_only_grouping_happens(db: Engine) -> None:
     _store(db, "11.1", 1, **BURST)
     result = run_once(db, _model(FINAL), lambda: NOW, model_ready=False)
-    assert result == {"grouped": 1, "investigated": None}
+    assert result == {"grouped": 1, "investigated": None, "advised": None}
     [summary] = incident_summaries(db)
     assert summary.incident.status is IncidentStatus.QUEUED
 
@@ -303,3 +311,42 @@ def test_an_empty_ollama_url_falls_back_to_localhost(monkeypatch: pytest.MonkeyP
     with pytest.raises(Stop):
         main(["--once"])
     assert seen["url"] == "http://localhost:11434"
+
+
+FIX = {"type": "final", "payload": {"title": "Update VS Code", "steps": ["Open VS Code."]}}
+
+
+def test_fix_steps_are_written_when_the_queue_is_empty(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [make_finding("a", priority=90, cve="CVE-2026-1")], NOW)
+    [finding] = open_findings(db, "my-pc")
+    result = run_once(db, _model(FIX), lambda: NOW, model_ready=True)
+    assert result == {"grouped": 0, "investigated": None, "advised": finding.finding_id}
+    assert advice_states(db, "my-pc") == {finding.finding_id: ADVICE_READY}
+    view = assessment(db, "my-pc", NOW)
+    assert view is not None
+    [advice] = view.recommendations
+    assert advice.steps == ["Open VS Code."]
+    assert advice.finding_ids == [finding.finding_id]
+
+
+def test_incidents_come_before_fix_steps(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [make_finding("a", priority=90)], NOW)
+    _store(db, "15.1", 1, **BURST)
+    result = run_once(db, _model(FINAL), lambda: NOW, model_ready=True)
+    assert result["investigated"] is not None
+    assert result["advised"] is None
+
+
+def test_advice_about_another_cve_is_rejected(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [make_finding("a", priority=90, cve="CVE-2026-1")], NOW)
+    [finding] = open_findings(db, "my-pc")
+    bad = {"type": "final", "payload": {"title": "Patch CVE-2020-0001", "steps": ["Patch."]}}
+    run_once(db, _model(bad), lambda: NOW, model_ready=True)
+    assert advice_states(db, "my-pc") == {finding.finding_id: ADVICE_FAILED}
+
+
+def test_no_fix_steps_without_the_model(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [make_finding("a", priority=90)], NOW)
+    result = run_once(db, _model(FIX), lambda: NOW, model_ready=False)
+    assert result["advised"] is None
+    assert advice_states(db, "my-pc") == {}
