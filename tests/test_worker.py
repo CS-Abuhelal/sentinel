@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
+from pathlib import Path
 
 import httpx
+import pytest
 from sqlalchemy.engine import Engine
 
+import pipeline.worker as worker_module
 from agent.llm import Recording, ReplayClient
 from backend.app.incidents import get_run, incident_status, incident_summaries
 from backend.app.store import insert_alert
 from contracts.models import IncidentStatus, PolicyOutcome
-from pipeline.worker import model_state, pc_inventory, run_once
+from pipeline.worker import main, model_state, pc_inventory, run_once
 from tests.conftest import make_wazuh_alert
 
 NOW = datetime(2026, 9, 27, 12, 0, tzinfo=UTC)
@@ -102,3 +106,45 @@ def test_model_state_when_ollama_is_down() -> None:
 
     state = model_state("http://ollama:11434", "qwen3:14b", transport=httpx.MockTransport(refuse))
     assert state.reachable is False
+
+
+def _recording_file(tmp_path: Path) -> Path:
+    path = tmp_path / "replay.json"
+    path.write_text(
+        Recording(source="handwritten", model_name="test", responses=[FINAL]).model_dump_json(),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_main_runs_one_cycle(
+    db: Engine, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _store(db, "14.1", 1)
+    monkeypatch.setattr(worker_module, "get_engine", lambda: db)
+    argv = ["--once", "--llm", "replay", "--recording", str(_recording_file(tmp_path))]
+    assert main(argv) == 0
+    assert len(incident_summaries(db)) == 1
+
+
+def test_main_survives_a_failing_cycle(
+    db: Engine,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    def broken(*args: object, **kwargs: object) -> dict[str, object]:
+        raise RuntimeError("the database went away")
+
+    monkeypatch.setattr(worker_module, "get_engine", lambda: db)
+    monkeypatch.setattr(worker_module, "run_once", broken)
+    argv = ["--once", "--llm", "replay", "--recording", str(_recording_file(tmp_path))]
+    with caplog.at_level(logging.ERROR, logger="pipeline.worker"):
+        assert main(argv) == 1
+    assert "Worker cycle failed" in caplog.text
+    assert "the database went away" in caplog.text
+
+
+def test_replay_needs_a_recording() -> None:
+    with pytest.raises(SystemExit):
+        main(["--once", "--llm", "replay"])

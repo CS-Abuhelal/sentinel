@@ -125,6 +125,29 @@ def run_once(
     return {"grouped": grouped, "investigated": investigated}
 
 
+def cycle(engine: Engine, args: argparse.Namespace) -> dict[str, object]:
+    if args.llm == "replay":
+        base: LLMClient = ReplayClient.from_file(args.recording)
+        ready = True
+    else:
+        base = OllamaClient(model=args.model, base_url=args.ollama_url)
+        state = model_state(args.ollama_url, args.model)
+        ready = state.reachable
+        if not ready:
+            logger.info("%s", state.detail)
+    recorder = RecordingClient(base)
+    result = run_once(engine, recorder, utcnow, ready)
+    if result["grouped"] or result["investigated"]:
+        logger.info("grouped %s, investigated %s", result["grouped"], result["investigated"])
+    if args.record_dir and result["investigated"]:
+        args.record_dir.mkdir(parents=True, exist_ok=True)
+        path = args.record_dir / f"{result['investigated']}.json"
+        path.write_text(
+            recorder.recording().model_dump_json(indent=2) + "\n", encoding="utf-8"
+        )
+    return result
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m pipeline.worker",
@@ -142,36 +165,24 @@ def main(argv: list[str] | None = None) -> int:
         "--record-dir", type=Path, help="save each investigation's responses here"
     )
     args = parser.parse_args(argv)
+    if args.llm == "replay" and args.recording is None:
+        parser.error("--llm replay needs --recording")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     engine = get_engine()
-    for incident_id in unfinished_incidents(engine):
-        set_status(engine, incident_id, IncidentStatus.QUEUED, utcnow())
+    requeued = False
     while True:
-        if args.llm == "replay":
-            if args.recording is None:
-                raise SystemExit("--llm replay needs --recording")
-            base: LLMClient = ReplayClient.from_file(args.recording)
-            ready = True
-        else:
-            base = OllamaClient(model=args.model, base_url=args.ollama_url)
-            state = model_state(args.ollama_url, args.model)
-            ready = state.reachable
-            if not ready:
-                logger.info("%s", state.detail)
-        recorder = RecordingClient(base)
-        result = run_once(engine, recorder, utcnow, ready)
-        if result["grouped"] or result["investigated"]:
-            logger.info(
-                "grouped %s, investigated %s", result["grouped"], result["investigated"]
-            )
-        if args.record_dir and result["investigated"]:
-            args.record_dir.mkdir(parents=True, exist_ok=True)
-            path = args.record_dir / f"{result['investigated']}.json"
-            path.write_text(
-                recorder.recording().model_dump_json(indent=2) + "\n", encoding="utf-8"
-            )
+        failed = False
+        try:
+            if not requeued:
+                for incident_id in unfinished_incidents(engine):
+                    set_status(engine, incident_id, IncidentStatus.QUEUED, utcnow())
+                requeued = True
+            cycle(engine, args)
+        except Exception:
+            logger.exception("Worker cycle failed; trying again in %s s.", args.interval)
+            failed = True
         if args.once:
-            return 0
+            return 1 if failed else 0
         time.sleep(args.interval)
 
 

@@ -40,6 +40,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     command: ["python", "-m", "pipeline.worker"]
+    restart: unless-stopped
     env_file:
       - path: .env
         required: false
