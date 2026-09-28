@@ -41,7 +41,7 @@ def vulnerability_finding(doc: dict[str, Any], now: datetime) -> Finding:
         kind=FindingKind.VULNERABILITY,
         key=f"cve:{cve}:{name}",
         host=host,
-        title=f"{cve} in {name} {version}" if version else f"{cve} in {name}",
+        title=_clip(f"{cve} in {name} {version}" if version else f"{cve} in {name}"),
         severity=SEVERITIES.get(severity, Severity.LOW),
         priority=0,
         cve=cve,
@@ -49,7 +49,7 @@ def vulnerability_finding(doc: dict[str, Any], now: datetime) -> Finding:
         installed_version=version,
         cvss=_cvss(base),
         rationale=_clip(_text(vulnerability.get("description"))),
-        official_remediation=condition,
+        official_remediation=_clip(condition),
         references=_references(vulnerability.get("reference")),
         first_seen=_time(vulnerability.get("detected_at"), now),
         last_seen=now,
@@ -70,7 +70,7 @@ def sca_finding(alert: dict[str, Any], now: datetime) -> Finding | None:
     check = _sca_parts(alert)[2]
     if check.get("result") != "failed":
         return None
-    title = _text(check.get("title")) or f"CIS check {check_id}"
+    title = _clip(_text(check.get("title"))) or f"CIS check {check_id}"
     return Finding(
         kind=FindingKind.CONFIGURATION,
         key=f"sca:{policy}:{check_id}",

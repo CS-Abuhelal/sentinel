@@ -105,3 +105,17 @@ def test_malformed_checks_are_rejected(path: tuple[str, ...]) -> None:
         sca_finding(alert, NOW)
     with pytest.raises(FindingError):
         sca_check_key(alert)
+
+
+def test_long_titles_and_conditions_are_clipped() -> None:
+    doc = wazuh_payload("vulnerability_state")
+    doc["package"]["name"] = "p" * 3000
+    doc["vulnerability"]["scanner"]["condition"] = "c" * 1500
+    finding = vulnerability_finding(doc, NOW)
+    assert len(finding.title) == MAX_TEXT
+    assert finding.official_remediation is not None
+    assert len(finding.official_remediation) == MAX_TEXT
+    alert = copy.deepcopy(wazuh_payload("sca_check_failed"))
+    alert["data"]["sca"]["check"]["title"] = "t" * 3000
+    check = sca_finding(alert, NOW)
+    assert check is not None and len(check.title) == MAX_TEXT
