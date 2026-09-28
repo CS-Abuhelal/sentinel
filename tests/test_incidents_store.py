@@ -330,3 +330,14 @@ def test_investigation_events_keep_recent_logons(db: Engine) -> None:
 
 def test_the_agent_s_history_cap_matches_the_store_s() -> None:
     assert MAX_HISTORY == HISTORY_LIMIT
+
+
+def test_rule_sample_ignores_alerts_after_the_incident(db: Engine) -> None:
+    _store(db, "33.1", 5, rule_id="60204", description="During", hour=2)
+    _store(db, "33.2", 5, rule_id="60204", description="Next day", hour=6)
+    since = datetime(2026, 9, 27, 0, 0, tzinfo=UTC)
+    until = datetime(2026, 9, 27, 3, 0, tzinfo=UTC)
+    sample = StoreHistory(db, "my-pc", since, until).rule_sample("wazuh-60204", [])
+    assert sample is not None and sample.alert.rule_name == "During"
+    unbounded = StoreHistory(db, "my-pc", since).rule_sample("wazuh-60204", [])
+    assert unbounded is not None and unbounded.alert.rule_name == "Next day"

@@ -88,3 +88,19 @@ def test_a_cis_policy_named_like_a_weakening_step_is_an_accepted_false_positive(
     )
     vetted = vet(advice)
     assert vetted is not None and vetted.dropped_steps == [step]
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Make sure UAC is not disabled.",
+        "Check that the firewall is not turned off.",
+        "Do not disable Windows Defender.",
+        "Never turn off the firewall.",
+        "Don't switch off real-time protection.",
+        "Stop remote logon attempts at the firewall.",
+        "Pause and review sign-ins; keep Defender on.",
+    ],
+)
+def test_safe_phrasings_about_protections_pass(step: str) -> None:
+    assert not weakens_security(step)

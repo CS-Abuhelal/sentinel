@@ -3,7 +3,19 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from pydantic import TypeAdapter
-from sqlalchemy import ColumnElement, Text, cast, func, null, or_, select, type_coerce, update
+from sqlalchemy import (
+    ColumnElement,
+    Text,
+    and_,
+    cast,
+    func,
+    null,
+    or_,
+    select,
+    true,
+    type_coerce,
+    update,
+)
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, Insert, array, insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.sql.dml import Update
@@ -64,6 +76,7 @@ def find_open_incident(
             incidents.c.last_alert_at >= at - GROUP_WINDOW,
             incidents.c.first_alert_at <= at + GROUP_WINDOW,
             incidents.c.first_alert_at >= at - MAX_INCIDENT_SPAN,
+            incidents.c.last_alert_at <= at + MAX_INCIDENT_SPAN,
         )
         .order_by(incidents.c.last_alert_at.desc())
         .limit(1)
@@ -255,7 +268,12 @@ def host_auth_events(
 
 
 def rule_sample(
-    engine: Engine, host: str, rule_id: str, preferred_alert_ids: list[str], since: datetime
+    engine: Engine,
+    host: str,
+    rule_id: str,
+    preferred_alert_ids: list[str],
+    since: datetime,
+    until: datetime | None = None,
 ) -> LiveAlert | None:
     own = wazuh_alerts.c.alert["alert_id"].astext.in_(preferred_alert_ids)
     statement = (
@@ -263,7 +281,13 @@ def rule_sample(
         .where(
             wazuh_alerts.c.agent_name == host,
             wazuh_alerts.c.rule_id == rule_id,
-            or_(own, wazuh_alerts.c.alert_time >= since),
+            or_(
+                own,
+                and_(
+                    wazuh_alerts.c.alert_time >= since,
+                    wazuh_alerts.c.alert_time <= until if until else true(),
+                ),
+            ),
         )
         .order_by(own.desc(), *NEWEST_FIRST)
         .limit(1)
@@ -361,10 +385,13 @@ def unfinished_incidents(engine: Engine) -> list[str]:
 
 
 class StoreHistory:
-    def __init__(self, engine: Engine, host: str, since: datetime) -> None:
+    def __init__(
+        self, engine: Engine, host: str, since: datetime, until: datetime | None = None
+    ) -> None:
         self._engine = engine
         self._host = host
         self._since = since
+        self._until = until
 
     def alerts(
         self, start: datetime, end: datetime, include_posture: bool = False
@@ -377,4 +404,6 @@ class StoreHistory:
         return rule_count(self._engine, self._host, rule_id, start, end)
 
     def rule_sample(self, rule_id: str, preferred_alert_ids: list[str]) -> LiveAlert | None:
-        return rule_sample(self._engine, self._host, rule_id, preferred_alert_ids, self._since)
+        return rule_sample(
+            self._engine, self._host, rule_id, preferred_alert_ids, self._since, self._until
+        )

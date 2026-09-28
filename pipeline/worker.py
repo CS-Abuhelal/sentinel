@@ -89,7 +89,12 @@ def investigate_next(
             now=now,
             tools=WAZUH_TOOLS,
             system_prompt=PC_PROMPT,
-            history=StoreHistory(engine, host, incident.window_start - LOOKBACK),
+            history=StoreHistory(
+                engine,
+                host,
+                incident.window_start - LOOKBACK,
+                incident.window_end + timedelta(seconds=1),
+            ),
             runner_for=lambda _: None,
         )
     except Exception as error:

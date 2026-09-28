@@ -33,6 +33,8 @@ services:
     volumes:
       - ./contracts:/app/contracts:ro
       - ./ingest:/app/ingest:ro
+      - ./agent:/app/agent:ro
+      - ./policy:/app/policy:ro
       - ./backend:/app/backend
       - ./runs:/app/runs:ro
 

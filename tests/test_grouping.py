@@ -155,3 +155,21 @@ def test_a_steady_trickle_is_cut_into_days(db: Engine) -> None:
     assert [s.alert_count for s in summaries] == [29, 2]
     first = summaries[0].incident
     assert first.window_end - first.window_start <= timedelta(hours=24)
+
+
+def test_a_late_alert_cannot_stretch_an_incident_past_a_day(db: Engine) -> None:
+    for n in range(48):
+        minutes = 60 + n * 30
+        day, rest = divmod(minutes, 24 * 60)
+        _store(db, f"38.{n}", rest % 60, hour=rest // 60, day=27 + day)
+    group_new_alerts(db, NOW)
+    [chain] = incident_summaries(db)
+    span = chain.incident.window_end - chain.incident.window_start
+    assert span == timedelta(hours=23, minutes=30)
+    _store(db, "38.99", 10, hour=0, day=27)
+    group_new_alerts(db, NOW)
+    summaries = incident_summaries(db)
+    assert sorted(s.alert_count for s in summaries) == [1, 48]
+    assert all(
+        s.incident.window_end - s.incident.window_start <= timedelta(hours=24) for s in summaries
+    )

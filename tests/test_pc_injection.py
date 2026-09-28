@@ -103,7 +103,7 @@ def test_injected_advice_that_weakens_the_pc_is_dropped(db: Engine) -> None:
         description="Powershell with a suspicious command line",
         groups=["windows", "sysmon", "sysmon_event1"],
         techniques=["T1059.001"],
-        process="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
+        process=r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
         command_line=ADVICE_INJECTION,
     )
     insert_alert(db, live, payload)

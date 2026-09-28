@@ -12,12 +12,17 @@ SWITCHED_OFF = (
     r"defender|firewall|anti-?virus|uac|smartscreen|real-?time\s+protection|tamper\s+protection"
 )
 
+NEGATED = r"(?<!not\s)(?<!never\s)(?<!n't\s)"
+DENIAL = r"\b(?:not|never)\b|n't\b"
+BETWEEN_VERB_AND_TARGET = r"\b(?:at|in|with|using|keep|not|never)\b|[;:]"
+
 WEAKENING = tuple(
     re.compile(pattern, re.IGNORECASE)
     for pattern in (
-        r"\b(disable|turn\s+off|switch\s+off|stop|kill|uninstall|pause|deactivate)\b"
-        rf"[^.\n]{{0,40}}\b({PROTECTIONS})\b",
-        rf"\b({SWITCHED_OFF})\b[^.\n]{{0,30}}\b(off|disabled)\b",
+        NEGATED
+        + r"\b(disable|turn\s+off|switch\s+off|stop|kill|uninstall|pause|deactivate)\b"
+        rf"(?:(?!{BETWEEN_VERB_AND_TARGET})[^.\n]){{0,40}}\b({PROTECTIONS})\b",
+        rf"\b({SWITCHED_OFF})\b(?:(?!{DENIAL})[^.\n]){{0,30}}\b(off|disabled)\b",
         r"never\s+notify",
         r"\b(iex|invoke-expression)\b",
         r"downloadstring",

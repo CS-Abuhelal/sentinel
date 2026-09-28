@@ -285,3 +285,21 @@ def test_the_worker_re_exports_model_state() -> None:
     from agent.ollama import model_state as shared
 
     assert model_state is shared
+
+
+def test_an_empty_ollama_url_falls_back_to_localhost(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, str] = {}
+
+    class Stop(Exception):
+        pass
+
+    def fake_client(model: str, base_url: str) -> None:
+        seen["url"] = base_url
+        raise Stop
+
+    monkeypatch.setenv("OLLAMA_URL", "")
+    monkeypatch.setattr(worker_module, "get_engine", lambda: None)
+    monkeypatch.setattr(worker_module, "OllamaClient", fake_client)
+    with pytest.raises(Stop):
+        main(["--once"])
+    assert seen["url"] == "http://localhost:11434"
