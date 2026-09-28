@@ -168,7 +168,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--recording", type=Path, help="recording to replay with --llm replay")
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument(
-        "--ollama-url", default=os.environ.get("OLLAMA_URL", "http://localhost:11434")
+        "--ollama-url", default=os.environ.get("OLLAMA_URL") or "http://localhost:11434"
     )
     parser.add_argument(
         "--record-dir", type=Path, help="save each investigation's responses here"

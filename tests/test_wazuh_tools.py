@@ -96,6 +96,8 @@ def test_related_alerts_can_filter_by_group() -> None:
     params = RELATED_ALERTS.params.model_validate({"hours": 1, "rule_group": "sysmon"})
     result = RELATED_ALERTS.run(params, _context(HISTORY, BURST))
     assert [entry["rule_id"] for entry in result.content["rules"]] == ["wazuh-92052"]
+    assert HISTORY.include_posture[-1] is False
+    assert result.content["security_checks_included"] is False
 
 
 def test_related_alerts_skips_posture_alerts_by_default() -> None:
@@ -105,6 +107,8 @@ def test_related_alerts_skips_posture_alerts_by_default() -> None:
     assert POSTURE_HISTORY.include_posture[-1] is False
     assert "wazuh-19007" not in rule_ids
     assert result.content["total_alerts"] == 7
+    assert result.content["security_checks_included"] is False
+    assert "security-check (sca) results are not included" in result.summary.lower()
 
 
 def test_related_alerts_still_drops_posture_alerts_the_history_returns() -> None:
@@ -113,7 +117,7 @@ def test_related_alerts_still_drops_posture_alerts_the_history_returns() -> None
     result = RELATED_ALERTS.run(params, _context(history, BURST))
     rule_ids = {entry["rule_id"] for entry in result.content["rules"]}
     assert "wazuh-19007" not in rule_ids
-    assert result.content["posture_alerts_skipped"] == 1
+    assert result.content["security_checks_included"] is False
     assert result.content["total_alerts"] == 7
     assert "security-check" in result.summary.lower()
 
@@ -124,7 +128,8 @@ def test_related_alerts_can_still_ask_for_posture_alerts() -> None:
     rule_ids = {entry["rule_id"] for entry in result.content["rules"]}
     assert POSTURE_HISTORY.include_posture[-1] is True
     assert "wazuh-19007" in rule_ids
-    assert result.content["posture_alerts_skipped"] == 0
+    assert result.content["security_checks_included"] is True
+    assert "not included" not in result.summary
 
 
 def test_history_tools_say_when_the_history_was_cut_off() -> None:

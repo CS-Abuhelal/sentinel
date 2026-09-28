@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from agent.tools.base import Tool, ToolContext, ToolResult
 from contracts.models import EvidenceClass, LiveAlert
-from ingest.wazuh import is_posture, rule_groups
+from ingest.wazuh import POSTURE_GROUPS, is_posture, rule_groups
 
 BASELINE_DAYS = 30
 MAX_RULES = 25
@@ -43,19 +43,17 @@ def related_alerts(params: RelatedAlertsParams, context: ToolContext) -> ToolRes
         return NO_HISTORY
     incident = context.incident
     span = timedelta(hours=params.hours)
+    include_posture = params.rule_group in POSTURE_GROUPS
     alerts = context.history.alerts(
         incident.window_start - span,
         incident.window_end + span,
-        include_posture=bool(params.rule_group),
+        include_posture=include_posture,
     )
     truncated = len(alerts) >= MAX_HISTORY
+    if not include_posture:
+        alerts = [a for a in alerts if not is_posture(a.event.raw)]
     if params.rule_group:
         alerts = [a for a in alerts if params.rule_group in _groups(a)]
-        posture_alerts_skipped = 0
-    else:
-        before_posture_skip = len(alerts)
-        alerts = [a for a in alerts if not is_posture(a.event.raw)]
-        posture_alerts_skipped = before_posture_skip - len(alerts)
     own = set(incident.alert_ids)
     rules: dict[str, dict[str, Any]] = {}
     for live in alerts:
@@ -80,7 +78,7 @@ def related_alerts(params: RelatedAlertsParams, context: ToolContext) -> ToolRes
         "hours": params.hours,
         "total_alerts": len(alerts),
         "rules": ordered,
-        "posture_alerts_skipped": posture_alerts_skipped,
+        "security_checks_included": include_posture,
         "truncated": truncated,
     }
     parts = [
@@ -89,9 +87,9 @@ def related_alerts(params: RelatedAlertsParams, context: ToolContext) -> ToolRes
     parts += [
         f"{e['rule_id']} x{e['count']}: {e['description']}" for e in ordered[:5]
     ]
-    if posture_alerts_skipped:
+    if not include_posture:
         parts.append(
-            "Security-check results are left out; ask with rule_group 'sca' to see them."
+            "Security-check (SCA) results are not included; ask with rule_group 'sca' to see them."
         )
     return ToolResult(
         summary=" ".join(parts),
