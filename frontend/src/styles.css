@@ -1548,6 +1548,11 @@ a {
   background: var(--agent-wash);
 }
 
+.pc-incidents tbody tr[data-open="true"]:focus-visible {
+  outline: 2px solid var(--agent);
+  outline-offset: -2px;
+}
+
 .advice {
   margin-top: 14px;
   display: grid;

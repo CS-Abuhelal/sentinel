@@ -22,7 +22,9 @@ type RunLoad =
   | { state: "ready"; run: IncidentRun };
 
 function initialTab(): Tab {
-  return new URLSearchParams(window.location.search).get("tab") === "incidents" ? "incidents" : "alerts";
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("incident")) return "incidents";
+  return params.get("tab") === "incidents" ? "incidents" : "alerts";
 }
 
 function initialIncidentId(): string | null {
@@ -218,6 +220,24 @@ function IncidentsPanel({
   onSelect: (incidentId: string) => void;
   onBack: () => void;
 }) {
+  const [retryState, setRetryState] = useState<Record<string, "busy" | "failed">>({});
+
+  const handleRetry = (targetId: string) => {
+    setRetryState((prev) => ({ ...prev, [targetId]: "busy" }));
+    retryIncident(targetId)
+      .then(() => {
+        setRetryState((prev) => {
+          if (!(targetId in prev)) return prev;
+          const next = { ...prev };
+          delete next[targetId];
+          return next;
+        });
+      })
+      .catch(() => {
+        setRetryState((prev) => ({ ...prev, [targetId]: "failed" }));
+      });
+  };
+
   if (incidentId) {
     return (
       <div>
@@ -259,7 +279,13 @@ function IncidentsPanel({
       </thead>
       <tbody>
         {feed.incidents.map((item) => (
-          <IncidentRow key={item.incident.incident_id} item={item} onSelect={onSelect} />
+          <IncidentRow
+            key={item.incident.incident_id}
+            item={item}
+            onSelect={onSelect}
+            retryStatus={retryState[item.incident.incident_id]}
+            onRetry={handleRetry}
+          />
         ))}
       </tbody>
     </table>
@@ -269,9 +295,13 @@ function IncidentsPanel({
 function IncidentRow({
   item,
   onSelect,
+  retryStatus,
+  onRetry,
 }: {
   item: PcIncidentSummary;
   onSelect: (incidentId: string) => void;
+  retryStatus: "busy" | "failed" | undefined;
+  onRetry: (incidentId: string) => void;
 }) {
   const { incident, classification, max_level, alert_count, recommendation_count } = item;
   const openable = classification !== null;
@@ -280,10 +310,24 @@ function IncidentRow({
       ? "Advice ready"
       : STATUS[incident.status];
 
+  const openRow = () => onSelect(incident.incident_id);
+
   return (
     <tr
       data-open={openable ? "true" : undefined}
-      onClick={openable ? () => onSelect(incident.incident_id) : undefined}
+      tabIndex={openable ? 0 : undefined}
+      aria-label={openable ? `Open the investigation of ${incident.title}` : undefined}
+      onClick={openable ? openRow : undefined}
+      onKeyDown={
+        openable
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                if (event.key === " ") event.preventDefault();
+                openRow();
+              }
+            }
+          : undefined
+      }
     >
       <td className="mono">{utc(incident.window_end)}</td>
       <td>
@@ -294,13 +338,23 @@ function IncidentRow({
             <button
               type="button"
               className="control control--quiet small"
+              disabled={retryStatus === "busy"}
               onClick={(event) => {
                 event.stopPropagation();
-                retryIncident(incident.incident_id).catch(() => {});
+                onRetry(incident.incident_id);
+              }}
+              onKeyDown={(event) => {
+                event.stopPropagation();
               }}
             >
-              Retry
+              {retryStatus === "busy" ? "Retrying…" : retryStatus === "failed" ? "Retry again" : "Retry"}
             </button>
+            {retryStatus === "failed" && (
+              <>
+                {" "}
+                <span className="small muted">Retry failed.</span>
+              </>
+            )}
           </>
         )}
       </td>
