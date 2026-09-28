@@ -1,10 +1,14 @@
-import { utc } from "../../format";
+import { fromWazuh, utc } from "../../format";
 import type { IncidentRun } from "../../types/contracts";
 
 export function Detection({ run }: { run: IncidentRun }) {
   return (
     <>
-      <p className="lede">Sigma rules evaluated over the events. {run.alerts.length} fired.</p>
+      <p className="lede">
+        {fromWazuh(run)
+          ? `Wazuh's rules raised these alerts on the PC. ${run.alerts.length} ${run.alerts.length === 1 ? "belongs" : "belong"} to this incident.`
+          : `Sigma rules evaluated over the events. ${run.alerts.length} fired.`}
+      </p>
       {run.alerts.map((alert) => (
         <div key={alert.alert_id} className="card">
           <div className="card-top">

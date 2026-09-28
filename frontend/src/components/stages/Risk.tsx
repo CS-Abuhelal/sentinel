@@ -1,13 +1,13 @@
 import { FACTOR } from "../../format";
 import type { RiskScore } from "../../types/contracts";
 
-export function Risk({ risk }: { risk: RiskScore }) {
+export function Risk({ risk, pc }: { risk: RiskScore; pc: boolean }) {
   const factors = Object.entries(risk.factors);
   const scored = factors.filter(([, points]) => points > 0);
   return (
     <>
       <p className="lede">
-        Scored from alert severity, the collected evidence and the lab inventory. The agent’s
+        Scored from alert severity, the collected evidence and the {pc ? "PC's" : "lab"} inventory. The agent’s
         verdict is not an input.
       </p>
       <div className="risk">
