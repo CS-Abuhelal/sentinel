@@ -12,11 +12,17 @@ import pipeline.worker as worker_module
 from agent.llm import Recording, ReplayClient
 from backend.app.incidents import get_run, incident_status, incident_summaries
 from backend.app.store import insert_alert
-from contracts.models import IncidentStatus, PolicyOutcome
+from contracts.models import (
+    Classification,
+    IncidentStatus,
+    InvestigationStopReason,
+    PolicyOutcome,
+)
 from pipeline.worker import main, model_state, pc_inventory, run_once
-from tests.conftest import make_wazuh_alert
+from tests.conftest import REPO, make_wazuh_alert
 
 NOW = datetime(2026, 9, 27, 12, 0, tzinfo=UTC)
+PC_RECORDING = REPO / "tests" / "data" / "pc_incident.qwen3-14b.json"
 BURST = {"rule_id": "60204", "level": 10, "techniques": ["T1110"],
          "description": "Multiple Windows Logon Failures"}
 
@@ -148,3 +154,27 @@ def test_main_survives_a_failing_cycle(
 def test_replay_needs_a_recording() -> None:
     with pytest.raises(SystemExit):
         main(["--once", "--llm", "replay"])
+
+
+def test_the_recorded_qwen_run_on_the_pc_replays(db: Engine) -> None:
+    for n in range(10):
+        _store(db, f"20.{n}", 20 + n)
+    _store(db, "20.99", 30, **BURST)
+    result = run_once(db, ReplayClient.from_file(PC_RECORDING), lambda: NOW, model_ready=True)
+    run = get_run(db, result["investigated"])
+    assert run is not None
+    verdict = run.verdict
+    assert verdict.stop_reason is InvestigationStopReason.VERDICT_REACHED
+    assert verdict.model_name == "ollama:qwen3:14b"
+    assert verdict.classification is Classification.BENIGN
+    assert [e.tool_name for e in run.evidence] == [
+        "rule_context",
+        "auth_history",
+        "related_alerts",
+        "process_activity",
+    ]
+    assert run.evidence[1].content["total_failures"] == 11
+    assert run.policy_decisions == []
+    assert run.executions == []
+    assert verdict.recommendations
+    assert all(advice.evidence_ids for advice in verdict.recommendations)
