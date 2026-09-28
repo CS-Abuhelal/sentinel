@@ -1,3 +1,4 @@
+import type { HostAssessment } from "./types/assessment";
 import type { IncidentRun } from "./types/contracts";
 import type { PcFeed } from "./types/pc";
 
@@ -36,5 +37,26 @@ export async function retryIncident(incidentId: string): Promise<void> {
   const response = await fetch(url, { method: "POST" });
   if (!response.ok) {
     throw new Error(`Got ${response.status} from ${url}.`);
+  }
+}
+
+export async function fetchAssessment(): Promise<HostAssessment | null> {
+  const url = "/api/pc/assessment";
+  const response = await fetch(url);
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`Got ${response.status} from ${url}.`);
+  }
+  return response.json();
+}
+
+export async function rescan(): Promise<void> {
+  const url = "/api/pc/rescan";
+  const response = await fetch(url, { method: "POST" });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(typeof body.detail === "string" ? body.detail : `Got ${response.status}.`);
   }
 }

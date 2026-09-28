@@ -4,6 +4,7 @@ import { fetchPcFeed, fetchPcRun, retryIncident } from "../api";
 import { STATUS, utc } from "../format";
 import type { IncidentRun } from "../types/contracts";
 import type { PcFeed, PcIncidentSummary, ServiceState } from "../types/pc";
+import { FixPanel } from "./FixPanel";
 import { RunDetail } from "./RunDetail";
 
 const POLL_MS = 5000;
@@ -13,7 +14,7 @@ type Load =
   | { state: "failed"; message: string; last: PcFeed | null }
   | { state: "ready"; feed: PcFeed };
 
-type Tab = "alerts" | "incidents";
+type Tab = "alerts" | "incidents" | "fixes";
 
 type RunLoad =
   | { state: "idle" }
@@ -24,7 +25,10 @@ type RunLoad =
 function initialTab(): Tab {
   const params = new URLSearchParams(window.location.search);
   if (params.get("incident")) return "incidents";
-  return params.get("tab") === "incidents" ? "incidents" : "alerts";
+  const tab = params.get("tab");
+  if (tab === "incidents") return "incidents";
+  if (tab === "fixes") return "fixes";
+  return "alerts";
 }
 
 function initialIncidentId(): string | null {
@@ -62,6 +66,7 @@ export function MyPc({ url }: { url: string }) {
     const params = new URLSearchParams();
     params.set("view", "pc");
     if (tab === "incidents") params.set("tab", "incidents");
+    if (tab === "fixes") params.set("tab", "fixes");
     if (incidentId) params.set("incident", incidentId);
     window.history.replaceState(null, "", `?${params.toString()}`);
   }, [tab, incidentId]);
@@ -117,6 +122,9 @@ export function MyPc({ url }: { url: string }) {
         <button type="button" aria-pressed={tab === "incidents"} onClick={() => selectTab("incidents")}>
           Incidents
         </button>
+        <button type="button" aria-pressed={tab === "fixes"} onClick={() => selectTab("fixes")}>
+          Fix these first
+        </button>
       </nav>
       {feed && tab === "alerts" && <AlertTable feed={feed} />}
       {feed && tab === "incidents" && (
@@ -128,6 +136,7 @@ export function MyPc({ url }: { url: string }) {
           onBack={() => setIncidentId(null)}
         />
       )}
+      {feed && tab === "fixes" && <FixPanel sync={feed.status.sync} />}
     </section>
   );
 }
@@ -139,6 +148,7 @@ function StatusBar({ feed }: { feed: PcFeed }) {
       <Service label="Wazuh API" state={status.wazuh_api} />
       <Service label="Backfill" state={status.backfill} />
       <Service label="AI model" state={status.model} />
+      <Service label="Weak-spot sync" state={status.sync} />
       <div>
         <dt>Alerts stored</dt>
         <dd className="mono">{status.alert_count}</dd>
