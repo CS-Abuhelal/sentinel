@@ -642,6 +642,9 @@
         },
         "model": {
           "$ref": "#/$defs/ServiceState"
+        },
+        "sync": {
+          "$ref": "#/$defs/ServiceState"
         }
       },
       "required": [
@@ -651,7 +654,8 @@
         "alert_count",
         "last_alert_at",
         "queue_length",
-        "model"
+        "model",
+        "sync"
       ],
       "title": "PcStatus",
       "type": "object"

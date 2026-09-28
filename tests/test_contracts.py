@@ -242,3 +242,13 @@ def test_inventory_knows_personal_hosts() -> None:
     assert inventory.is_personal("my-pc") is True
     assert inventory.is_personal("web") is False
     assert inventory.is_personal("unknown") is False
+
+
+def test_pc_status_defaults_to_not_synced() -> None:
+    status = PcStatus(
+        checked_at=datetime(2026, 9, 28, tzinfo=UTC),
+        wazuh_api=ServiceState(reachable=True),
+        backfill=ServiceState(reachable=True),
+        alert_count=0,
+    )
+    assert status.sync == ServiceState(reachable=False, detail="Not synced yet.")

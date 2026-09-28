@@ -15,6 +15,10 @@
     "model": {
       "reachable": true,
       "detail": "Ollama answered HTTP 200."
+    },
+    "sync": {
+      "reachable": true,
+      "detail": "Synced 2 open findings at 09:28:00 UTC."
     }
   },
   "alerts": [

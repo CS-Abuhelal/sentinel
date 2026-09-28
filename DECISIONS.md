@@ -6,6 +6,36 @@ Superseded entries are removed, and numbers are never reused.
 
 ---
 
+## D-15 — Weak spots: sources, fix steps and contracts 1.6.0 (2026-09-28)
+
+**Decision.**
+- The sync reads only the Wazuh indexer. Vulnerabilities come from
+  `wazuh-states-vulnerabilities-*`. Failed CIS checks are the newest SCA check alert per host,
+  policy and check in `wazuh-alerts-4.x-*`. The manager's own agent is skipped.
+- The backend runs the sync on start, every 6 hours and on `POST /api/pc/rescan`.
+- The worker writes fix steps for the top 10 open findings, one model call per finding, with the
+  finding's details in the message.
+- Advice is stored on the finding; the `HostAssessment` is built when it is requested.
+- Incident investigations gain `host_posture`.
+- Contracts 1.6.0 add `PcStatus.sync`.
+
+**Why.**
+- The spec's server-API route needed a second credential and TLS without the indexer's CA,
+  while the indexer already holds the same data. This was checked against the running Wazuh
+  4.14.8: 168 vulnerability states and every SCA check result.
+- Every fix needs the whole finding, so a `finding_details` tool round trip would add latency
+  without adding judgment. The tool-using agent stays where the next question depends on the
+  evidence: incidents.
+- Building the assessment on request avoids a second copy of the findings.
+
+**Consequence.**
+- No `assessments` table and no `finding_details` tool.
+- A vulnerability's "related alert" is a non-posture alert in the last 7 days whose process name
+  or log text mentions the package name; CIS findings have none.
+- Failed advice is retried after the next sync.
+
+---
+
 ## D-14 — The advice checker matches broad patterns and drops whole recommendations (2026-09-28)
 
 **Decision.** `policy/advice.py` matches any verb that switches a protection off (disable, turn
