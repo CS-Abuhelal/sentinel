@@ -73,6 +73,7 @@ def test_save_incident_upserts(db: Engine) -> None:
     queued = incident.model_copy(update={"status": IncidentStatus.QUEUED})
     save_incident(db, queued, "my-pc", "k", 3, 10, NOW)
     [summary] = incident_summaries(db)
+    assert summary.incident.updated_at == NOW
     assert (summary.alert_count, summary.max_level) == (3, 10)
     assert summary.incident.status is IncidentStatus.QUEUED
     assert incident_status(db, "inc_c") is IncidentStatus.QUEUED

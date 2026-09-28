@@ -108,6 +108,14 @@ def test_a_quiet_hour_starts_a_new_incident(db: Engine) -> None:
     assert len(incident_summaries(db)) == 2
 
 
+def test_an_alert_exactly_one_hour_later_joins_the_incident(db: Engine) -> None:
+    _store(db, "7.5", 0, hour=9)
+    _store(db, "7.6", 0, hour=10)
+    group_new_alerts(db, NOW)
+    [summary] = incident_summaries(db)
+    assert summary.alert_count == 2
+
+
 def test_a_serious_alert_promotes_a_low_priority_incident(db: Engine) -> None:
     _store(db, "8.1", 1)
     group_new_alerts(db, NOW)

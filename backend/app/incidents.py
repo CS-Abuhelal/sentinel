@@ -84,7 +84,7 @@ def save_incident(
         "last_alert_at": incident.window_end,
         "max_level": max_level,
         "alert_count": alert_count,
-        "incident": incident.model_dump(mode="json"),
+        "incident": incident.model_copy(update={"updated_at": now}).model_dump(mode="json"),
         "updated_at": now,
     }
     statement = (
