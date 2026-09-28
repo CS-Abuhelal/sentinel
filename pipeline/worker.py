@@ -9,12 +9,13 @@ from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-import httpx
-from sqlalchemy.engine import Engine
+from sqlalchemy import func, select
+from sqlalchemy.engine import Connection, Engine
 
 from agent.investigate import PC_PROMPT
 from agent.llm import LLMClient, RecordingClient, ReplayClient
 from agent.ollama import DEFAULT_MODEL, OllamaClient
+from agent.ollama import model_state as model_state
 from agent.tools import WAZUH_TOOLS
 from backend.app.db import get_engine
 from backend.app.incidents import (
@@ -35,7 +36,6 @@ from contracts.models import (
     Inventory,
     InvestigationStopReason,
     LiveAlert,
-    ServiceState,
 )
 from pipeline.grouping import group_new_alerts
 from pipeline.run import run_incident
@@ -43,6 +43,7 @@ from pipeline.run import run_incident
 logger = logging.getLogger(__name__)
 
 INTERVAL_SECONDS = 10
+WORKER_LOCK = 0x53454E54
 LOOKBACK = timedelta(days=30)
 
 
@@ -74,9 +75,9 @@ def investigate_next(
     if incident is None:
         return None
     incident_id = incident.incident_id
-    set_status(engine, incident_id, IncidentStatus.INVESTIGATING, now())
-    alerts = incident_alerts(engine, incident_id)
     try:
+        set_status(engine, incident_id, IncidentStatus.INVESTIGATING, now())
+        alerts = incident_alerts(engine, incident_id)
         host = alerts[0].event.host
         run = run_incident(
             f"pc-{incident_id}",
@@ -92,7 +93,7 @@ def investigate_next(
             runner_for=lambda _: None,
         )
     except Exception as error:
-        logger.warning("Investigation of %s failed: %s", incident_id, error)
+        logger.warning("Investigation of %s failed: %s", incident_id, error, exc_info=True)
         set_status(engine, incident_id, IncidentStatus.INVESTIGATION_FAILED, now())
         return incident_id
     if run.verdict.stop_reason is not InvestigationStopReason.VERDICT_REACHED:
@@ -101,19 +102,26 @@ def investigate_next(
     return incident_id
 
 
-def model_state(
-    base_url: str, model: str, transport: httpx.BaseTransport | None = None
-) -> ServiceState:
+def acquire_worker_lock(engine: Engine) -> Connection | None:
+    connection = engine.connect()
     try:
-        with httpx.Client(base_url=base_url, timeout=3.0, transport=transport) as client:
-            response = client.get("/api/tags")
-            response.raise_for_status()
-            names = {m.get("name") for m in response.json().get("models", [])}
-    except (httpx.HTTPError, ValueError) as error:
-        return ServiceState(reachable=False, detail=f"Ollama unreachable: {error}")
-    if model not in names:
-        return ServiceState(reachable=False, detail=f"Ollama is up but {model} is not pulled.")
-    return ServiceState(reachable=True, detail=f"Ollama has {model}.")
+        locked = connection.execute(select(func.pg_try_advisory_lock(WORKER_LOCK))).scalar_one()
+        connection.commit()
+    except Exception:
+        connection.close()
+        raise
+    if not locked:
+        connection.close()
+        return None
+    return connection
+
+
+def release_worker_lock(connection: Connection) -> None:
+    try:
+        connection.execute(select(func.pg_advisory_unlock(WORKER_LOCK)))
+        connection.commit()
+    finally:
+        connection.close()
 
 
 def run_once(
@@ -124,12 +132,14 @@ def run_once(
     return {"grouped": grouped, "investigated": investigated}
 
 
-def cycle(engine: Engine, args: argparse.Namespace) -> dict[str, object]:
-    if args.llm == "replay":
+def cycle(
+    engine: Engine, args: argparse.Namespace, ollama: LLMClient | None
+) -> dict[str, object]:
+    if ollama is None:
         base: LLMClient = ReplayClient.from_file(args.recording)
         ready = True
     else:
-        base = OllamaClient(model=args.model, base_url=args.ollama_url)
+        base = ollama
         state = model_state(args.ollama_url, args.model)
         ready = state.reachable
         if not ready:
@@ -168,21 +178,34 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--llm replay needs --recording")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     engine = get_engine()
+    ollama = (
+        OllamaClient(model=args.model, base_url=args.ollama_url) if args.llm == "ollama" else None
+    )
+    lock: Connection | None = None
     requeued = False
-    while True:
-        failed = False
-        try:
-            if not requeued:
-                for incident_id in unfinished_incidents(engine):
-                    requeue(engine, incident_id, utcnow())
-                requeued = True
-            cycle(engine, args)
-        except Exception:
-            logger.exception("Worker cycle failed; trying again in %s s.", args.interval)
-            failed = True
-        if args.once:
-            return 1 if failed else 0
-        time.sleep(args.interval)
+    try:
+        while True:
+            failed = False
+            try:
+                if lock is None:
+                    lock = acquire_worker_lock(engine)
+                    if lock is None:
+                        logger.error("Another worker is already running.")
+                        return 1
+                if not requeued:
+                    for incident_id in unfinished_incidents(engine):
+                        requeue(engine, incident_id, utcnow())
+                    requeued = True
+                cycle(engine, args, ollama)
+            except Exception:
+                logger.exception("Worker cycle failed; trying again in %s s.", args.interval)
+                failed = True
+            if args.once:
+                return 1 if failed else 0
+            time.sleep(args.interval)
+    finally:
+        if lock is not None:
+            release_worker_lock(lock)
 
 
 if __name__ == "__main__":

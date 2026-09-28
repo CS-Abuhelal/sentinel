@@ -7,6 +7,7 @@ from typing import Any
 import httpx
 
 from agent.llm import FinalAnswer, LLMResponse, Message, ToolCall, ToolSpec
+from contracts.models import ServiceState
 
 DEFAULT_URL = "http://localhost:11434"
 DEFAULT_MODEL = "qwen3:14b"
@@ -58,6 +59,21 @@ class OllamaClient:
                 arguments = _json_object(arguments) or {}
             return ToolCall(tool=str(function.get("name", "")), args=arguments)
         return FinalAnswer(payload=_json_object(str(message.get("content") or "")) or {})
+
+
+def model_state(
+    base_url: str, model: str, transport: httpx.BaseTransport | None = None
+) -> ServiceState:
+    try:
+        with httpx.Client(base_url=base_url, timeout=3.0, transport=transport) as client:
+            response = client.get("/api/tags")
+            response.raise_for_status()
+            names = {m.get("name") for m in response.json().get("models", [])}
+    except (httpx.HTTPError, ValueError) as error:
+        return ServiceState(reachable=False, detail=f"Ollama unreachable: {error}")
+    if model not in names:
+        return ServiceState(reachable=False, detail=f"Ollama is up but {model} is not pulled.")
+    return ServiceState(reachable=True, detail=f"Ollama has {model}.")
 
 
 def _messages(messages: list[Message]) -> list[dict[str, Any]]:

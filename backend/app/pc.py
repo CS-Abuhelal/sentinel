@@ -14,7 +14,7 @@ from backend.app.incidents import (
     queue_length,
     requeue,
 )
-from backend.app.probes import HttpProbe, get_model_probe, get_wazuh_probe
+from backend.app.probes import HttpProbe, ModelProbe, get_model_probe, get_wazuh_probe
 from backend.app.store import alert_count, latest_alerts, newest_alert_time
 from contracts.models import IncidentRun, IncidentStatus, PcFeed, PcStatus, ServiceState
 
@@ -31,7 +31,7 @@ def get_backfill_state(request: Request) -> ServiceState:
 def feed(
     engine: Annotated[Engine, Depends(get_engine)],
     probe: Annotated[HttpProbe, Depends(get_wazuh_probe)],
-    model: Annotated[HttpProbe, Depends(get_model_probe)],
+    model: Annotated[ModelProbe, Depends(get_model_probe)],
     backfill_state: Annotated[ServiceState, Depends(get_backfill_state)],
     limit: Annotated[int, Query(ge=1, le=1000)] = 200,
 ) -> PcFeed:

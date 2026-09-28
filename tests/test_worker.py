@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -17,9 +18,17 @@ from contracts.models import (
     IncidentStatus,
     InvestigationStopReason,
     PolicyOutcome,
+    ServiceState,
 )
 from pipeline.grouping import group_new_alerts
-from pipeline.worker import main, model_state, pc_inventory, run_once
+from pipeline.worker import (
+    acquire_worker_lock,
+    main,
+    model_state,
+    pc_inventory,
+    release_worker_lock,
+    run_once,
+)
 from tests.conftest import REPO, make_wazuh_alert
 
 NOW = datetime(2026, 9, 27, 12, 0, tzinfo=UTC)
@@ -193,3 +202,86 @@ def test_the_recorded_qwen_run_on_the_pc_replays(db: Engine) -> None:
     assert run.executions == []
     assert verdict.recommendations
     assert all(advice.evidence_ids for advice in verdict.recommendations)
+
+
+def test_a_failure_before_the_model_is_asked_marks_the_incident_failed(
+    db: Engine, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    _store(db, "17.1", 1, **BURST)
+
+    def broken(*args: object) -> list[object]:
+        raise RuntimeError("the alerts could not be read")
+
+    monkeypatch.setattr(worker_module, "incident_alerts", broken)
+    with caplog.at_level(logging.WARNING, logger="pipeline.worker"):
+        result = run_once(db, _model(FINAL), lambda: NOW, model_ready=True)
+    assert incident_status(db, result["investigated"]) is IncidentStatus.INVESTIGATION_FAILED
+    [record] = [r for r in caplog.records if "failed" in r.getMessage()]
+    assert record.exc_info is not None
+    assert "the alerts could not be read" in caplog.text
+
+
+def test_only_one_worker_holds_the_lock(
+    db: Engine,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    first = acquire_worker_lock(db)
+    assert first is not None
+    try:
+        assert acquire_worker_lock(db) is None
+        monkeypatch.setattr(worker_module, "get_engine", lambda: db)
+        argv = ["--once", "--llm", "replay", "--recording", str(_recording_file(tmp_path))]
+        with caplog.at_level(logging.ERROR, logger="pipeline.worker"):
+            assert main(argv) == 1
+        assert "Another worker is already running." in caplog.text
+    finally:
+        release_worker_lock(first)
+    second = acquire_worker_lock(db)
+    assert second is not None
+    release_worker_lock(second)
+    assert main(argv) == 0
+
+
+class StopWorker(Exception):
+    pass
+
+
+def test_the_ollama_client_is_built_once(
+    db: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    built: list[tuple[str, str]] = []
+    checks: list[str] = []
+    naps: list[float] = []
+
+    def client(model: str, base_url: str) -> object:
+        built.append((model, base_url))
+        return SimpleNamespace(model_name="fake")
+
+    def state(base_url: str, model: str) -> ServiceState:
+        checks.append(base_url)
+        return ServiceState(reachable=False, detail="Ollama unreachable: test")
+
+    def sleep(seconds: float) -> None:
+        naps.append(seconds)
+        if len(naps) == 3:
+            raise StopWorker
+
+    monkeypatch.setattr(worker_module, "get_engine", lambda: db)
+    monkeypatch.setattr(worker_module, "OllamaClient", client)
+    monkeypatch.setattr(worker_module, "model_state", state)
+    monkeypatch.setattr(worker_module, "time", SimpleNamespace(sleep=sleep))
+    with pytest.raises(StopWorker):
+        main(["--interval", "0", "--ollama-url", "http://ollama.test:11434"])
+    assert built == [("qwen3:14b", "http://ollama.test:11434")]
+    assert len(checks) == 3
+    second = acquire_worker_lock(db)
+    assert second is not None
+    release_worker_lock(second)
+
+
+def test_the_worker_re_exports_model_state() -> None:
+    from agent.ollama import model_state as shared
+
+    assert model_state is shared
