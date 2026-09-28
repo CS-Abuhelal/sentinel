@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 import httpx
 
-from backend.app.wazuh import WazuhApiProbe
+from backend.app.probes import HttpProbe as WazuhApiProbe
 
 
 class Clock:
@@ -65,3 +65,8 @@ def test_answer_is_cached_for_30_seconds() -> None:
     clock.now = 30.0
     probe.state()
     assert len(seen) == 2
+
+
+def test_the_model_probe_names_itself() -> None:
+    probe = WazuhApiProbe(url=None, name="Ollama", missing="OLLAMA_URL")
+    assert probe.state().detail == "OLLAMA_URL is not set."
