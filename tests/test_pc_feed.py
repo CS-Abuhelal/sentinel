@@ -10,10 +10,11 @@ from sqlalchemy.engine import Engine
 
 from backend.app.db import get_engine
 from backend.app.main import app
-from backend.app.pc import NOT_RUN, get_backfill_state
+from backend.app.pc import NOT_RUN, get_backfill_state, get_sync_runner
 from backend.app.probes import HttpProbe as WazuhApiProbe
 from backend.app.probes import ModelProbe, get_model_probe, get_wazuh_probe
 from backend.app.store import insert_alert
+from backend.app.sync import SyncRunner
 from contracts.models import PcFeed, ServiceState
 from tests.conftest import make_live_alert
 
@@ -27,6 +28,7 @@ def client(db: Engine) -> Iterator[TestClient]:
     app.dependency_overrides[get_wazuh_probe] = lambda: probe
     app.dependency_overrides[get_model_probe] = lambda: ModelProbe(base_url=None)
     app.dependency_overrides[get_backfill_state] = lambda: BACKFILLED
+    app.dependency_overrides[get_sync_runner] = lambda: SyncRunner(None)
     yield TestClient(app)
     app.dependency_overrides.clear()
 

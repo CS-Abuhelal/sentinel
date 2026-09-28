@@ -198,6 +198,7 @@ def test_startup_without_an_indexer_says_so(monkeypatch: pytest.MonkeyPatch) -> 
             )
     finally:
         del app.state.backfill
+        del app.state.sync
 
 
 def test_startup_with_a_broken_engine_reports_it(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -214,3 +215,4 @@ def test_startup_with_a_broken_engine_reports_it(monkeypatch: pytest.MonkeyPatch
             assert app.state.backfill.detail.startswith("Backfill failed")
     finally:
         del app.state.backfill
+        del app.state.sync
