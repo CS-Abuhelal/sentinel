@@ -251,6 +251,21 @@ a {
   background: var(--allow-wash);
 }
 
+.status--queued {
+  color: var(--agent);
+  background: var(--agent-wash);
+}
+
+.status--low_priority {
+  color: var(--ink-3);
+  background: var(--rule-soft);
+}
+
+.status--investigation_failed {
+  color: var(--deny);
+  background: var(--deny-wash);
+}
+
 .cls {
   font-family: var(--font-display);
   font-weight: 600;
@@ -1501,4 +1516,55 @@ a {
 
 .pc-alerts tr:last-child td {
   border-bottom: 0;
+}
+
+.pc-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.pc-tabs button {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.pc-tabs button[aria-pressed="true"] {
+  color: var(--ink);
+  border-color: var(--agent);
+  font-weight: 600;
+}
+
+.pc-incidents tbody tr[data-open="true"] {
+  cursor: pointer;
+}
+
+.pc-incidents tbody tr[data-open="true"]:hover td {
+  background: var(--agent-wash);
+}
+
+.advice {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.advice-item {
+  border-left: 3px solid var(--allow);
+  padding: 4px 0 4px 12px;
+}
+
+.advice-title {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.advice-item ol {
+  margin: 0;
+  padding-left: 20px;
 }

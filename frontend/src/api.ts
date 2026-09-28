@@ -21,3 +21,20 @@ export async function fetchPcFeed(url: string): Promise<PcFeed> {
   }
   return response.json();
 }
+
+export async function fetchPcRun(incidentId: string): Promise<IncidentRun> {
+  const url = `/api/pc/incidents/${encodeURIComponent(incidentId)}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Got ${response.status} from ${url}.`);
+  }
+  return response.json();
+}
+
+export async function retryIncident(incidentId: string): Promise<void> {
+  const url = `/api/pc/incidents/${encodeURIComponent(incidentId)}/retry`;
+  const response = await fetch(url, { method: "POST" });
+  if (!response.ok) {
+    throw new Error(`Got ${response.status} from ${url}.`);
+  }
+}
