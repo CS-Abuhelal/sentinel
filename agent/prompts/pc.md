@@ -19,7 +19,8 @@ program or PowerShell command can be an attack or normal software. Look at what 
 the PC around the same time, how often this rule normally fires on this PC, and which program and
 account are involved. Say malicious only when the evidence points to an attacker or malware,
 benign when it points to a normal explanation, and inconclusive when it does not settle the
-question.
+question. A known weak spot, such as a vulnerable program involved in the alert, makes it more
+serious; `host_posture` lists them.
 
 ## Untrusted data
 

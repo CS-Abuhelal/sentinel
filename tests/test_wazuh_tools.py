@@ -7,17 +7,29 @@ from pydantic import ValidationError
 
 from agent.tools import WAZUH_TOOLS
 from agent.tools.base import ToolContext
-from agent.tools.wazuh import MAX_HISTORY, PROCESS_ACTIVITY, RELATED_ALERTS, RULE_CONTEXT
-from contracts.models import EvidenceClass, LiveAlert
+from agent.tools.wazuh import (
+    HOST_POSTURE,
+    MAX_HISTORY,
+    PROCESS_ACTIVITY,
+    RELATED_ALERTS,
+    RULE_CONTEXT,
+)
+from contracts.models import EvidenceClass, Finding, LiveAlert
 from ingest.wazuh import is_posture, live_alert
 from pipeline.grouping import new_incident
-from tests.conftest import RECEIVED_AT, make_wazuh_alert
+from tests.conftest import RECEIVED_AT, make_finding, make_wazuh_alert
 
 
 class FakeHistory:
-    def __init__(self, alerts: list[LiveAlert], honours_posture: bool = True) -> None:
+    def __init__(
+        self,
+        alerts: list[LiveAlert],
+        honours_posture: bool = True,
+        findings: list[Finding] | None = None,
+    ) -> None:
         self._alerts = alerts
         self._honours_posture = honours_posture
+        self._findings = findings or []
         self.windows: list[tuple[datetime, datetime]] = []
         self.include_posture: list[bool] = []
 
@@ -46,6 +58,13 @@ class FakeHistory:
             for a in self._alerts
             if a.alert.rule_id == rule_id and start <= a.event.timestamp < end
         )
+
+    def findings(self, package: str | None) -> list[Finding]:
+        return [
+            f
+            for f in self._findings
+            if package is None or package.lower() in (f.package or "").lower()
+        ]
 
 
 def _context(history: FakeHistory | None, anchor: LiveAlert) -> ToolContext:
@@ -77,6 +96,7 @@ def test_wazuh_toolset() -> None:
         "related_alerts",
         "process_activity",
         "rule_context",
+        "host_posture",
     }
 
 
@@ -239,3 +259,25 @@ def test_parameters_are_bounded() -> None:
         RULE_CONTEXT.params.model_validate({"rule_id": "rm -rf"})
     with pytest.raises(ValidationError):
         PROCESS_ACTIVITY.params.model_validate({"process": ""})
+
+
+def test_host_posture_lists_open_weak_spots() -> None:
+    history = FakeHistory(
+        [BURST],
+        findings=[
+            make_finding("cve:CVE-2026-1:Google Chrome", priority=96, cve="CVE-2026-1",
+                         package="Google Chrome"),
+            make_finding("cve:CVE-2026-2:7-Zip", priority=45, cve="CVE-2026-2", package="7-Zip"),
+        ],
+    )
+    everything = HOST_POSTURE.run(HOST_POSTURE.params.model_validate({}), _context(history, BURST))
+    assert everything.content["open_findings"] == 2
+    assert [f["cve"] for f in everything.content["findings"]] == ["CVE-2026-1", "CVE-2026-2"]
+    assert "2 open weak spots" in everything.summary
+    chrome = HOST_POSTURE.run(
+        HOST_POSTURE.params.model_validate({"package": "chrome"}), _context(history, BURST)
+    )
+    assert [f["package"] for f in chrome.content["findings"]] == ["Google Chrome"]
+    assert HOST_POSTURE.evidence_class is EvidenceClass.ENTITY_CONTEXT
+    empty = HOST_POSTURE.run(HOST_POSTURE.params.model_validate({}), _context(None, BURST))
+    assert empty.content == {}

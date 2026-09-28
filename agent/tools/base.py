@@ -8,7 +8,7 @@ from typing import Any, Protocol
 from pydantic import BaseModel
 
 from agent.llm import ToolSpec
-from contracts.models import Event, EvidenceClass, Incident, LiveAlert
+from contracts.models import Event, EvidenceClass, Finding, Incident, LiveAlert
 
 
 class HostHistory(Protocol):
@@ -19,6 +19,8 @@ class HostHistory(Protocol):
     def rule_count(self, rule_id: str, start: datetime, end: datetime) -> int: ...
 
     def rule_sample(self, rule_id: str, preferred_alert_ids: list[str]) -> LiveAlert | None: ...
+
+    def findings(self, package: str | None) -> list[Finding]: ...
 
 
 @dataclass(frozen=True)

@@ -26,6 +26,7 @@ from contracts.models import (
     Classification,
     Event,
     EventCategory,
+    Finding,
     Incident,
     IncidentRun,
     IncidentStatus,
@@ -407,3 +408,8 @@ class StoreHistory:
         return rule_sample(
             self._engine, self._host, rule_id, preferred_alert_ids, self._since, self._until
         )
+
+    def findings(self, package: str | None) -> list[Finding]:
+        from backend.app.findings import open_findings
+
+        return open_findings(self._engine, self._host, package)
