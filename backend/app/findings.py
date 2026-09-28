@@ -84,7 +84,9 @@ def open_findings(engine: Engine, host: str, package: str | None = None) -> list
     table = findings_table
     statement = select(table.c.finding).where(table.c.host == host, table.c.status == OPEN)
     if package:
-        statement = statement.where(table.c.finding["package"].astext.ilike(f"%{package}%"))
+        statement = statement.where(
+            table.c.finding["package"].astext.ilike(f"%{_literal(package)}%", escape="\\")
+        )
     with engine.connect() as connection:
         rows = connection.execute(statement).all()
     return sorted((Finding.model_validate(row.finding) for row in rows), key=sort_key)
@@ -184,8 +186,12 @@ def last_successful_sync(engine: Engine) -> datetime | None:
         return connection.execute(statement).scalar_one()
 
 
+def _literal(text: str) -> str:
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def related_alert_count(engine: Engine, host: str, package: str, since: datetime) -> int:
-    pattern = f"%{package}%"
+    pattern = f"%{_literal(package)}%"
     statement = (
         select(func.count())
         .select_from(wazuh_alerts)
@@ -194,8 +200,8 @@ def related_alert_count(engine: Engine, host: str, package: str, since: datetime
             wazuh_alerts.c.alert_time >= since,
             not_(IS_POSTURE),
             or_(
-                wazuh_alerts.c.event["process"]["name"].astext.ilike(pattern),
-                wazuh_alerts.c.payload["full_log"].astext.ilike(pattern),
+                wazuh_alerts.c.event["process"]["name"].astext.ilike(pattern, escape="\\"),
+                wazuh_alerts.c.payload["full_log"].astext.ilike(pattern, escape="\\"),
             ),
         )
     )

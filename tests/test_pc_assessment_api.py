@@ -10,7 +10,7 @@ from sqlalchemy.engine import Engine
 from backend.app.db import get_engine
 from backend.app.findings import open_findings, set_advice, upsert_findings
 from backend.app.main import app
-from backend.app.pc import get_backfill_state
+from backend.app.pc import get_backfill_state, get_sync_runner
 from backend.app.probes import HttpProbe, ModelProbe, get_model_probe, get_wazuh_probe
 from backend.app.sync import SyncRunner
 from contracts.models import HostAssessment, PcFeed, Recommendation, ServiceState
@@ -26,8 +26,6 @@ def _broken() -> None:
 
 @pytest.fixture
 def client(db: Engine) -> Iterator[TestClient]:
-    from backend.app.pc import get_sync_runner
-
     RUNNER["current"] = SyncRunner(_broken, engine=lambda: db, clock=lambda: NOW)
     app.dependency_overrides[get_engine] = lambda: db
     app.dependency_overrides[get_wazuh_probe] = lambda: HttpProbe(url=None)

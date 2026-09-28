@@ -117,3 +117,19 @@ def test_related_alerts_match_the_package_and_skip_posture(db: Engine) -> None:
     assert related_alert_count(db, "my-pc", "7-Zip", since) == 1
     assert related_alert_count(db, "my-pc", "7-zip", since + timedelta(days=1)) == 0
     assert related_alert_count(db, "other-pc", "7-Zip", since) == 0
+
+
+def test_package_filters_match_wildcards_literally(db: Engine) -> None:
+    upsert_findings(
+        db,
+        "my-pc",
+        [
+            make_finding("plain", package="7-Zip"),
+            make_finding("under", package="node_modules/lodash"),
+            make_finding("pct", package="100% Tool"),
+        ],
+        NOW,
+    )
+    assert [f.key for f in open_findings(db, "my-pc", "_")] == ["under"]
+    assert [f.key for f in open_findings(db, "my-pc", "%")] == ["pct"]
+    assert related_alert_count(db, "my-pc", "%", datetime(2026, 9, 1, tzinfo=UTC)) == 0

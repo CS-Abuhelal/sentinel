@@ -208,6 +208,7 @@ def test_startup_with_a_broken_engine_reports_it(monkeypatch: pytest.MonkeyPatch
         raise RuntimeError("no database")
 
     monkeypatch.setattr("backend.app.main.get_engine", broken_engine)
+    monkeypatch.setattr("backend.app.sync.SyncRunner.every", lambda self, interval, stop: None)
     try:
         with TestClient(app):
             assert app.state.backfill.reachable is False

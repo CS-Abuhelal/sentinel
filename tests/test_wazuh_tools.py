@@ -281,3 +281,12 @@ def test_host_posture_lists_open_weak_spots() -> None:
     assert HOST_POSTURE.evidence_class is EvidenceClass.ENTITY_CONTEXT
     empty = HOST_POSTURE.run(HOST_POSTURE.params.model_validate({}), _context(None, BURST))
     assert empty.content == {}
+
+
+def test_host_posture_shows_at_most_fifteen() -> None:
+    many = [make_finding(f"k{n}", priority=90 - n, package="app") for n in range(20)]
+    result = HOST_POSTURE.run(
+        HOST_POSTURE.params.model_validate({}), _context(FakeHistory([BURST], findings=many), BURST)
+    )
+    assert result.content["open_findings"] == 20
+    assert len(result.content["findings"]) == 15
