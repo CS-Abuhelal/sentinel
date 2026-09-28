@@ -95,10 +95,11 @@ def make_wazuh_alert(
     hour: int = 9,
     process: str | None = None,
     command_line: str | None = None,
+    day: int = 27,
 ) -> tuple[LiveAlert, dict[str, Any]]:
     payload = wazuh_payload("logon_failure")
     payload["id"] = wazuh_id
-    payload["timestamp"] = f"2026-09-27T{hour:02d}:{minute:02d}:00.000+0000"
+    payload["timestamp"] = f"2026-09-{day:02d}T{hour:02d}:{minute:02d}:00.000+0000"
     payload["rule"]["id"] = rule_id
     payload["rule"]["level"] = level
     payload["rule"]["description"] = description

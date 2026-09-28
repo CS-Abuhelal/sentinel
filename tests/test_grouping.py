@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.engine import Engine
 
@@ -124,3 +124,34 @@ def test_a_serious_alert_promotes_a_low_priority_incident(db: Engine) -> None:
     [summary] = incident_summaries(db)
     assert (summary.alert_count, summary.max_level) == (2, 12)
     assert summary.incident.status is IncidentStatus.QUEUED
+
+
+def test_a_late_older_alert_widens_the_incident_backwards(db: Engine) -> None:
+    _store(db, "35.2", 30)
+    group_new_alerts(db, NOW)
+    _store(db, "35.1", 0)
+    group_new_alerts(db, NOW)
+    [summary] = incident_summaries(db)
+    assert summary.alert_count == 2
+    assert summary.incident.window_start == datetime(2026, 9, 27, 9, 0, tzinfo=UTC)
+    assert summary.incident.window_end == datetime(2026, 9, 27, 9, 30, tzinfo=UTC)
+
+
+def test_a_much_older_late_alert_starts_its_own_incident(db: Engine) -> None:
+    _store(db, "36.2", 30)
+    group_new_alerts(db, NOW)
+    _store(db, "36.1", 0, hour=7)
+    group_new_alerts(db, NOW)
+    assert sorted(s.alert_count for s in incident_summaries(db)) == [1, 1]
+
+
+def test_a_steady_trickle_is_cut_into_days(db: Engine) -> None:
+    for n in range(31):
+        minutes = n * 50
+        day, rest = divmod(minutes, 24 * 60)
+        _store(db, f"37.{n}", rest % 60, hour=rest // 60, day=27 + day)
+    group_new_alerts(db, NOW)
+    summaries = sorted(incident_summaries(db), key=lambda s: s.incident.window_start)
+    assert [s.alert_count for s in summaries] == [29, 2]
+    first = summaries[0].incident
+    assert first.window_end - first.window_start <= timedelta(hours=24)

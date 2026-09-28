@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from sqlalchemy.engine import Engine
 
 from backend.app.incidents import (
     find_open_incident,
     mark_grouped,
-    save_incident,
+    save_incident_and_mark,
     ungrouped_alerts,
 )
 from contracts.models import (
@@ -21,7 +21,6 @@ from contracts.models import (
 from ingest.wazuh import POSTURE_GROUPS as POSTURE_GROUPS
 from ingest.wazuh import is_posture as _payload_is_posture
 
-WINDOW = timedelta(minutes=60)
 INVESTIGATE_LEVEL = 7
 
 
@@ -59,6 +58,7 @@ def extend_incident(summary: PcIncidentSummary, live: LiveAlert) -> PcIncidentSu
     incident = summary.incident.model_copy(
         update={
             "status": triage(max_level),
+            "window_start": min(summary.incident.window_start, live.event.timestamp),
             "window_end": max(summary.incident.window_end, live.event.timestamp),
             "alert_ids": [*summary.incident.alert_ids, live.alert.alert_id],
             "entities": _entities(summary.incident.entities, live),
@@ -78,17 +78,23 @@ def group_new_alerts(engine: Engine, now: datetime) -> int:
             continue
         host = live.event.host
         key = group_key(live)
-        summary = find_open_incident(engine, host, key, live.event.timestamp - WINDOW)
+        summary = find_open_incident(engine, host, key, live.event.timestamp)
         if summary is None:
             summary = PcIncidentSummary(
                 incident=new_incident(live), alert_count=1, max_level=live.level
             )
         else:
             summary = extend_incident(summary, live)
-        save_incident(
-            engine, summary.incident, host, key, summary.alert_count, summary.max_level, now
+        save_incident_and_mark(
+            engine,
+            summary.incident,
+            host,
+            key,
+            summary.alert_count,
+            summary.max_level,
+            live.wazuh_id,
+            now,
         )
-        mark_grouped(engine, live.wazuh_id, summary.incident.incident_id, now)
     return handled
 
 

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from pydantic import TypeAdapter
 from sqlalchemy import ColumnElement, Text, cast, func, null, or_, select, type_coerce, update
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, array, insert
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, Insert, array, insert
 from sqlalchemy.engine import Engine
+from sqlalchemy.sql.dml import Update
 
 from backend.app.db import incidents, wazuh_alerts
 from backend.app.store import LIVE_COLUMNS, live_alert_from_row
@@ -23,6 +24,8 @@ from ingest.wazuh import POSTURE_GROUPS
 
 OPEN_STATUSES = (IncidentStatus.QUEUED.value, IncidentStatus.LOW_PRIORITY.value)
 HISTORY_LIMIT = 2000
+GROUP_WINDOW = timedelta(minutes=60)
+MAX_INCIDENT_SPAN = timedelta(hours=24)
 
 
 def ungrouped_alerts(engine: Engine, limit: int = 500) -> list[LiveAlert]:
@@ -36,18 +39,21 @@ def ungrouped_alerts(engine: Engine, limit: int = 500) -> list[LiveAlert]:
         return [live_alert_from_row(row) for row in connection.execute(statement)]
 
 
-def mark_grouped(engine: Engine, wazuh_id: str, incident_id: str | None, now: datetime) -> None:
-    statement = (
+def _mark_statement(wazuh_id: str, incident_id: str | None, now: datetime) -> Update:
+    return (
         update(wazuh_alerts)
         .where(wazuh_alerts.c.wazuh_id == wazuh_id)
         .values(grouped_at=now, incident_id=incident_id)
     )
+
+
+def mark_grouped(engine: Engine, wazuh_id: str, incident_id: str | None, now: datetime) -> None:
     with engine.begin() as connection:
-        connection.execute(statement)
+        connection.execute(_mark_statement(wazuh_id, incident_id, now))
 
 
 def find_open_incident(
-    engine: Engine, host: str, group_key: str, since: datetime
+    engine: Engine, host: str, group_key: str, at: datetime
 ) -> PcIncidentSummary | None:
     statement = (
         select(incidents.c.incident, incidents.c.alert_count, incidents.c.max_level)
@@ -55,7 +61,9 @@ def find_open_incident(
             incidents.c.host == host,
             incidents.c.group_key == group_key,
             incidents.c.status.in_(OPEN_STATUSES),
-            incidents.c.last_alert_at >= since,
+            incidents.c.last_alert_at >= at - GROUP_WINDOW,
+            incidents.c.first_alert_at <= at + GROUP_WINDOW,
+            incidents.c.first_alert_at >= at - MAX_INCIDENT_SPAN,
         )
         .order_by(incidents.c.last_alert_at.desc())
         .limit(1)
@@ -71,15 +79,14 @@ def find_open_incident(
     )
 
 
-def save_incident(
-    engine: Engine,
+def _save_statement(
     incident: Incident,
     host: str,
     group_key: str,
     alert_count: int,
     max_level: int,
     now: datetime,
-) -> None:
+) -> Insert:
     values = {
         "host": host,
         "group_key": group_key,
@@ -91,13 +98,43 @@ def save_incident(
         "incident": incident.model_copy(update={"updated_at": now}).model_dump(mode="json"),
         "updated_at": now,
     }
-    statement = (
+    return (
         insert(incidents)
         .values(incident_id=incident.incident_id, **values)
         .on_conflict_do_update(index_elements=[incidents.c.incident_id], set_=values)
     )
+
+
+def save_incident(
+    engine: Engine,
+    incident: Incident,
+    host: str,
+    group_key: str,
+    alert_count: int,
+    max_level: int,
+    now: datetime,
+) -> None:
     with engine.begin() as connection:
-        connection.execute(statement)
+        connection.execute(
+            _save_statement(incident, host, group_key, alert_count, max_level, now)
+        )
+
+
+def save_incident_and_mark(
+    engine: Engine,
+    incident: Incident,
+    host: str,
+    group_key: str,
+    alert_count: int,
+    max_level: int,
+    wazuh_id: str,
+    now: datetime,
+) -> None:
+    with engine.begin() as connection:
+        connection.execute(
+            _save_statement(incident, host, group_key, alert_count, max_level, now)
+        )
+        connection.execute(_mark_statement(wazuh_id, incident.incident_id, now))
 
 
 def next_queued_incident(engine: Engine) -> Incident | None:

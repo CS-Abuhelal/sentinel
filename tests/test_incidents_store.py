@@ -3,9 +3,11 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import pytest
 from sqlalchemy import insert
 from sqlalchemy.engine import Engine
 
+import backend.app.incidents as incidents_module
 from agent.tools.base import ToolContext
 from agent.tools.wazuh import MAX_HISTORY, RELATED_ALERTS, RULE_CONTEXT
 from backend.app.db import wazuh_alerts
@@ -25,6 +27,7 @@ from backend.app.incidents import (
     requeue,
     rule_count,
     save_incident,
+    save_incident_and_mark,
     save_run,
     set_status,
     unfinished_incidents,
@@ -111,12 +114,43 @@ def test_ungrouped_alerts_are_oldest_first_and_leave_once_grouped(db: Engine) ->
 def test_open_incident_lookup_respects_key_status_and_window(db: Engine) -> None:
     save_incident(db, _incident("inc_a", 5, IncidentStatus.LOW_PRIORITY), "my-pc", "k", 1, 5, NOW)
     save_incident(db, _incident("inc_b", 6, IncidentStatus.INVESTIGATING), "my-pc", "k", 1, 9, NOW)
-    since = datetime(2026, 9, 27, 9, 0, tzinfo=UTC)
-    found = find_open_incident(db, "my-pc", "k", since)
+    at = datetime(2026, 9, 27, 9, 30, tzinfo=UTC)
+    found = find_open_incident(db, "my-pc", "k", at)
     assert found is not None
     assert (found.incident.incident_id, found.alert_count, found.max_level) == ("inc_a", 1, 5)
-    assert find_open_incident(db, "my-pc", "other", since) is None
-    assert find_open_incident(db, "my-pc", "k", since + timedelta(minutes=30)) is None
+    assert find_open_incident(db, "my-pc", "other", at) is None
+    assert find_open_incident(db, "my-pc", "k", at + timedelta(minutes=36)) is None
+    assert find_open_incident(db, "my-pc", "k", at - timedelta(minutes=86)) is None
+    assert find_open_incident(db, "my-pc", "k", at - timedelta(minutes=85)) is not None
+
+
+def test_an_incident_spans_at_most_a_day(db: Engine) -> None:
+    long = _incident("inc_long", 5, IncidentStatus.LOW_PRIORITY).model_copy(
+        update={"window_end": datetime(2026, 9, 28, 9, 0, tzinfo=UTC)}
+    )
+    save_incident(db, long, "my-pc", "k", 30, 5, NOW)
+    assert find_open_incident(db, "my-pc", "k", datetime(2026, 9, 28, 9, 5, tzinfo=UTC))
+    assert find_open_incident(db, "my-pc", "k", datetime(2026, 9, 28, 9, 6, tzinfo=UTC)) is None
+
+
+def test_saving_and_marking_happen_together(
+    db: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _store(db, "34.1", 1)
+    [live] = ungrouped_alerts(db)
+    incident = _incident("inc_t", 1, IncidentStatus.LOW_PRIORITY)
+
+    def broken(*args: object) -> None:
+        raise RuntimeError("the marking failed")
+
+    monkeypatch.setattr(incidents_module, "_mark_statement", broken)
+    with pytest.raises(RuntimeError):
+        save_incident_and_mark(db, incident, "my-pc", "k", 1, 5, live.wazuh_id, NOW)
+    assert incident_summaries(db) == []
+    monkeypatch.undo()
+    save_incident_and_mark(db, incident, "my-pc", "k", 1, 5, live.wazuh_id, NOW)
+    assert ungrouped_alerts(db) == []
+    assert [a.wazuh_id for a in incident_alerts(db, "inc_t")] == ["34.1"]
 
 
 def test_save_incident_upserts(db: Engine) -> None:

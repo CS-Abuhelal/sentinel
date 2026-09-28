@@ -183,8 +183,9 @@ endpoints stay as they are.
 It runs in a loop every 10 seconds:
 
 1. **Group.** Each new alert joins the open incident with the same key if it came within 60
-   minutes of that incident's last alert. Otherwise it starts a new incident. The key is the host
-   plus the first MITRE technique, or the Wazuh rule id when there is none. Alerts in the `sca`
+   minutes of that incident's alerts (a late, older alert widens the window backwards) and the
+   incident would still span at most 24 hours. Otherwise it starts a new incident. The key is the
+   host plus the first MITRE technique, or the Wazuh rule id when there is none. Alerts in the `sca`
    or `vulnerability-detector` groups are weak spots, not incidents: they are marked as grouped
    without an incident and handled by phase 3.
 2. **Triage.** An incident whose highest alert level is below 7 gets `low_priority` and is not
