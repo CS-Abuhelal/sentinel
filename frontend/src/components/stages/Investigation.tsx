@@ -92,8 +92,8 @@ export function Investigation({ run, refs, phase }: Props) {
                   <Cites ids={advice.evidence_ids} refs={refs} />
                 </p>
                 <ol>
-                  {advice.steps.map((step) => (
-                    <li key={step}>{step}</li>
+                  {advice.steps.map((step, index) => (
+                    <li key={`${index}-${step}`}>{step}</li>
                   ))}
                 </ol>
                 {advice.dropped_steps.length > 0 && (

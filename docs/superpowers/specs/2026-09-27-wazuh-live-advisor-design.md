@@ -183,16 +183,16 @@ endpoints stay as they are.
 It runs in a loop every 10 seconds:
 
 1. **Group.** Each new alert joins the open incident with the same key if it came within 60
-   minutes of that incident's alerts (a late, older alert widens the window backwards) and the
-   incident would still span at most 24 hours. Otherwise it starts a new incident. The key is the
-   host plus the first MITRE technique, or the Wazuh rule id when there is none. Alerts in the `sca`
+   minutes of that incident's alerts (a late, older alert widens the window backwards) and at most
+   24 hours after its first alert. Otherwise it starts a new incident. The key is the host plus
+   the first MITRE technique, or the Wazuh rule id when there is none. Alerts in the `sca`
    or `vulnerability-detector` groups are weak spots, not incidents: they are marked as grouped
    without an incident and handled by phase 3.
 2. **Triage.** An incident whose highest alert level is below 7 gets `low_priority` and is not
    investigated. It stays visible. Anything else is `queued`.
 3. **Investigate.** If Ollama is reachable, the oldest queued incident is investigated with the
-   existing agent loop. The worker builds the inventory at runtime from the Wazuh agent list, and
-   every Wazuh host is `personal: true`. Nothing about the PC is committed.
+   existing agent loop. The worker builds the inventory at runtime from the incident's own hosts,
+   and every Wazuh host is `personal: true`. Nothing about the PC is committed.
 4. **Save.** The `IncidentRun`, including the audit chain, goes to `incidents.run`. On
    `invalid_output` or `tool_call_cap` without a verdict, the status becomes
    `investigation_failed`. `POST /api/pc/incidents/{id}/retry` puts it back in the queue.

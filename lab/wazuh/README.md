@@ -110,6 +110,47 @@ locked. Type any password when asked:
 Within about 10 seconds, `http://localhost:5173/?view=pc` shows `wazuh-60122` "Logon failure"
 alerts.
 
+## 6. AI investigations (phase 2)
+
+SENTINEL groups the alerts into incidents, and a local model investigates every incident of level
+7 or higher with read-only tools. It writes advice and never acts on the PC.
+
+1. Start Ollama with `qwen3:14b` (drop `--gpus all` if you have no NVIDIA GPU). If the container
+   already exists, `docker start ollama` is enough.
+
+   ```powershell
+   docker run -d --gpus all -p 11434:11434 -v ollama:/root/.ollama --name ollama ollama/ollama:0.34.4
+   docker exec ollama ollama pull qwen3:14b
+   ```
+
+2. Run the worker in one place only. Step 3 already starts it as the `worker` compose service. To
+   run it on the host instead, stop the service first:
+
+   ```powershell
+   docker compose -f docker-compose.yml -f docker-compose.wazuh.yml stop worker
+   $env:DATABASE_URL = "postgresql+psycopg://sentinel:sentinel_dev@127.0.0.1:5432/sentinel"
+   python -m pipeline.worker
+   ```
+
+   Never run both. The worker holds a database lock, so a second one logs "Another worker is
+   already running." and exits.
+
+3. `OLLAMA_URL` tells the worker and the live page's model status where Ollama is. In Docker it
+   defaults to `http://host.docker.internal:11434`, and on the host to `http://localhost:11434`.
+   Set it in `.env` only if Ollama runs somewhere else. The status bar shows the model as online
+   only when `qwen3:14b` is pulled.
+
+4. Trigger a burst of failed logons with the same fake user, so Wazuh raises "Multiple Windows
+   Logon Failures" (60204, level 10):
+
+   ```powershell
+   $c = [pscredential]::new("$env:COMPUTERNAME\sentinel-test-nobody", (ConvertTo-SecureString "wrong" -AsPlainText -Force)); 1..12 | ForEach-Object { try { Start-Process cmd -Credential $c -ErrorAction Stop } catch {} }
+   ```
+
+   Within a minute the **Incidents** tab shows a queued incident. After the model finishes (a
+   few minutes on `qwen3:14b`), it opens with the evidence, the verdict and the advice. A failed
+   investigation can be retried from the same page.
+
 ## Stopping and starting
 
 - **Stop Wazuh:** `docker compose down` in `wazuh-docker\single-node`. Your data is kept in
