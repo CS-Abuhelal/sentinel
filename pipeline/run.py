@@ -134,8 +134,9 @@ def run_incident(
         system_prompt=system_prompt,
         history=history,
     )
+    vetted = [vet(advice) for advice in verdict.recommendations]
     verdict = verdict.model_copy(
-        update={"recommendations": [vet(r) for r in verdict.recommendations]}
+        update={"recommendations": [advice for advice in vetted if advice is not None]}
     )
     risk = score_risk(incident, alerts, evidence, inventory, now())
     response = _respond(

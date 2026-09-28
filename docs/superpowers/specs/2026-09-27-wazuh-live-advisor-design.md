@@ -201,7 +201,8 @@ The worker runs as the `worker` service in `docker-compose.yml` and reaches Olla
 own system prompt (`agent/prompts/pc.md`): the model writes `recommendations` (advice the owner
 carries out) and leaves `proposed_actions` empty. Every recommendation must cite evidence, and the
 step checker (`policy/advice.py`, the deny-list under "Fix steps") drops any step that would weaken
-the PC's security before the run is saved.
+the PC's security before the run is saved. A recommendation whose title would weaken it is removed
+whole.
 
 ### New read-only tools (phase 2)
 
@@ -263,11 +264,12 @@ checker (`policy/advice.py`) before it is stored:
 - Every `CVE-\d{4}-\d+` it mentions must belong to a cited finding. If not, the recommendation is
   dropped.
 - Any step that matches the weakening deny-list is removed and recorded in `dropped_steps`. The
-  list is `Set-MpPreference\s+-Disable`, `DisableRealtimeMonitoring`,
-  `netsh\s+advfirewall\s+set\s+\S+\s+state\s+off`,
-  `(turn|switch)\s+off\s+(windows\s+)?(defender|firewall|antivirus)`,
-  `disable\s+(windows\s+)?(defender|firewall|uac|antivirus)`,
-  `Set-ExecutionPolicy\s+(Unrestricted|Bypass)`, and `bcdedit`. Matching is case-insensitive.
+  list is `WEAKENING` in `policy/advice.py`: turning off, pausing or removing Defender, the
+  firewall, antivirus, UAC, SmartScreen, real-time or tamper protection; UAC "never notify";
+  download-and-run commands (`iex`, `DownloadString`, `-EncodedCommand`, `certutil -urlcache`,
+  `bitsadmin /transfer`, piping into a shell); Defender exclusions; `Set-ExecutionPolicy
+  Unrestricted`; and `bcdedit`. Matching is case-insensitive. A recommendation whose title
+  matches is dropped whole.
 - At most 10 steps, each at most 300 characters.
 - For CIS findings, Wazuh's own remediation text is kept in `official_remediation` and shown
   beside the model's steps.
