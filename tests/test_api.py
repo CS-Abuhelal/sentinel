@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from backend.app.main import app
+from backend.app.main import allowed_hosts, app
 from contracts.models import IncidentRun
 from tests.conftest import REPO
 
@@ -56,3 +56,22 @@ def test_malformed_run_file_fails_loudly(client: TestClient, tmp_path: Path) -> 
 
 def test_health(client: TestClient) -> None:
     assert client.get("/health").json()["status"] == "ok"
+
+
+def test_unknown_host_headers_are_refused(client: TestClient) -> None:
+    assert client.get("/health", headers={"Host": "evil.test"}).status_code == 400
+    for host in ("127.0.0.1:8000", "localhost:5173", "backend:8000", "sentinel-backend:8000"):
+        assert client.get("/health", headers={"Host": host}).status_code == 200
+
+
+def test_allowed_hosts_come_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SENTINEL_ALLOWED_HOSTS", raising=False)
+    assert allowed_hosts() == [
+        "127.0.0.1",
+        "localhost",
+        "backend",
+        "sentinel-backend",
+        "testserver",
+    ]
+    monkeypatch.setenv("SENTINEL_ALLOWED_HOSTS", " my-pc.test , 127.0.0.1 ,")
+    assert allowed_hosts() == ["my-pc.test", "127.0.0.1"]

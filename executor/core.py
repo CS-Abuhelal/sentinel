@@ -120,6 +120,12 @@ def _run_on_host(
         return result(ExecutionStatus.REJECTED, f"{host!r} is not a valid host name.", host=host)
     if inventory.is_protected(EntityType.HOST, host):
         return result(ExecutionStatus.REJECTED, f"The host {host} is protected.", host=host)
+    if inventory.is_personal(host):
+        return result(
+            ExecutionStatus.REJECTED,
+            f"The host {host} is personal. SENTINEL only advises on it.",
+            host=host,
+        )
     runner = runner_for(host)
     if runner is None:
         return result(
