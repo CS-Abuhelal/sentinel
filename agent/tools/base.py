@@ -12,9 +12,13 @@ from contracts.models import Event, EvidenceClass, Incident, LiveAlert
 
 
 class HostHistory(Protocol):
-    def alerts(self, start: datetime, end: datetime) -> list[LiveAlert]: ...
+    def alerts(
+        self, start: datetime, end: datetime, include_posture: bool = False
+    ) -> list[LiveAlert]: ...
 
     def rule_count(self, rule_id: str, start: datetime, end: datetime) -> int: ...
+
+    def rule_sample(self, rule_id: str, preferred_alert_ids: list[str]) -> LiveAlert | None: ...
 
 
 @dataclass(frozen=True)

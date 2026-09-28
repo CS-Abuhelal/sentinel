@@ -14,6 +14,7 @@ MAX_RULES = 25
 MAX_MATCHES = 25
 MAX_SOURCES = 200
 MAX_DETAIL_CHARS = 600
+MAX_HISTORY = 2000
 NO_HISTORY = ToolResult(
     summary="There is no alert history for this host.", content={}, source_event_ids=[]
 )
@@ -42,7 +43,12 @@ def related_alerts(params: RelatedAlertsParams, context: ToolContext) -> ToolRes
         return NO_HISTORY
     incident = context.incident
     span = timedelta(hours=params.hours)
-    alerts = context.history.alerts(incident.window_start - span, incident.window_end + span)
+    alerts = context.history.alerts(
+        incident.window_start - span,
+        incident.window_end + span,
+        include_posture=bool(params.rule_group),
+    )
+    truncated = len(alerts) >= MAX_HISTORY
     if params.rule_group:
         alerts = [a for a in alerts if params.rule_group in _groups(a)]
         posture_alerts_skipped = 0
@@ -75,6 +81,7 @@ def related_alerts(params: RelatedAlertsParams, context: ToolContext) -> ToolRes
         "total_alerts": len(alerts),
         "rules": ordered,
         "posture_alerts_skipped": posture_alerts_skipped,
+        "truncated": truncated,
     }
     parts = [
         f"{len(alerts)} alerts on the host within {params.hours} h of the incident."
@@ -99,11 +106,10 @@ def process_activity(params: ProcessActivityParams, context: ToolContext) -> Too
     incident = context.incident
     span = timedelta(hours=params.hours)
     needle = params.process.lower()
+    alerts = context.history.alerts(incident.window_start - span, incident.window_end + span)
     matches = [
         live
-        for live in context.history.alerts(
-            incident.window_start - span, incident.window_end + span
-        )
+        for live in alerts
         if any(needle in (value or "").lower() for value in _process_fields(live))
     ]
     entries = [
@@ -125,7 +131,12 @@ def process_activity(params: ProcessActivityParams, context: ToolContext) -> Too
             f"{len(matches)} alerts within {params.hours} h of the incident involve a "
             f"process matching {params.process!r}."
         ),
-        content={"process": params.process, "hours": params.hours, "matches": entries},
+        content={
+            "process": params.process,
+            "hours": params.hours,
+            "matches": entries,
+            "truncated": len(alerts) >= MAX_HISTORY,
+        },
         source_event_ids=[live.event.event_id for live in matches][:MAX_SOURCES],
     )
 
@@ -143,14 +154,7 @@ def rule_context(params: RuleContextParams, context: ToolContext) -> ToolResult:
     baseline_start = incident.window_start - timedelta(days=BASELINE_DAYS)
     in_window = context.history.rule_count(rule_id, incident.window_start, window_end)
     before = context.history.rule_count(rule_id, baseline_start, incident.window_start)
-    sample = next(
-        (
-            live
-            for live in context.history.alerts(baseline_start, window_end)
-            if live.alert.rule_id == rule_id
-        ),
-        None,
-    )
+    sample = context.history.rule_sample(rule_id, incident.alert_ids)
     content = {
         "rule_id": rule_id,
         "description": sample.alert.rule_name if sample else None,

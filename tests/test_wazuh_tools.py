@@ -7,21 +7,38 @@ from pydantic import ValidationError
 
 from agent.tools import WAZUH_TOOLS
 from agent.tools.base import ToolContext
-from agent.tools.wazuh import PROCESS_ACTIVITY, RELATED_ALERTS, RULE_CONTEXT
+from agent.tools.wazuh import MAX_HISTORY, PROCESS_ACTIVITY, RELATED_ALERTS, RULE_CONTEXT
 from contracts.models import EvidenceClass, LiveAlert
-from ingest.wazuh import live_alert
+from ingest.wazuh import is_posture, live_alert
 from pipeline.grouping import new_incident
 from tests.conftest import RECEIVED_AT, make_wazuh_alert
 
 
 class FakeHistory:
-    def __init__(self, alerts: list[LiveAlert]) -> None:
+    def __init__(self, alerts: list[LiveAlert], honours_posture: bool = True) -> None:
         self._alerts = alerts
+        self._honours_posture = honours_posture
         self.windows: list[tuple[datetime, datetime]] = []
+        self.include_posture: list[bool] = []
 
-    def alerts(self, start: datetime, end: datetime) -> list[LiveAlert]:
+    def alerts(
+        self, start: datetime, end: datetime, include_posture: bool = False
+    ) -> list[LiveAlert]:
         self.windows.append((start, end))
-        return [a for a in self._alerts if start <= a.event.timestamp <= end]
+        self.include_posture.append(include_posture)
+        skip_posture = self._honours_posture and not include_posture
+        return [
+            a
+            for a in self._alerts
+            if start <= a.event.timestamp <= end
+            and not (skip_posture and is_posture(a.event.raw))
+        ]
+
+    def rule_sample(self, rule_id: str, preferred_alert_ids: list[str]) -> LiveAlert | None:
+        matches = [a for a in self._alerts if a.alert.rule_id == rule_id]
+        own = [a for a in matches if a.alert.alert_id in preferred_alert_ids]
+        pool = own or matches
+        return max(pool, key=lambda a: a.event.timestamp) if pool else None
 
     def rule_count(self, rule_id: str, start: datetime, end: datetime) -> int:
         return sum(
@@ -85,6 +102,16 @@ def test_related_alerts_skips_posture_alerts_by_default() -> None:
     params = RELATED_ALERTS.params.model_validate({"hours": 1})
     result = RELATED_ALERTS.run(params, _context(POSTURE_HISTORY, BURST))
     rule_ids = {entry["rule_id"] for entry in result.content["rules"]}
+    assert POSTURE_HISTORY.include_posture[-1] is False
+    assert "wazuh-19007" not in rule_ids
+    assert result.content["total_alerts"] == 7
+
+
+def test_related_alerts_still_drops_posture_alerts_the_history_returns() -> None:
+    history = FakeHistory([BURST, *(a for a, _ in FAILS), SHELL, OLD, SCA], honours_posture=False)
+    params = RELATED_ALERTS.params.model_validate({"hours": 1})
+    result = RELATED_ALERTS.run(params, _context(history, BURST))
+    rule_ids = {entry["rule_id"] for entry in result.content["rules"]}
     assert "wazuh-19007" not in rule_ids
     assert result.content["posture_alerts_skipped"] == 1
     assert result.content["total_alerts"] == 7
@@ -95,8 +122,19 @@ def test_related_alerts_can_still_ask_for_posture_alerts() -> None:
     params = RELATED_ALERTS.params.model_validate({"hours": 1, "rule_group": "sca"})
     result = RELATED_ALERTS.run(params, _context(POSTURE_HISTORY, BURST))
     rule_ids = {entry["rule_id"] for entry in result.content["rules"]}
+    assert POSTURE_HISTORY.include_posture[-1] is True
     assert "wazuh-19007" in rule_ids
     assert result.content["posture_alerts_skipped"] == 0
+
+
+def test_history_tools_say_when_the_history_was_cut_off() -> None:
+    params = RELATED_ALERTS.params.model_validate({"hours": 1})
+    assert RELATED_ALERTS.run(params, _context(HISTORY, BURST)).content["truncated"] is False
+    full = FakeHistory([SHELL] * MAX_HISTORY)
+    assert RELATED_ALERTS.run(params, _context(full, BURST)).content["truncated"] is True
+    process = PROCESS_ACTIVITY.params.model_validate({"process": "powershell.exe"})
+    assert PROCESS_ACTIVITY.run(process, _context(HISTORY, BURST)).content["truncated"] is False
+    assert PROCESS_ACTIVITY.run(process, _context(full, BURST)).content["truncated"] is True
 
 
 def test_process_activity_matches_name_case_insensitively() -> None:
@@ -119,6 +157,26 @@ def test_rule_context_compares_with_the_baseline() -> None:
     assert content["fired_in_incident_window"] == 1
     assert content["fired_in_previous_30_days"] == 1
     assert RULE_CONTEXT.evidence_class is EvidenceClass.BASELINE_COMPARISON
+
+
+def test_rule_context_describes_the_incident_s_own_alert() -> None:
+    older, payload = make_wazuh_alert(
+        "9.50", 10, rule_id="60204", description="An older wording", hour=2
+    )
+    payload["full_log"] = "The older alert's text."
+    older = live_alert(payload, received_at=RECEIVED_AT)
+    own, payload = make_wazuh_alert(
+        "9.51", 10, level=10, rule_id="60204", description="Multiple Windows Logon Failures"
+    )
+    payload["full_log"] = "The incident's own text."
+    own = live_alert(payload, received_at=RECEIVED_AT)
+    newer = make_wazuh_alert("9.52", 50, rule_id="60204", description="A newer wording")[0]
+    history = FakeHistory([older, own, newer])
+    params = RULE_CONTEXT.params.model_validate({"rule_id": "60204"})
+    result = RULE_CONTEXT.run(params, _context(history, own))
+    assert result.content["description"] == "Multiple Windows Logon Failures"
+    assert result.content["example"] == "The incident's own text."
+    assert result.source_event_ids == [own.event.event_id]
 
 
 def test_rule_context_example_is_none_without_a_sample() -> None:

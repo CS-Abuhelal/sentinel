@@ -19,7 +19,7 @@ from agent.tools import WAZUH_TOOLS
 from backend.app.db import get_engine
 from backend.app.incidents import (
     StoreHistory,
-    host_alerts,
+    host_auth_events,
     incident_alerts,
     next_queued_incident,
     requeue,
@@ -29,7 +29,6 @@ from backend.app.incidents import (
 )
 from contracts.models import (
     Event,
-    EventCategory,
     HostRecord,
     Incident,
     IncidentStatus,
@@ -44,7 +43,7 @@ from pipeline.run import run_incident
 logger = logging.getLogger(__name__)
 
 INTERVAL_SECONDS = 10
-AUTH_LOOKBACK = timedelta(days=30)
+LOOKBACK = timedelta(days=30)
 
 
 def utcnow() -> datetime:
@@ -59,13 +58,12 @@ def investigation_events(
     engine: Engine, incident: Incident, alerts: list[LiveAlert]
 ) -> list[Event]:
     host = alerts[0].event.host
-    history = host_alerts(
-        engine, host, incident.window_start - AUTH_LOOKBACK, incident.window_end
+    history = host_auth_events(
+        engine, host, incident.window_start - LOOKBACK, incident.window_end
     )
     events = {a.event.event_id: a.event for a in alerts}
-    for live in history:
-        if live.event.category is EventCategory.AUTHENTICATION:
-            events.setdefault(live.event.event_id, live.event)
+    for event in history:
+        events.setdefault(event.event_id, event)
     return sorted(events.values(), key=lambda e: (e.timestamp, e.event_id))
 
 
@@ -90,7 +88,7 @@ def investigate_next(
             now=now,
             tools=WAZUH_TOOLS,
             system_prompt=PC_PROMPT,
-            history=StoreHistory(engine, host),
+            history=StoreHistory(engine, host, incident.window_start - LOOKBACK),
             runner_for=lambda _: None,
         )
     except Exception as error:

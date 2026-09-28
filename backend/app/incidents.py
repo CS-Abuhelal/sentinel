@@ -3,20 +3,23 @@ from __future__ import annotations
 from datetime import datetime
 
 from pydantic import TypeAdapter
-from sqlalchemy import func, null, select, type_coerce, update
-from sqlalchemy.dialects.postgresql import JSONB, insert
+from sqlalchemy import ColumnElement, Text, cast, func, null, or_, select, type_coerce, update
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, array, insert
 from sqlalchemy.engine import Engine
 
 from backend.app.db import incidents, wazuh_alerts
 from backend.app.store import LIVE_COLUMNS, live_alert_from_row
 from contracts.models import (
     Classification,
+    Event,
+    EventCategory,
     Incident,
     IncidentRun,
     IncidentStatus,
     LiveAlert,
     PcIncidentSummary,
 )
+from ingest.wazuh import POSTURE_GROUPS
 
 OPEN_STATUSES = (IncidentStatus.QUEUED.value, IncidentStatus.LOW_PRIORITY.value)
 HISTORY_LIMIT = 2000
@@ -163,21 +166,74 @@ def incident_alerts(engine: Engine, incident_id: str) -> list[LiveAlert]:
         return [live_alert_from_row(row) for row in connection.execute(statement)]
 
 
+def _host_window(host: str, start: datetime, end: datetime) -> list[ColumnElement[bool]]:
+    return [
+        wazuh_alerts.c.agent_name == host,
+        wazuh_alerts.c.alert_time >= start,
+        wazuh_alerts.c.alert_time <= end,
+    ]
+
+
+NEWEST_FIRST = (wazuh_alerts.c.alert_time.desc(), wazuh_alerts.c.wazuh_id.desc())
+IS_POSTURE = func.coalesce(
+    wazuh_alerts.c.payload["rule"]["groups"].has_any(
+        cast(array(sorted(POSTURE_GROUPS)), ARRAY(Text))
+    ),
+    False,
+)
+
+
 def host_alerts(
-    engine: Engine, host: str, start: datetime, end: datetime, limit: int = HISTORY_LIMIT
+    engine: Engine,
+    host: str,
+    start: datetime,
+    end: datetime,
+    limit: int = HISTORY_LIMIT,
+    include_posture: bool = False,
 ) -> list[LiveAlert]:
+    conditions = _host_window(host, start, end)
+    if not include_posture:
+        conditions.append(~IS_POSTURE)
+    statement = select(*LIVE_COLUMNS).where(*conditions).order_by(*NEWEST_FIRST).limit(limit)
+    with engine.connect() as connection:
+        rows = connection.execute(statement).all()
+    return [live_alert_from_row(row) for row in reversed(rows)]
+
+
+def host_auth_events(
+    engine: Engine, host: str, start: datetime, end: datetime, limit: int = HISTORY_LIMIT
+) -> list[Event]:
+    statement = (
+        select(wazuh_alerts.c.event)
+        .where(
+            *_host_window(host, start, end),
+            wazuh_alerts.c.event["category"].astext == EventCategory.AUTHENTICATION.value,
+        )
+        .order_by(*NEWEST_FIRST)
+        .limit(limit)
+    )
+    with engine.connect() as connection:
+        rows = connection.execute(statement).all()
+    return [Event.model_validate(row.event) for row in reversed(rows)]
+
+
+def rule_sample(
+    engine: Engine, host: str, rule_id: str, preferred_alert_ids: list[str], since: datetime
+) -> LiveAlert | None:
+    own = wazuh_alerts.c.alert["alert_id"].astext.in_(preferred_alert_ids)
     statement = (
         select(*LIVE_COLUMNS)
         .where(
             wazuh_alerts.c.agent_name == host,
-            wazuh_alerts.c.alert_time >= start,
-            wazuh_alerts.c.alert_time <= end,
+            wazuh_alerts.c.rule_id == rule_id,
+            or_(own, wazuh_alerts.c.alert_time >= since),
         )
-        .order_by(wazuh_alerts.c.alert_time, wazuh_alerts.c.wazuh_id)
-        .limit(limit)
+        .order_by(own.desc(), *NEWEST_FIRST)
+        .limit(1)
     )
     with engine.connect() as connection:
-        return [live_alert_from_row(row) for row in connection.execute(statement)]
+        row = connection.execute(statement).first()
+    return None if row is None else live_alert_from_row(row)
 
 
 def rule_count(engine: Engine, host: str, rule_id: str, start: datetime, end: datetime) -> int:
@@ -268,12 +324,20 @@ def unfinished_incidents(engine: Engine) -> list[str]:
 
 
 class StoreHistory:
-    def __init__(self, engine: Engine, host: str) -> None:
+    def __init__(self, engine: Engine, host: str, since: datetime) -> None:
         self._engine = engine
         self._host = host
+        self._since = since
 
-    def alerts(self, start: datetime, end: datetime) -> list[LiveAlert]:
-        return host_alerts(self._engine, self._host, start, end)
+    def alerts(
+        self, start: datetime, end: datetime, include_posture: bool = False
+    ) -> list[LiveAlert]:
+        return host_alerts(
+            self._engine, self._host, start, end, include_posture=include_posture
+        )
 
     def rule_count(self, rule_id: str, start: datetime, end: datetime) -> int:
         return rule_count(self._engine, self._host, rule_id, start, end)
+
+    def rule_sample(self, rule_id: str, preferred_alert_ids: list[str]) -> LiveAlert | None:
+        return rule_sample(self._engine, self._host, rule_id, preferred_alert_ids, self._since)
