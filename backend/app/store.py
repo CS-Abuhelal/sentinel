@@ -10,6 +10,24 @@ from sqlalchemy.engine import Engine
 from backend.app.db import wazuh_alerts
 from contracts.models import Alert, Event, LiveAlert
 
+LIVE_COLUMNS = (
+    wazuh_alerts.c.wazuh_id,
+    wazuh_alerts.c.received_at,
+    wazuh_alerts.c.level,
+    wazuh_alerts.c.event,
+    wazuh_alerts.c.alert,
+)
+
+
+def live_alert_from_row(row: Any) -> LiveAlert:
+    return LiveAlert(
+        wazuh_id=row.wazuh_id,
+        received_at=row.received_at,
+        level=row.level,
+        event=Event.model_validate(row.event),
+        alert=Alert.model_validate(row.alert),
+    )
+
 
 def insert_alert(engine: Engine, live: LiveAlert, payload: dict[str, Any]) -> bool:
     statement = (
@@ -34,28 +52,12 @@ def insert_alert(engine: Engine, live: LiveAlert, payload: dict[str, Any]) -> bo
 
 def latest_alerts(engine: Engine, limit: int) -> list[LiveAlert]:
     statement = (
-        select(
-            wazuh_alerts.c.wazuh_id,
-            wazuh_alerts.c.received_at,
-            wazuh_alerts.c.level,
-            wazuh_alerts.c.event,
-            wazuh_alerts.c.alert,
-        )
+        select(*LIVE_COLUMNS)
         .order_by(wazuh_alerts.c.alert_time.desc(), wazuh_alerts.c.wazuh_id.desc())
         .limit(limit)
     )
     with engine.connect() as connection:
-        rows = connection.execute(statement).all()
-    return [
-        LiveAlert(
-            wazuh_id=row.wazuh_id,
-            received_at=row.received_at,
-            level=row.level,
-            event=Event.model_validate(row.event),
-            alert=Alert.model_validate(row.alert),
-        )
-        for row in rows
-    ]
+        return [live_alert_from_row(row) for row in connection.execute(statement)]
 
 
 def alert_count(engine: Engine) -> int:
