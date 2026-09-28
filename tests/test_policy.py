@@ -11,6 +11,9 @@ from contracts.models import (
     Entity,
     EntityType,
     EvaluationArm,
+    HostRecord,
+    Incident,
+    Inventory,
     InvestigationStopReason,
     PolicyOutcome,
     ProposedAction,
@@ -185,3 +188,54 @@ def test_targets_outside_the_inventory_are_denied(s1) -> None:
             PolicyOutcome.DENY,
             "target_not_in_inventory",
         )
+
+
+PC_INVENTORY = Inventory(hosts={"my-pc": HostRecord(role="monitored PC", personal=True)})
+PC_INCIDENT = Incident(
+    incident_id="inc_pc",
+    title="Logon failures on my-pc",
+    created_at=NOW,
+    window_start=NOW,
+    window_end=NOW,
+    alert_ids=["alr_pc"],
+    entities=[
+        Entity(entity_type=HOST, value="my-pc"),
+        Entity(entity_type=ACCOUNT, value="sentinel-test-nobody"),
+    ],
+)
+
+
+@pytest.mark.parametrize(
+    ("action_type", "target_type", "value"),
+    [
+        (ActionType.ISOLATE_HOST, HOST, "my-pc"),
+        (ActionType.DISABLE_ACCOUNT, ACCOUNT, "sentinel-test-nobody"),
+        (ActionType.BLOCK_IP, EntityType.IP_ADDRESS, "127.0.0.1"),
+    ],
+)
+def test_nothing_runs_on_a_personal_host(
+    action_type: ActionType, target_type: EntityType, value: str
+) -> None:
+    decision = decide(
+        _action(action_type, target_type, value),
+        _verdict("inc_pc", MALICIOUS),
+        PC_INCIDENT,
+        _risk("inc_pc", 95),
+        PC_INVENTORY,
+        NOW,
+    )
+    assert decision.outcome is PolicyOutcome.DENY
+    assert decision.matched_rule == "personal_host_advice_only"
+    assert decision.reason == "Advice only: SENTINEL never acts on your own PC."
+
+
+def test_no_action_on_a_personal_host_is_still_allowed() -> None:
+    decision = decide(
+        _action(ActionType.NO_ACTION, HOST, "my-pc"),
+        _verdict("inc_pc", Classification.BENIGN),
+        PC_INCIDENT,
+        _risk("inc_pc", 10),
+        PC_INVENTORY,
+        NOW,
+    )
+    assert (decision.outcome, decision.matched_rule) == (PolicyOutcome.ALLOW, "no_action")

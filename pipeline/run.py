@@ -9,15 +9,19 @@ from pathlib import Path
 
 import yaml
 
-from agent.investigate import investigate
+from agent.investigate import SYSTEM_PROMPT, investigate
 from agent.llm import LLMClient, RecordingClient, ReplayClient
 from agent.ollama import DEFAULT_MODEL, DEFAULT_URL, OllamaClient
+from agent.tools import TOOLS, Tool
+from agent.tools.base import HostHistory
 from contracts.models import (
     ActionType,
+    Alert,
     Approval,
     AuditKind,
     AuditRecord,
     Classification,
+    Event,
     ExecutionResult,
     ExecutionStatus,
     Incident,
@@ -37,6 +41,7 @@ from executor.audit import AuditLog, verify_chain
 from executor.core import RunnerFor, execute
 from executor.runners import DockerRunner, DryRunRunner
 from ingest.linux_auth import parse_auth_log
+from policy.advice import vet
 from policy.engine import decide
 from policy.risk import score_risk
 
@@ -85,10 +90,54 @@ def run_pipeline(
     if len(incidents) != 1:
         raise ValueError(f"expected exactly one incident for {case_id}, found {len(incidents)}")
     [incident] = incidents
-    incident_alerts = [a for a in alerts if a.alert_id in incident.alert_ids]
+    run = run_incident(
+        case_id,
+        events,
+        [a for a in alerts if a.alert_id in incident.alert_ids],
+        incident,
+        inventory,
+        llm,
+        now=now,
+        scenario=scenario,
+        approvals=approvals,
+        approval_source=approval_source,
+        runner_for=runner_for,
+    )
+    return run.model_copy(update={"alerts": alerts})
+
+
+def run_incident(
+    case_id: str,
+    events: list[Event],
+    alerts: list[Alert],
+    incident: Incident,
+    inventory: Inventory,
+    llm: LLMClient,
+    *,
+    now: Callable[[], datetime] = utcnow,
+    tools: dict[str, Tool] = TOOLS,
+    system_prompt: str = SYSTEM_PROMPT,
+    history: HostHistory | None = None,
+    scenario: Scenario | None = None,
+    approvals: list[ApprovalEntry] | None = None,
+    approval_source: str = "approvals",
+    runner_for: RunnerFor | None = None,
+) -> IncidentRun:
     incident.status = IncidentStatus.INVESTIGATING
-    verdict, evidence = investigate(incident, incident_alerts, events, llm, now=now)
-    risk = score_risk(incident, incident_alerts, evidence, inventory, now())
+    verdict, evidence = investigate(
+        incident,
+        alerts,
+        events,
+        llm,
+        tools=tools,
+        now=now,
+        system_prompt=system_prompt,
+        history=history,
+    )
+    verdict = verdict.model_copy(
+        update={"recommendations": [vet(r) for r in verdict.recommendations]}
+    )
+    risk = score_risk(incident, alerts, evidence, inventory, now())
     response = _respond(
         verdict,
         incident,
