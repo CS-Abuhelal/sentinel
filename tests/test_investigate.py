@@ -22,7 +22,7 @@ from contracts.models import (
     EvaluationArm,
     InvestigationStopReason,
 )
-from tests.conftest import REPO, S1_RECORDING
+from tests.conftest import REPO, S1_RECORDING, S1Case
 
 AUTH_CALL = {"type": "tool_call", "tool": "auth_history", "args": {"account": "jdoe"}}
 
@@ -171,6 +171,47 @@ def test_exhausted_replay_raises(s1) -> None:
     incident, alerts, events = s1.incident, s1.alerts, s1.events
     with pytest.raises(ReplayExhausted):
         investigate(incident, alerts, events, _client(AUTH_CALL))
+
+
+def test_recommendations_are_parsed_and_cited(s1: S1Case) -> None:
+    model = _client(
+        AUTH_CALL,
+        _final(
+            classification="inconclusive",
+            cited_evidence=[],
+            recommendations=[
+                {
+                    "title": "Change the password",
+                    "priority": 70,
+                    "steps": ["Change the password.", "x" * 301],
+                    "evidence": ["E1"],
+                }
+            ],
+        ),
+    )
+    verdict, evidence = investigate(s1.incident, s1.alerts, s1.events, model)
+    [advice] = verdict.recommendations
+    assert advice.steps == ["Change the password."]
+    assert advice.dropped_steps == ["Too long: " + "x" * 301]
+    assert advice.evidence_ids == [evidence[0].evidence_id]
+
+
+def test_uncited_recommendation_is_invalid_output(s1: S1Case) -> None:
+    model = _client(
+        _final(
+            classification="inconclusive",
+            cited_evidence=[],
+            recommendations=[{"title": "Do it", "steps": ["Do it."], "evidence": []}],
+        )
+    )
+    verdict, _ = investigate(s1.incident, s1.alerts, s1.events, model)
+    assert verdict.stop_reason is InvestigationStopReason.INVALID_OUTPUT
+
+
+def test_system_prompt_can_be_replaced(s1: S1Case) -> None:
+    model = Capturing(_client(_final(classification="benign", cited_evidence=[])))
+    investigate(s1.incident, s1.alerts, s1.events, model, system_prompt="PC {max_tool_calls}")
+    assert model.calls[0][0].content == "PC 6"
 
 
 FORBIDDEN_MODULES = {

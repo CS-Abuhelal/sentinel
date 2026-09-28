@@ -10,7 +10,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from agent.llm import FinalAnswer, LLMClient, Message, ToolCall
-from agent.tools import TOOLS, Tool, ToolContext
+from agent.tools import TOOLS, HostHistory, Tool, ToolContext
 from contracts.models import (
     ActionType,
     Alert,
@@ -23,11 +23,15 @@ from contracts.models import (
     Incident,
     InvestigationStopReason,
     ProposedAction,
+    Recommendation,
     Verdict,
 )
 
 MAX_TOOL_CALLS = 6
+MAX_STEPS = 10
+MAX_STEP_CHARS = 300
 SYSTEM_PROMPT = (Path(__file__).parent / "prompts" / "system.md").read_text(encoding="utf-8")
+PC_PROMPT = (Path(__file__).parent / "prompts" / "pc.md").read_text(encoding="utf-8")
 
 
 def utcnow() -> datetime:
@@ -56,6 +60,13 @@ class ChainStepDraft(_Draft):
     evidence: list[str] = Field(default_factory=list)
 
 
+class RecommendationDraft(_Draft):
+    title: str = Field(min_length=1)
+    priority: int = Field(default=50, ge=0, le=100)
+    steps: list[str] = Field(default_factory=list)
+    evidence: list[str] = Field(min_length=1)
+
+
 class VerdictDraft(_Draft):
     classification: Classification
     confidence: float = Field(ge=0.0, le=1.0)
@@ -65,6 +76,7 @@ class VerdictDraft(_Draft):
     cited_evidence: list[str] = Field(default_factory=list)
     risk_factors: list[str] = Field(default_factory=list)
     proposed_actions: list[ActionDraft] = Field(default_factory=list)
+    recommendations: list[RecommendationDraft] = Field(default_factory=list)
 
 
 def investigate(
@@ -75,12 +87,14 @@ def investigate(
     tools: dict[str, Tool] = TOOLS,
     now: Callable[[], datetime] = utcnow,
     max_tool_calls: int = MAX_TOOL_CALLS,
+    system_prompt: str = SYSTEM_PROMPT,
+    history: HostHistory | None = None,
 ) -> tuple[Verdict, list[EvidenceItem]]:
     started = time.perf_counter()
-    context = ToolContext(incident=incident, events=events)
+    context = ToolContext(incident=incident, events=events, history=history)
     specs = [tool.spec() for tool in tools.values()]
     messages = [
-        Message("system", SYSTEM_PROMPT.replace("{max_tool_calls}", str(max_tool_calls))),
+        Message("system", system_prompt.replace("{max_tool_calls}", str(max_tool_calls))),
         Message("user", _incident_message(incident, alerts)),
     ]
     evidence: list[EvidenceItem] = []
@@ -168,6 +182,7 @@ def _parse_draft(payload: dict[str, Any], refs: dict[str, str]) -> VerdictDraft 
         *draft.cited_evidence,
         *(ref for step in draft.attack_chain for ref in step.evidence),
         *(ref for action in draft.proposed_actions for ref in action.evidence),
+        *(ref for advice in draft.recommendations for ref in advice.evidence),
     ]
     if any(ref not in refs for ref in cited):
         return None
@@ -206,7 +221,20 @@ def _verdict(draft: VerdictDraft, refs: dict[str, str], common: dict[str, Any]) 
             )
             for action in draft.proposed_actions
         ],
+        recommendations=[_recommendation(advice, refs) for advice in draft.recommendations],
         **common,
+    )
+
+
+def _recommendation(advice: RecommendationDraft, refs: dict[str, str]) -> Recommendation:
+    fitting = [step for step in advice.steps if len(step) <= MAX_STEP_CHARS]
+    too_long = [f"Too long: {step}" for step in advice.steps if len(step) > MAX_STEP_CHARS]
+    return Recommendation(
+        title=advice.title,
+        priority=advice.priority,
+        steps=fitting[:MAX_STEPS],
+        evidence_ids=[refs[ref] for ref in advice.evidence],
+        dropped_steps=too_long + [f"Over the limit: {step}" for step in fitting[MAX_STEPS:]],
     )
 
 
