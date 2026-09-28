@@ -53,6 +53,44 @@ started from PowerShell.
 
 ---
 
+## Watching a real PC
+
+SENTINEL also watches my own Windows PC. Wazuh runs in Docker and sends each alert to SENTINEL
+as it happens. SENTINEL groups the alerts into incidents, and `qwen3:14b` on the PC's GPU
+investigates the serious ones with read-only tools over the PC's alert history. It then writes
+advice. It never acts: the policy engine denies every action on a personal PC, and a checker
+removes any advice step that would weaken the PC, such as turning off Defender. Setup is in
+[`lab/wazuh/README.md`](lab/wazuh/README.md). The screenshots below come from a real run
+on 2026-09-28, with nothing written by hand.
+
+**1. Live alerts.** Every Wazuh alert of level 3 or higher arrives within about a second. These
+include the 10 failed logins I made for a user that does not exist, which Wazuh flagged as
+"Multiple Windows Logon Failures" (level 10).
+
+![Live Wazuh alerts from the PC](docs/screenshots/08-my-pc-alerts.png)
+
+**2. Incidents.** Related alerts are grouped by host and ATT&CK technique within an hour.
+Incidents at level 7 or higher are queued for the AI. Security-check (CIS) results are left out;
+they are weak spots, not events.
+
+![Incidents on the PC](docs/screenshots/09-my-pc-incidents.png)
+
+**3. The failed-login burst, investigated.** The model called it benign at 60% confidence,
+which is correct: it was my test. It found 16 failures for an account that has never logged in,
+all from the PC itself. Its advice is weak: it suggests a strong password for an account that
+does not exist.
+
+![Investigated incident header](docs/screenshots/10-my-pc-run.png)
+
+![The agent's evidence, verdict and advice](docs/screenshots/11-my-pc-investigation.png)
+
+**4. Advice only.** Risk is still scored deterministically. Nothing reaches the executor on a
+personal PC.
+
+![Risk, policy and execution on the PC](docs/screenshots/12-my-pc-boundary.png)
+
+---
+
 ## What it does
 
 A controlled lab produces real telemetry. Detection rules raise alerts. Related alerts are
