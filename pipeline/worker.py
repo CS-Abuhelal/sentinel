@@ -112,7 +112,7 @@ def investigate_next(
 
 
 def advise_next(engine: Engine, llm: LLMClient, now: Callable[[], datetime]) -> str | None:
-    finding = next_finding_to_advise(engine, FIX_TOP)
+    finding = next_finding_to_advise(engine, now(), FIX_TOP)
     if finding is None:
         return None
     unit = unit_findings(engine, finding)

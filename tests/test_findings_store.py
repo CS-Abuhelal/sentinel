@@ -21,16 +21,25 @@ from backend.app.findings import (
     upsert_findings,
 )
 from backend.app.store import insert_alert
-from contracts.models import FindingKind, FindingStatus, Recommendation
+from contracts.models import Finding, FindingKind, FindingStatus, Recommendation
 from tests.conftest import make_finding, make_wazuh_alert
 
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
 
 
-def _advice(finding_id: str) -> Recommendation:
+def _advice(*finding_ids: str) -> Recommendation:
     return Recommendation(
-        title="Update it", priority=50, steps=["Update."], finding_ids=[finding_id]
+        title="Update it", priority=50, steps=["Update."], finding_ids=list(finding_ids)
     )
+
+
+def _advise(db: Engine, finding: Finding, now: datetime = NOW) -> None:
+    unit = [f.finding_id for f in unit_findings(db, finding)]
+    set_advice(db, finding.finding_id, _advice(*unit), "test", now)
+
+
+def _mongo(key: str, priority: int, cve: str) -> Finding:
+    return make_finding(key, priority=priority, cve=cve, package="MongoDB")
 
 
 def test_upsert_keeps_identity_and_resolves_what_disappeared(db: Engine) -> None:
@@ -71,12 +80,12 @@ def test_hosts_and_the_next_finding_to_advise(db: Engine) -> None:
     assert finding_hosts(db) == ["my-pc", "tiny-pc"]
     seen = []
     for _ in range(11):
-        finding = next_finding_to_advise(db, top=10)
+        finding = next_finding_to_advise(db, NOW, top=10)
         assert finding is not None
         seen.append(finding.key)
         set_advice(db, finding.finding_id, _advice(finding.finding_id), "test", NOW)
     assert seen == [f"k{n}" for n in range(10)] + ["only"]
-    assert next_finding_to_advise(db, top=10) is None
+    assert next_finding_to_advise(db, NOW, top=10) is None
 
 
 def test_units_group_the_same_package_case_insensitively(db: Engine) -> None:
@@ -107,10 +116,10 @@ def test_next_finding_to_advise_returns_each_unit_lead_once(db: Engine) -> None:
         NOW,
     )
     [a, _b, c] = open_findings(db, "my-pc")
-    lead = next_finding_to_advise(db, top=10)
+    lead = next_finding_to_advise(db, NOW, top=10)
     assert lead is not None and lead.finding_id == a.finding_id
-    set_advice(db, a.finding_id, _advice(a.finding_id), "test", NOW)
-    lead = next_finding_to_advise(db, top=10)
+    _advise(db, a)
+    lead = next_finding_to_advise(db, NOW, top=10)
     assert lead is not None and lead.finding_id == c.finding_id
 
 
@@ -129,13 +138,13 @@ def test_top_counts_units_not_findings(db: Engine) -> None:
     upsert_findings(db, "my-pc", findings, NOW)
     leads = set()
     for _ in range(3):
-        finding = next_finding_to_advise(db, top=2)
+        finding = next_finding_to_advise(db, NOW, top=2)
         if finding is None:
             break
         leads.add(finding.finding_id)
-        set_advice(db, finding.finding_id, _advice(finding.finding_id), "test", NOW)
+        _advise(db, finding)
     assert len(leads) == 2
-    assert next_finding_to_advise(db, top=2) is None
+    assert next_finding_to_advise(db, NOW, top=2) is None
 
 
 def test_unit_findings_returns_the_whole_unit_in_order(db: Engine) -> None:
@@ -192,7 +201,8 @@ def test_related_alerts_match_the_package_and_skip_posture(db: Engine) -> None:
     insert_alert(db, other, payload)
     since = datetime(2026, 9, 27, 0, 0, tzinfo=UTC)
     assert related_alert_count(db, "my-pc", "7-Zip", since) == 1
-    assert related_alert_count(db, "my-pc", "7-zip", since + timedelta(days=1)) == 0
+    assert related_alert_count(db, "my-pc", "7-zip", since) == 1
+    assert related_alert_count(db, "my-pc", "7-Zip", since + timedelta(days=1)) == 0
     assert related_alert_count(db, "other-pc", "7-Zip", since) == 0
 
 
@@ -210,3 +220,84 @@ def test_package_filters_match_wildcards_literally(db: Engine) -> None:
     assert [f.key for f in open_findings(db, "my-pc", "_")] == ["under"]
     assert [f.key for f in open_findings(db, "my-pc", "%")] == ["pct"]
     assert related_alert_count(db, "my-pc", "%", datetime(2026, 9, 1, tzinfo=UTC)) == 0
+
+
+def test_advice_covering_only_part_of_a_program_is_written_again(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [_mongo("a", 80, "CVE-2026-1")], NOW)
+    [a] = open_findings(db, "my-pc")
+    _advise(db, a)
+    assert next_finding_to_advise(db, NOW, top=10) is None
+    both = [_mongo("a", 80, "CVE-2026-1"), _mongo("b", 95, "CVE-2026-2")]
+    upsert_findings(db, "my-pc", both, NOW + timedelta(hours=6))
+    lead = next_finding_to_advise(db, NOW + timedelta(hours=6), top=10)
+    assert lead is not None and lead.key == "b"
+
+
+def test_storing_advice_clears_the_other_members_of_the_program(db: Engine) -> None:
+    upsert_findings(
+        db,
+        "my-pc",
+        [_mongo("a", 90, "CVE-2026-1"), _mongo("b", 80, "CVE-2026-2"), make_finding("c")],
+        NOW,
+    )
+    [a, b, c] = open_findings(db, "my-pc")
+    set_advice(db, b.finding_id, _advice(b.finding_id), "test", NOW)
+    set_advice(db, c.finding_id, _advice(c.finding_id), "test", NOW)
+    set_advice(db, a.finding_id, _advice(a.finding_id, b.finding_id), "test", NOW)
+    assert advice_states(db, "my-pc") == {a.finding_id: ADVICE_READY, c.finding_id: ADVICE_READY}
+    view = assessment(db, "my-pc", NOW)
+    assert view is not None
+    assert [r.finding_ids for r in view.recommendations] == [
+        [a.finding_id, b.finding_id],
+        [c.finding_id],
+    ]
+
+
+def test_resolving_a_finding_clears_its_advice(db: Engine) -> None:
+    both = [_mongo("a", 90, "CVE-2026-1"), _mongo("b", 80, "CVE-2026-2")]
+    upsert_findings(db, "my-pc", both, NOW)
+    [a, b] = open_findings(db, "my-pc")
+    _advise(db, a)
+    assert next_finding_to_advise(db, NOW, top=10) is None
+    upsert_findings(db, "my-pc", [_mongo("b", 80, "CVE-2026-2")], NOW + timedelta(hours=6))
+    assert advice_states(db, "my-pc") == {}
+    lead = next_finding_to_advise(db, NOW + timedelta(hours=6), top=10)
+    assert lead is not None and lead.finding_id == b.finding_id
+
+
+def test_failed_advice_is_retried_after_an_hour(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [make_finding("a")], NOW)
+    [a] = open_findings(db, "my-pc")
+    set_advice(db, a.finding_id, None, "test", NOW)
+    assert next_finding_to_advise(db, NOW + timedelta(minutes=59), top=10) is None
+    lead = next_finding_to_advise(db, NOW + timedelta(minutes=61), top=10)
+    assert lead is not None and lead.finding_id == a.finding_id
+
+
+def test_failed_advice_older_than_a_new_member_is_retried_at_once(db: Engine) -> None:
+    newer = _mongo("b", 80, "CVE-2026-2").model_copy(
+        update={"first_seen": NOW + timedelta(minutes=10)}
+    )
+    upsert_findings(db, "my-pc", [_mongo("a", 90, "CVE-2026-1"), newer], NOW)
+    [a, _b] = open_findings(db, "my-pc")
+    set_advice(db, a.finding_id, None, "test", NOW)
+    lead = next_finding_to_advise(db, NOW + timedelta(minutes=20), top=10)
+    assert lead is not None and lead.finding_id == a.finding_id
+
+
+def test_open_findings_carry_only_the_package_type_from_raw(db: Engine) -> None:
+    npm = make_finding("npm", package="lodash").model_copy(
+        update={"raw": {"package": {"type": "npm", "path": "C:/Users/user1/app"}, "x": 1}}
+    )
+    upsert_findings(db, "my-pc", [npm, make_finding("plain", priority=40)], NOW)
+    [lodash, plain] = open_findings(db, "my-pc")
+    assert lodash.raw == {"package": {"type": "npm"}}
+    assert plain.raw == {}
+
+
+def test_assessment_without_a_sync_uses_the_newest_last_seen(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [make_finding("a")], NOW - timedelta(hours=2))
+    upsert_findings(db, "my-pc", [make_finding("a"), make_finding("b")], NOW - timedelta(hours=1))
+    view = assessment(db, "my-pc", NOW)
+    assert view is not None
+    assert view.synced_at == NOW - timedelta(hours=1)

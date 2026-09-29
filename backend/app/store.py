@@ -3,13 +3,20 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, select
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import Text, cast, func, select
+from sqlalchemy.dialects.postgresql import ARRAY, array, insert
 from sqlalchemy.engine import Engine
 
 from backend.app.db import wazuh_alerts
 from contracts.models import Alert, Event, LiveAlert
+from ingest.wazuh import POSTURE_GROUPS
 
+IS_POSTURE = func.coalesce(
+    wazuh_alerts.c.payload["rule"]["groups"].has_any(
+        cast(array(sorted(POSTURE_GROUPS)), ARRAY(Text))
+    ),
+    False,
+)
 LIVE_COLUMNS = (
     wazuh_alerts.c.wazuh_id,
     wazuh_alerts.c.received_at,

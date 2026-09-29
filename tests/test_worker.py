@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -23,6 +23,7 @@ from backend.app.incidents import get_run, incident_status, incident_summaries, 
 from backend.app.store import insert_alert
 from contracts.models import (
     Classification,
+    Finding,
     IncidentStatus,
     InvestigationStopReason,
     PolicyOutcome,
@@ -415,3 +416,69 @@ def test_the_recorded_qwen_fix_for_vs_code_replays(db: Engine) -> None:
     assert any("1.136.2" in step for step in advice.steps)
     assert advice.official_remediation == "Package less than 1.136.2"
     assert advice.dropped_steps == []
+
+
+MONGO_FIX = {"type": "final", "payload": {"title": "Update MongoDB", "steps": ["Update it."]}}
+
+
+def _mongo(key: str, priority: int, cve: str) -> Finding:
+    return make_finding(key, priority=priority, cve=cve, package="MongoDB")
+
+
+def _advise(db: Engine, when: datetime) -> object:
+    return run_once(db, _model(MONGO_FIX), lambda: when, model_ready=True)["advised"]
+
+
+def _covered(db: Engine, when: datetime) -> list[list[str]]:
+    view = assessment(db, "my-pc", when)
+    assert view is not None
+    return [r.finding_ids for r in view.recommendations]
+
+
+def test_a_new_cve_in_an_advised_program_is_advised_again(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [_mongo("a", 80, "CVE-2026-1")], NOW)
+    [a] = open_findings(db, "my-pc")
+    assert _advise(db, NOW) == a.finding_id
+    later = NOW + timedelta(hours=6)
+    upsert_findings(
+        db, "my-pc", [_mongo("a", 80, "CVE-2026-1"), _mongo("b", 95, "CVE-2026-2")], later
+    )
+    [b, _a] = open_findings(db, "my-pc")
+    assert _advise(db, later) == b.finding_id
+    assert advice_states(db, "my-pc") == {b.finding_id: ADVICE_READY}
+    assert _covered(db, later) == [[b.finding_id, a.finding_id]]
+    assert _advise(db, later) is None
+
+
+def test_when_the_lead_resolves_the_next_member_is_advised(db: Engine) -> None:
+    upsert_findings(
+        db, "my-pc", [_mongo("a", 90, "CVE-2026-1"), _mongo("b", 80, "CVE-2026-2")], NOW
+    )
+    [a, b] = open_findings(db, "my-pc")
+    assert _advise(db, NOW) == a.finding_id
+    later = NOW + timedelta(hours=6)
+    upsert_findings(db, "my-pc", [_mongo("b", 80, "CVE-2026-2")], later)
+    assert _advise(db, later) == b.finding_id
+    assert _covered(db, later) == [[b.finding_id]]
+
+
+def test_a_resolved_lead_that_returns_leaves_one_recommendation(db: Engine) -> None:
+    both = [_mongo("a", 90, "CVE-2026-1"), _mongo("b", 80, "CVE-2026-2")]
+    upsert_findings(db, "my-pc", both, NOW)
+    [a, b] = open_findings(db, "my-pc")
+    assert _advise(db, NOW) == a.finding_id
+    upsert_findings(db, "my-pc", [_mongo("b", 80, "CVE-2026-2")], NOW + timedelta(hours=6))
+    assert _advise(db, NOW + timedelta(hours=6)) == b.finding_id
+    back = NOW + timedelta(hours=12)
+    upsert_findings(db, "my-pc", both, back)
+    assert _advise(db, back) == a.finding_id
+    assert _covered(db, back) == [[a.finding_id, b.finding_id]]
+    assert advice_states(db, "my-pc") == {a.finding_id: ADVICE_READY}
+
+
+def test_a_crashing_model_call_stores_failed_advice(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [make_finding("a", priority=90, cve="CVE-2026-1")], NOW)
+    [finding] = open_findings(db, "my-pc")
+    result = run_once(db, _model(), lambda: NOW, model_ready=True)
+    assert result["advised"] == finding.finding_id
+    assert advice_states(db, "my-pc") == {finding.finding_id: ADVICE_FAILED}
