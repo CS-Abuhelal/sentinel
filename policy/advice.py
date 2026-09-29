@@ -17,7 +17,10 @@ SWITCHED_OFF = (
 NEGATED = r"(?<!not\s)(?<!never\s)(?<!n't\s)"
 DENIAL = r"\b(?:not|never)\b|n't\b"
 BETWEEN_VERB_AND_TARGET = r"\b(?:at|in|with|using|keep|not|never)\b|[;:]"
-ONLY_NOTIFICATIONS = r"(?!\s+notifications?\b)"
+ONLY_NOTIFICATIONS = r"(?!(?:\s+firewall)?\s+notifications?\b)"
+SERVICES = r"(?:mpssvc|WinDefend|wscsvc|SecurityHealthService)"
+SWITCHED_ON = r"(?:1|true|0x0*1|dword:0*1)"
+SWITCHED_TO_ZERO = r"(?:0|0x0+|dword:0+)"
 
 WEAKENING = tuple(
     re.compile(pattern, re.IGNORECASE)
@@ -38,19 +41,21 @@ WEAKENING = tuple(
         r"Set-MpPreference\s+-Disable",
         r"DisableRealtimeMonitoring",
         r"\b(DisableAntiSpyware|DisableAntiVirus|DisableRealtimeMonitoring"
-        r"|DisableBehaviorMonitoring|DisableIOAVProtection)\b[^\n]*\b(1|true)\b",
-        r"Set-NetFirewallProfile\b[^\n]*-Enabled\s+(False|0|\$false)",
+        r"|DisableBehaviorMonitoring|DisableIOAVProtection)\b[^\n]*\b" + SWITCHED_ON + r"\b",
+        r"Set-NetFirewallProfile\b[^\n]*-Enabled[\s:]+['\"]?(False|0|\$false)\b",
         r"netsh\s+advfirewall\s+set\s+\S+\s+state\s+off",
         r"netsh\s+firewall\b[^\n]*\bdisable\b",
-        r"\bEnableLUA\b[^\n]*\b0\b",
-        r"\bConsentPromptBehaviorAdmin\b[^\n]*\b0\b",
+        r"\bEnableLUA\b[^\n]*\b" + SWITCHED_TO_ZERO + r"\b",
+        r"\bConsentPromptBehaviorAdmin\b[^\n]*\b" + SWITCHED_TO_ZERO + r"\b",
         r"Set-ExecutionPolicy\s+(Unrestricted|Bypass)",
         r"bcdedit",
-        r"Add-MpPreference\s+-Exclusion",
-        r"Set-MpPreference\s+-Exclusion",
+        r"\b(Set|Add)-MpPreference\b[^\n]*-Exclusion",
         r"(add|create)\s+(an?\s+)?(defender\s+|antivirus\s+)?exclusion",
-        r"\b(Stop-Service|Set-Service|sc(\.exe)?\s+(stop|config|delete))\b[^\n]*"
-        r"\b(mpssvc|WinDefend|wscsvc|SecurityHealthService)\b",
+        r"\b(Stop-Service|Set-Service|sc(\.exe)?\s+(stop|config|delete))\b[^\n]*\b"
+        + SERVICES
+        + r"\b",
+        r"\bnet1?(\.exe)?\s+stop\s+['\"]?" + SERVICES + r"\b",
+        r"\b" + SERVICES + r"\b[^\n]*\|\s*(Stop-Service|Set-Service)\b",
         r"start=\s*disabled",
     )
 )
@@ -58,8 +63,10 @@ WEAKENING = tuple(
 
 CVE_ID = re.compile(r"CVE-\d{4}-\d+", re.IGNORECASE)
 DASHES = str.maketrans(dict.fromkeys([*map(chr, range(0x2010, 0x2016)), chr(0x2212)], "-"))
-URL = re.compile(r"https?://\S+", re.IGNORECASE)
-URL_END = ".,;:!?)]}>'\""
+URL = re.compile(r"(?=(https?:[/\\]+[^\s/\\]\S*))", re.IGNORECASE)
+WWW = re.compile(r"(?<![\w./\\-])(?=(www\.[\w-]\S*))", re.IGNORECASE)
+UNC = re.compile(r"(?<![\w:\\])\\\\[^\s\\]")
+URL_END = ".,;:!?)]}>'\"`*"
 VENDOR_HOSTS = frozenset(
     {
         "learn.microsoft.com",
@@ -73,12 +80,15 @@ VENDOR_HOSTS = frozenset(
         "store.steampowered.com",
         "www.npmjs.com",
         "pypi.org",
+        "go.microsoft.com",
+        "aka.ms",
     }
 )
 UNVERIFIED_LINK = "Unverified link: "
 
 
 def weakens_security(text: str) -> bool:
+    text = text.translate(DASHES)
     return any(pattern.search(text) for pattern in WEAKENING)
 
 
@@ -109,8 +119,11 @@ def trusted_host(host: str | None, allowed: frozenset[str]) -> bool:
     )
 
 
-def has_unverified_link(step: str, allowed: frozenset[str]) -> bool:
-    return any(not trusted_host(link_host(url), allowed) for url in URL.findall(step))
+def has_unverified_link(text: str, allowed: frozenset[str]) -> bool:
+    if UNC.search(text):
+        return True
+    links = [*URL.findall(text), *("https://" + match for match in WWW.findall(text))]
+    return any(not trusted_host(link_host(url), allowed) for url in links)
 
 
 def check_fix(
@@ -130,8 +143,10 @@ def check_fix(
         for reference in findings[f].references
         if (host := link_host(reference)) is not None
     }
+    if has_unverified_link(recommendation.title, hosts):
+        return None
     steps = recommendation.steps
-    linked = recommendation.model_copy(
+    linked =recommendation.model_copy(
         update={
             "steps": [s for s in steps if not has_unverified_link(s, hosts)],
             "dropped_steps": [
