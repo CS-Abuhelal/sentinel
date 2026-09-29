@@ -62,6 +62,18 @@ def _check(title: str, days: int = 0, compliance: dict | None = None) -> Finding
         (_check("Ensure 'Windows Firewall: Public: Logging: Log dropped packets' is 'Yes'."), 55),
         (_check("Ensure 'Microsoft Defender: Turn on logging' is 'Enabled'."), 55),
         (_check("Ensure 'Interactive logon: Machine account lockout threshold' is set."), 60),
+        (_check("Interactive logon: Message text for users attempting to log on"), 35),
+        (_check("Ensure 'No auto-restart with logged on users' is set to 'Enabled'."), 35),
+        (
+            _check(
+                "Ensure 'Accounts: Block Microsoft accounts' is set to "
+                "'Users can't add or log on with Microsoft accounts'."
+            ),
+            60,
+        ),
+        (_check("Ensure 'Log on as a service' is limited to 'NT SERVICE\\ALL SERVICES'."), 35),
+        (_check("Ensure 'Store logs securely' is 'Enabled'."), 55),
+        (_check("Ensure 'Logging' is 'Enabled'."), 55),
     ],
 )
 def test_base_score(finding: Finding, expected: int) -> None:

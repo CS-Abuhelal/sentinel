@@ -16,7 +16,7 @@ SEVERITY_START = {
 }
 CATEGORIES: tuple[tuple[int, re.Pattern[str]], ...] = (
     (35, re.compile(r"notification")),
-    (55, re.compile(r"\blog(s|ging|ged)?\b")),
+    (55, re.compile(r"\blog(s|ging|ged)?\b(?!\s+on\b)")),
     (70, re.compile(r"firewall")),
     (70, re.compile(r"antivirus|defender|malware")),
     (60, re.compile(r"password|account|lockout")),
