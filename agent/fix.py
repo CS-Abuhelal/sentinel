@@ -16,6 +16,7 @@ FIX_PROMPT = (Path(__file__).parent / "prompts" / "fix.md").read_text(encoding="
 MAX_REFERENCES = 5
 AT_MOST = re.compile(r"^Package less than or equal to (\S.*)$", re.IGNORECASE)
 BELOW = re.compile(r"^Package less than (\S.*)$", re.IGNORECASE)
+EXACTLY = re.compile(r"^Package equal to (\S.*)$", re.IGNORECASE)
 MESSAGE_FIELDS = {
     "finding_id",
     "kind",
@@ -81,7 +82,7 @@ def fixed_when(finding: Finding) -> str | None:
     if finding.kind is not FindingKind.VULNERABILITY or not finding.official_remediation:
         return None
     condition = finding.official_remediation.strip()
-    at_most = AT_MOST.match(condition)
+    at_most = AT_MOST.match(condition) or EXACTLY.match(condition)
     if at_most:
         return f"a version newer than {at_most.group(1)}"
     below = BELOW.match(condition)

@@ -95,6 +95,7 @@ def test_fixed_when_reads_the_wazuh_condition() -> None:
     assert fixed_when(vuln("package less than or equal to 2021-04-10")) == (
         "a version newer than 2021-04-10"
     )
+    assert fixed_when(vuln("Package equal to 3.14.0")) == "a version newer than 3.14.0"
     assert fixed_when(vuln("Package greater than 2.0")) is None
     assert fixed_when(vuln(None)) is None
     assert fixed_when(make_finding("sca:p:1", kind=FindingKind.CONFIGURATION)) is None
