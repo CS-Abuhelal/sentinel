@@ -57,6 +57,11 @@ def _check(title: str, days: int = 0, compliance: dict | None = None) -> Finding
         (_check("Ensure 'Audit Logon' is set to 'Success and Failure'."), 55),
         (_check("Ensure 'Enable Font Providers' is set to 'Disabled'."), 35),
         (_check("Ensure 'X' is set.", compliance={"note": "SMB signing"}), 60),
+        (_check("Ensure 'Windows Firewall: Domain: Display a notification' is 'No'."), 35),
+        (_check("Ensure 'Configure Microsoft Defender Antivirus notifications' is set."), 35),
+        (_check("Ensure 'Windows Firewall: Public: Logging: Log dropped packets' is 'Yes'."), 55),
+        (_check("Ensure 'Microsoft Defender: Turn on logging' is 'Enabled'."), 55),
+        (_check("Ensure 'Interactive logon: Machine account lockout threshold' is set."), 60),
     ],
 )
 def test_base_score(finding: Finding, expected: int) -> None:
@@ -95,3 +100,10 @@ def test_sort_key_orders_by_priority_then_kind_then_age() -> None:
     top = prioritize(_vuln(cvss=9.0, days=0), 0)
     ordered = sorted([check_new, vuln, check_old, top], key=sort_key)
     assert ordered == [top, vuln, check_old, check_new]
+
+
+def test_sort_key_breaks_full_ties_by_key() -> None:
+    first = _check("Ensure the firewall is on.").model_copy(update={"key": "sca:p:a"})
+    second = first.model_copy(update={"key": "sca:p:b"})
+    assert sorted([second, first], key=sort_key) == [first, second]
+    assert sort_key(first)[-1] == "sca:p:a"

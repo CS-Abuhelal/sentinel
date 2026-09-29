@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 
 from contracts.models import Finding, FindingKind, Severity
@@ -13,12 +14,14 @@ SEVERITY_START = {
     Severity.LOW: 20,
     Severity.INFO: 20,
 }
-CATEGORIES: tuple[tuple[int, tuple[str, ...]], ...] = (
-    (70, ("firewall",)),
-    (70, ("antivirus", "defender", "malware")),
-    (60, ("password", "account", "lockout")),
-    (60, ("remote desktop", "rdp", "smb", "remote assistance", "winrm")),
-    (55, ("audit",)),
+CATEGORIES: tuple[tuple[int, re.Pattern[str]], ...] = (
+    (35, re.compile(r"notification")),
+    (55, re.compile(r"\blog(s|ging|ged)?\b")),
+    (70, re.compile(r"firewall")),
+    (70, re.compile(r"antivirus|defender|malware")),
+    (60, re.compile(r"password|account|lockout")),
+    (60, re.compile(r"remote desktop|rdp|smb|remote assistance|winrm")),
+    (55, re.compile(r"audit")),
 )
 OTHER = 35
 BANDS = (
@@ -35,8 +38,8 @@ def base_score(finding: Finding) -> int:
             return round(finding.cvss * 10)
         return SEVERITY_START[finding.severity]
     text = f"{finding.title} {_compliance(finding)}".lower()
-    for weight, words in CATEGORIES:
-        if any(word in text for word in words):
+    for weight, pattern in CATEGORIES:
+        if pattern.search(text):
             return weight
     return OTHER
 
@@ -55,9 +58,9 @@ def prioritize(finding: Finding, related_alerts: int) -> Finding:
     )
 
 
-def sort_key(finding: Finding) -> tuple[int, int, datetime]:
+def sort_key(finding: Finding) -> tuple[int, int, datetime, str]:
     kind = 0 if finding.kind is FindingKind.VULNERABILITY else 1
-    return (-finding.priority, kind, finding.first_seen)
+    return (-finding.priority, kind, finding.first_seen, finding.key)
 
 
 def _compliance(finding: Finding) -> str:

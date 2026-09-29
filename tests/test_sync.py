@@ -90,7 +90,7 @@ def test_sync_stores_prioritized_findings_and_resolves_fixed_ones(db: Engine) ->
     assert state.reachable is True
     assert state.detail == "Synced 2 open findings at 12:00:00 UTC."
     [vuln, check] = open_findings(db, "my-pc")
-    assert (vuln.priority, check.priority) == (96, 70)
+    assert (vuln.priority, check.priority) == (96, 55)
     assert check.key == f"sca:{POLICY}:26138"
     now_passed = _check("26138", "passed", "2026-09-28T11:00:00.000+0000")
     later = NOW + timedelta(hours=6)
