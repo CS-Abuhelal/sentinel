@@ -275,7 +275,10 @@ function FixDetail({
   finding: Finding;
   recommendation: Recommendation | undefined;
 }) {
-  const references = finding.references.filter((ref) => ref.startsWith("https://")).slice(0, 3);
+  const linked = finding.kind === "vulnerability";
+  const references = (
+    linked ? finding.references.filter((ref) => ref.startsWith("https://")) : finding.references
+  ).slice(0, 3);
 
   return (
     <tr className="fix-detail">
@@ -302,9 +305,13 @@ function FixDetail({
             {references.map((ref, index) => (
               <span key={ref}>
                 {index > 0 && " "}
-                <a href={ref} target="_blank" rel="noreferrer">
-                  {ref}
-                </a>
+                {linked ? (
+                  <a href={ref} target="_blank" rel="noreferrer">
+                    {ref}
+                  </a>
+                ) : (
+                  ref
+                )}
               </span>
             ))}
           </p>
