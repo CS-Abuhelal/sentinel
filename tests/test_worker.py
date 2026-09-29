@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -41,6 +42,7 @@ from pipeline.worker import (
 )
 from policy.priority import prioritize
 from tests.conftest import REPO, make_finding, make_wazuh_alert, wazuh_payload
+from tests.test_investigate import Capturing
 
 NOW = datetime(2026, 9, 27, 12, 0, tzinfo=UTC)
 PC_RECORDING = REPO / "tests" / "data" / "pc_incident.qwen3-14b.json"
@@ -482,3 +484,20 @@ def test_a_crashing_model_call_stores_failed_advice(db: Engine) -> None:
     result = run_once(db, _model(), lambda: NOW, model_ready=True)
     assert result["advised"] == finding.finding_id
     assert advice_states(db, "my-pc") == {finding.finding_id: ADVICE_FAILED}
+
+
+def test_the_program_wide_version_fixes_every_open_cve(db: Engine) -> None:
+    lead = _mongo("a", 90, "CVE-2026-1").model_copy(
+        update={"official_remediation": "Package less than 8.2.9"}
+    )
+    other = _mongo("b", 80, "CVE-2026-2").model_copy(
+        update={"official_remediation": "Package less than or equal to 8.2.12"}
+    )
+    upsert_findings(db, "my-pc", [lead, other], NOW)
+    model = Capturing(_model(MONGO_FIX))
+    run_once(db, model, lambda: NOW, model_ready=True)
+    [call] = model.calls
+    body = json.loads(call[1].content.split("\n", 1)[1])
+    assert body["cve"] == "CVE-2026-1"
+    assert body["other_cves_in_this_program"] == ["CVE-2026-2"]
+    assert body["fixed_when"] == "a version newer than 8.2.12"

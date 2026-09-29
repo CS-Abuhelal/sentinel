@@ -4,6 +4,7 @@ import json
 import re
 import time
 from dataclasses import dataclass
+from itertools import combinations
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -14,14 +15,15 @@ from contracts.models import Finding, FindingKind, Recommendation
 
 FIX_PROMPT = (Path(__file__).parent / "prompts" / "fix.md").read_text(encoding="utf-8")
 MAX_REFERENCES = 5
-AT_MOST = re.compile(r"^Package less than or equal to (\S.*)$", re.IGNORECASE)
-BELOW = re.compile(r"^Package less than (\S.*)$", re.IGNORECASE)
+CONDITION = re.compile(
+    r"^Package (less than or equal to|less than|equal to) (\S.*)$", re.IGNORECASE
+)
+DIGITS = re.compile(r"\d+")
 PACKAGE_TYPES = {
     "npm": "npm library (lives inside a Node.js project; update it with npm in that project)",
     "pypi": "Python package (update it with pip)",
     "win": "Windows program",
 }
-EXACTLY = re.compile(r"^Package equal to (\S.*)$", re.IGNORECASE)
 MESSAGE_FIELDS = {
     "finding_id",
     "kind",
@@ -54,12 +56,15 @@ class FixResult:
 
 
 def write_fix(
-    finding: Finding, llm: LLMClient, other_cves: list[str] | None = None
+    finding: Finding,
+    llm: LLMClient,
+    other_cves: list[str] | None = None,
+    unit_conditions: list[str] | None = None,
 ) -> FixResult:
     started = time.perf_counter()
     messages = [
         Message("system", FIX_PROMPT),
-        Message("user", finding_message(finding, other_cves)),
+        Message("user", finding_message(finding, other_cves, unit_conditions)),
     ]
     response = llm.complete(messages, [])
     recommendation = None
@@ -89,20 +94,55 @@ def package_type(finding: Finding) -> str | None:
     return PACKAGE_TYPES.get(value) if isinstance(value, str) else None
 
 
+@dataclass(frozen=True)
+class Bound:
+    version: str
+    key: tuple[int, ...]
+    dated: bool
+    inclusive: bool
+
+
+def _bound(condition: str) -> Bound | None:
+    match = CONDITION.match(condition.strip())
+    if match is None:
+        return None
+    version = match.group(2).strip()
+    parts = DIGITS.findall(version)
+    if not parts:
+        return None
+    return Bound(
+        version=version,
+        key=tuple(int(part) for part in parts),
+        dated=len(parts[0]) == 4,
+        inclusive=match.group(1).lower() != "less than",
+    )
+
+
+def strictest_fix(conditions: list[str]) -> str | None:
+    bounds = [_bound(condition) for condition in conditions]
+    known = [bound for bound in bounds if bound is not None]
+    if not known or len(known) < len(bounds):
+        return None
+    for first, second in combinations(known, 2):
+        if len(first.key) != len(second.key) and first.dated != second.dated:
+            return None
+    top = max(known, key=lambda bound: (bound.key, bound.inclusive))
+    if top.inclusive:
+        return f"a version newer than {top.version}"
+    return f"version {top.version} or newer"
+
+
 def fixed_when(finding: Finding) -> str | None:
     if finding.kind is not FindingKind.VULNERABILITY or not finding.official_remediation:
         return None
-    condition = finding.official_remediation.strip()
-    at_most = AT_MOST.match(condition) or EXACTLY.match(condition)
-    if at_most:
-        return f"a version newer than {at_most.group(1)}"
-    below = BELOW.match(condition)
-    if below:
-        return f"version {below.group(1)} or newer"
-    return None
+    return strictest_fix([finding.official_remediation])
 
 
-def finding_message(finding: Finding, other_cves: list[str] | None = None) -> str:
+def finding_message(
+    finding: Finding,
+    other_cves: list[str] | None = None,
+    unit_conditions: list[str] | None = None,
+) -> str:
     data = {
         key: value
         for key, value in finding.model_dump(mode="json", include=MESSAGE_FIELDS).items()
@@ -112,7 +152,7 @@ def finding_message(finding: Finding, other_cves: list[str] | None = None) -> st
     kind = package_type(finding)
     if kind:
         data["package_type"] = kind
-    fixed = fixed_when(finding)
+    fixed = fixed_when(finding) if unit_conditions is None else strictest_fix(unit_conditions)
     if fixed:
         data["fixed_when"] = fixed
     if other_cves:

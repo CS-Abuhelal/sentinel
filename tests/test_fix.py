@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 
-from agent.fix import FIX_PROMPT, finding_message, fixed_when, write_fix
+import pytest
+
+from agent.fix import FIX_PROMPT, finding_message, fixed_when, strictest_fix, write_fix
 from agent.llm import Recording, ReplayClient
 from contracts.models import Finding, FindingKind
 from tests.conftest import make_finding
@@ -119,3 +121,62 @@ def test_the_package_type_goes_to_the_model_without_the_path() -> None:
     )
     assert "package_type" not in finding_message(vuln("deb"))
     assert "package_type" not in finding_message(vuln(None))
+
+
+@pytest.mark.parametrize(
+    ("conditions", "expected"),
+    [
+        (["Package less than 1.136.2"], "version 1.136.2 or newer"),
+        (
+            ["Package less than 8.2.9", "Package less than or equal to 8.2.12"],
+            "a version newer than 8.2.12",
+        ),
+        (
+            ["Package less than or equal to 8.2.12", "Package less than 8.2.12"],
+            "a version newer than 8.2.12",
+        ),
+        (["Package less than 8.2.12", "package equal to 8.2.12"], "a version newer than 8.2.12"),
+        (["Package less than 8.2.12", "Package less than 8.2.9"], "version 8.2.12 or newer"),
+        (["Package less than 1.9.5", "Package less than 1.10.0"], "version 1.10.0 or newer"),
+        (
+            ["Package less than or equal to 2021-04-10", "PACKAGE LESS THAN 2021-04-11"],
+            "version 2021-04-11 or newer",
+        ),
+        (
+            ["Package less than 2021-04-12", "Package less than or equal to 2021-04-10"],
+            "version 2021-04-12 or newer",
+        ),
+    ],
+)
+def test_strictest_fix_picks_the_highest_bound(conditions: list[str], expected: str) -> None:
+    assert strictest_fix(conditions) == expected
+
+
+@pytest.mark.parametrize(
+    "conditions",
+    [
+        [],
+        ["Package greater than 2.0"],
+        ["Package less than 8.2.9", "Package greater than 2.0"],
+        ["Package less than 8.2.9", ""],
+        ["Package less than latest"],
+        ["Package less than 1.2", "Package less than or equal to 2021-04-10"],
+    ],
+)
+def test_strictest_fix_gives_up_on_unknown_or_mixed_bounds(conditions: list[str]) -> None:
+    assert strictest_fix(conditions) is None
+
+
+def test_the_unit_conditions_decide_fixed_when() -> None:
+    lead = make_finding("cve:CVE-2026-1:MongoDB", cve="CVE-2026-1", package="MongoDB").model_copy(
+        update={"official_remediation": "Package less than 8.2.9"}
+    )
+
+    def fixed(conditions: list[str] | None) -> object:
+        body = json.loads(finding_message(lead, None, conditions).split("\n", 1)[1])
+        return body.get("fixed_when")
+
+    assert fixed(None) == "version 8.2.9 or newer"
+    both = ["Package less than 8.2.9", "Package less than or equal to 8.2.12"]
+    assert fixed(both) == "a version newer than 8.2.12"
+    assert fixed(["Package less than 8.2.9", "Package greater than 1.0"]) is None

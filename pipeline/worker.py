@@ -32,6 +32,7 @@ from backend.app.incidents import (
 )
 from contracts.models import (
     Event,
+    FindingKind,
     HostRecord,
     Incident,
     IncidentStatus,
@@ -117,8 +118,11 @@ def advise_next(engine: Engine, llm: LLMClient, now: Callable[[], datetime]) -> 
         return None
     unit = unit_findings(engine, finding)
     other = [f.cve for f in unit if f.cve and f.cve != finding.cve]
+    conditions = [
+        f.official_remediation or "" for f in unit if f.kind is FindingKind.VULNERABILITY
+    ]
     try:
-        result = write_fix(finding, llm, other)
+        result = write_fix(finding, llm, other, conditions)
     except Exception as error:
         logger.warning("Fix steps for %s failed: %s", finding.finding_id, error)
         set_advice(engine, finding.finding_id, None, llm.model_name, now())

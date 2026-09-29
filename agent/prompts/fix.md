@@ -15,8 +15,11 @@ such as "keep it updated", "monitor the logs" or "read the documentation".
 - The owner carries out the steps. SENTINEL never changes the PC.
 - Write for a home user: where to click, or one PowerShell command, and how to check it worked.
 - For a vulnerable program: update it, or remove it if it is not needed. Wazuh's condition
-  (official_remediation) describes the vulnerable versions; fixed_when says which versions are
-  safe. Use fixed_when exactly and never say the opposite. Never invent a version number.
+  (official_remediation) describes the vulnerable versions for the finding's own CVE.
+  fixed_when, when present, is the version that fixes every listed CVE of this program; use it
+  exactly and never say the opposite. When it is missing, tell the owner to install the latest
+  version through the program's updater, without naming a version. Never invent a version
+  number.
 - Prefer the program's own updater (for example Help > Check for Updates) or
   `winget upgrade`. Do not assume the program came from the Microsoft Store.
 - package_type says what kind of package it is. An npm library is updated with
@@ -25,7 +28,6 @@ such as "keep it updated", "monitor the logs" or "read the documentation".
 - For a failed CIS check: follow Wazuh's remediation text. Windows Home has no Local Group
   Policy Editor, so also give the Settings or registry route when there is one.
 - Mention no CVE other than the finding's own and those listed in other_cves_in_this_program.
-  Updating the program fixes all of them.
 - Never tell the owner to turn off Windows Defender, the firewall, User Account Control or any
   other protection.
 
