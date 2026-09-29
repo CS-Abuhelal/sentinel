@@ -28,6 +28,7 @@ from contracts.models import (
     PolicyOutcome,
     ServiceState,
 )
+from ingest.wazuh_findings import vulnerability_finding
 from pipeline.grouping import group_new_alerts
 from pipeline.worker import (
     acquire_worker_lock,
@@ -37,10 +38,12 @@ from pipeline.worker import (
     release_worker_lock,
     run_once,
 )
-from tests.conftest import REPO, make_finding, make_wazuh_alert
+from policy.priority import prioritize
+from tests.conftest import REPO, make_finding, make_wazuh_alert, wazuh_payload
 
 NOW = datetime(2026, 9, 27, 12, 0, tzinfo=UTC)
 PC_RECORDING = REPO / "tests" / "data" / "pc_incident.qwen3-14b.json"
+FIX_RECORDING = REPO / "tests" / "data" / "fix_vulnerability.qwen3-14b.json"
 BURST = {"rule_id": "60204", "level": 10, "techniques": ["T1110"],
          "description": "Multiple Windows Logon Failures"}
 
@@ -395,3 +398,20 @@ def test_no_fix_steps_without_the_model(db: Engine) -> None:
     result = run_once(db, _model(FIX), lambda: NOW, model_ready=False)
     assert result["advised"] is None
     assert advice_states(db, "my-pc") == {}
+
+
+def test_the_recorded_qwen_fix_for_vs_code_replays(db: Engine) -> None:
+    finding = prioritize(vulnerability_finding(wazuh_payload("vulnerability_state"), NOW), 0)
+    upsert_findings(db, "my-pc", [finding], NOW)
+    [stored] = open_findings(db, "my-pc")
+    result = run_once(db, ReplayClient.from_file(FIX_RECORDING), lambda: NOW, model_ready=True)
+    assert result["advised"] == stored.finding_id
+    assert advice_states(db, "my-pc") == {stored.finding_id: ADVICE_READY}
+    view = assessment(db, "my-pc", NOW)
+    assert view is not None
+    [advice] = view.recommendations
+    assert advice.finding_ids == [stored.finding_id]
+    assert 1 <= len(advice.steps) <= 10
+    assert any("1.136.2" in step for step in advice.steps)
+    assert advice.official_remediation == "Package less than 1.136.2"
+    assert advice.dropped_steps == []
