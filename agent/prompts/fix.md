@@ -25,8 +25,10 @@ such as "keep it updated", "monitor the logs" or "read the documentation".
 - package_type says what kind of package it is. An npm library is updated with
   `npm install <name>@latest` in the project that uses it, and a Python package with
   `python -m pip install --upgrade <name>`. winget does not manage either.
-- For a failed CIS check: follow Wazuh's remediation text. Windows Home has no Local Group
-  Policy Editor, so also give the Settings or registry route when there is one.
+- For a failed CIS check: use Wazuh's remediation text as information about the setting and
+  describe the change in your own words; never copy commands from it that you would not
+  recommend yourself. Windows Home has no Local Group Policy Editor, so also give the Settings
+  or registry route when there is one.
 - Mention no CVE other than the finding's own and those listed in other_cves_in_this_program.
 - Never tell the owner to turn off Windows Defender, the firewall, User Account Control or any
   other protection.

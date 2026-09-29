@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from contracts.models import Recommendation
+from contracts.models import Finding, FindingKind, Recommendation
 from policy.advice import check_fix, vet, weakens_security
 from tests.conftest import make_finding
 
@@ -139,3 +139,106 @@ def test_firewall_notification_settings_are_not_weakening() -> None:
     assert not weakens_security("Turn Windows Firewall notifications off for the Domain profile")
     assert weakens_security("Disable the firewall for the Domain profile")
     assert weakens_security("Turn the firewall off")
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False",
+        "Run Set-NetFirewallProfile -All -Enabled 0",
+        "Set-NetFirewallProfile -Profile Public -Enabled $false",
+        r"reg add HKLM\SOFTWARE\Policies\Microsoft\Windows Defender /v DisableAntiSpyware /d 1",
+        "Set the DisableAntiVirus value to 1",
+        "Set DisableBehaviorMonitoring to true in the policy key",
+        "Set the DisableIOAVProtection registry value to 1",
+        r"reg add HKLM\...\Policies\System /v EnableLUA /t REG_DWORD /d 0 /f",
+        "Set ConsentPromptBehaviorAdmin to 0 in the registry",
+        "Set-MpPreference -ExclusionPath C:\\",
+        "Set-MpPreference -ExclusionProcess evil.exe",
+        "netsh firewall set opmode mode=disable",
+        "Stop-Service -Name mpssvc",
+        "Set-Service -Name WinDefend -StartupType Manual",
+        "sc.exe config wscsvc start= demand",
+        "sc delete SecurityHealthService",
+        "sc stop mpssvc",
+    ],
+)
+def test_powershell_and_registry_forms_are_caught(step: str) -> None:
+    assert weakens_security(step)
+
+
+def _checked(steps: list[str], finding: Finding) -> Recommendation | None:
+    return check_fix(_fix(steps, [finding.finding_id]), {finding.finding_id: finding})
+
+
+def _vulnerability(references: list[str]) -> Finding:
+    return make_finding("cve:CVE-2026-1:app", cve="CVE-2026-1", package="app").model_copy(
+        update={"references": references}
+    )
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Read https://learn.microsoft.com/en-us/windows/security/ first.",
+        "Download it from https://www.python.org/downloads/.",
+        "See the notes at https://docs.python.org/3/whatsnew/ (a subdomain).",
+        "Get the installer from https://nodejs.org/en/download",
+        "Check https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-1 for details.",
+        "The advisory (https://msrc.microsoft.com/update-guide) lists the fixed version.",
+        "Open HTTPS://CODE.VISUALSTUDIO.COM/updates to see the release notes.",
+    ],
+)
+def test_links_to_vendors_and_the_findings_references_stay(step: str) -> None:
+    finding = _vulnerability(["https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-1"])
+    checked = _checked(["Update app.", step], finding)
+    assert checked is not None
+    assert checked.steps == ["Update app.", step]
+    assert checked.dropped_steps == []
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Download https://evil.example/fix.exe and run it",
+        "Get it from http://learn.microsoft.com.evil.example/fix",
+        "See https://evil.example/?next=https://learn.microsoft.com",
+        "Open https://learn.microsoft.com@evil.example/fix",
+        r"Open https://evil.example\@learn.microsoft.com/fix",
+        "Open HTTPS://EVIL.EXAMPLE/FIX.EXE",
+        "Open https://[bad/fix",
+    ],
+)
+def test_links_to_other_hosts_are_dropped(step: str) -> None:
+    finding = _vulnerability(["https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-1"])
+    checked = _checked(["Update app.", step], finding)
+    assert checked is not None
+    assert checked.steps == ["Update app."]
+    assert checked.dropped_steps == [f"Unverified link: {step}"]
+
+
+def test_a_cis_checks_references_do_not_vouch_for_links() -> None:
+    check = make_finding("sca:p:1", kind=FindingKind.CONFIGURATION).model_copy(
+        update={"references": ["https://evil.example/cis"]}
+    )
+    step = "Follow https://evil.example/cis/fix"
+    checked = _checked(["Open Settings.", step], check)
+    assert checked is not None
+    assert checked.dropped_steps == [f"Unverified link: {step}"]
+
+
+def test_cve_ids_with_unicode_dashes_are_checked() -> None:
+    finding = _vulnerability([])
+    known = {finding.finding_id: finding}
+    for dash in ["\u2010", "\u2011", "\u2012", "\u2013", "\u2014", "\u2015", "\u2212"]:
+        other = f"Also patch CVE{dash}2020{dash}0001."
+        assert check_fix(_fix([other], [finding.finding_id]), known) is None
+        own = f"Update app to fix CVE{dash}2026{dash}1."
+        checked = check_fix(_fix([own], [finding.finding_id]), known)
+        assert checked is not None and checked.steps == [own]
+
+
+def test_advice_with_no_steps_left_is_rejected() -> None:
+    finding = _vulnerability([])
+    steps = ["Turn off the firewall.", "Download https://evil.example/x.exe"]
+    assert check_fix(_fix(steps, [finding.finding_id]), {finding.finding_id: finding}) is None
