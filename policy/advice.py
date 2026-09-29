@@ -16,14 +16,17 @@ SWITCHED_OFF = (
 NEGATED = r"(?<!not\s)(?<!never\s)(?<!n't\s)"
 DENIAL = r"\b(?:not|never)\b|n't\b"
 BETWEEN_VERB_AND_TARGET = r"\b(?:at|in|with|using|keep|not|never)\b|[;:]"
+ONLY_NOTIFICATIONS = r"(?!\s+notifications?\b)"
 
 WEAKENING = tuple(
     re.compile(pattern, re.IGNORECASE)
     for pattern in (
         NEGATED
         + r"\b(disable|turn\s+off|switch\s+off|stop|kill|uninstall|pause|deactivate)\b"
-        rf"(?:(?!{BETWEEN_VERB_AND_TARGET})[^.\n]){{0,40}}\b({PROTECTIONS})\b",
-        rf"\b({SWITCHED_OFF})\b(?:(?!{DENIAL})[^.\n]){{0,30}}\b(off|disabled)\b",
+        rf"(?:(?!{BETWEEN_VERB_AND_TARGET})[^.\n]){{0,40}}\b({PROTECTIONS})\b"
+        + ONLY_NOTIFICATIONS,
+        rf"\b({SWITCHED_OFF})\b{ONLY_NOTIFICATIONS}(?:(?!{DENIAL})[^.\n]){{0,30}}"
+        r"\b(off|disabled)\b",
         r"never\s+notify",
         r"\b(iex|invoke-expression)\b",
         r"downloadstring",

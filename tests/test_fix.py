@@ -102,3 +102,20 @@ def test_fixed_when_reads_the_wazuh_condition() -> None:
     message = json.loads(finding_message(vuln("Package less than 8.2.9")).split("\n", 1)[1])
     assert message["fixed_when"] == "version 8.2.9 or newer"
     assert "fixed_when" not in finding_message(vuln(None))
+
+
+def test_the_package_type_goes_to_the_model_without_the_path() -> None:
+    def vuln(kind: str | None) -> Finding:
+        raw = {"package": {"type": kind, "path": "C:/Users/user1/node_modules/x"}}
+        return make_finding("cve:CVE-2026-1:x", cve="CVE-2026-1", package="x").model_copy(
+            update={"raw": raw}
+        )
+
+    npm = json.loads(finding_message(vuln("npm")).split("\n", 1)[1])
+    assert npm["package_type"].startswith("npm library")
+    assert "node_modules" not in finding_message(vuln("npm"))
+    assert json.loads(finding_message(vuln("pypi")).split("\n", 1)[1])["package_type"] == (
+        "Python package (update it with pip)"
+    )
+    assert "package_type" not in finding_message(vuln("deb"))
+    assert "package_type" not in finding_message(vuln(None))

@@ -19,6 +19,9 @@ such as "keep it updated", "monitor the logs" or "read the documentation".
   safe. Use fixed_when exactly and never say the opposite. Never invent a version number.
 - Prefer the program's own updater (for example Help > Check for Updates) or
   `winget upgrade`. Do not assume the program came from the Microsoft Store.
+- package_type says what kind of package it is. An npm library is updated with
+  `npm install <name>@latest` in the project that uses it, and a Python package with
+  `python -m pip install --upgrade <name>`. winget does not manage either.
 - For a failed CIS check: follow Wazuh's remediation text. Windows Home has no Local Group
   Policy Editor, so also give the Settings or registry route when there is one.
 - Mention no CVE other than the finding's own and those listed in other_cves_in_this_program.

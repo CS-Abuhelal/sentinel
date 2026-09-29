@@ -132,3 +132,10 @@ def test_check_fix_drops_advice_that_cites_nothing_or_other_cves() -> None:
         check_fix(_fix(["Update."], [finding.finding_id], title="Fix CVE-2024-1234"), known)
         is None
     )
+
+
+def test_firewall_notification_settings_are_not_weakening() -> None:
+    assert not weakens_security("Disable firewall notifications for Domain profile")
+    assert not weakens_security("Turn Windows Firewall notifications off for the Domain profile")
+    assert weakens_security("Disable the firewall for the Domain profile")
+    assert weakens_security("Turn the firewall off")

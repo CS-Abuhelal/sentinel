@@ -16,6 +16,11 @@ FIX_PROMPT = (Path(__file__).parent / "prompts" / "fix.md").read_text(encoding="
 MAX_REFERENCES = 5
 AT_MOST = re.compile(r"^Package less than or equal to (\S.*)$", re.IGNORECASE)
 BELOW = re.compile(r"^Package less than (\S.*)$", re.IGNORECASE)
+PACKAGE_TYPES = {
+    "npm": "npm library (lives inside a Node.js project; update it with npm in that project)",
+    "pypi": "Python package (update it with pip)",
+    "win": "Windows program",
+}
 EXACTLY = re.compile(r"^Package equal to (\S.*)$", re.IGNORECASE)
 MESSAGE_FIELDS = {
     "finding_id",
@@ -78,6 +83,12 @@ def write_fix(
     return FixResult(recommendation, llm.model_name, latency)
 
 
+def package_type(finding: Finding) -> str | None:
+    package = finding.raw.get("package")
+    value = package.get("type") if isinstance(package, dict) else None
+    return PACKAGE_TYPES.get(value) if isinstance(value, str) else None
+
+
 def fixed_when(finding: Finding) -> str | None:
     if finding.kind is not FindingKind.VULNERABILITY or not finding.official_remediation:
         return None
@@ -98,6 +109,9 @@ def finding_message(finding: Finding, other_cves: list[str] | None = None) -> st
         if value is not None
     }
     data["references"] = finding.references[:MAX_REFERENCES]
+    kind = package_type(finding)
+    if kind:
+        data["package_type"] = kind
     fixed = fixed_when(finding)
     if fixed:
         data["fixed_when"] = fixed
