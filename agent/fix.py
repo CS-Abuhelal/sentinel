@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,10 +10,12 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from agent.investigate import split_steps
 from agent.llm import FinalAnswer, LLMClient, Message
-from contracts.models import Finding, Recommendation
+from contracts.models import Finding, FindingKind, Recommendation
 
 FIX_PROMPT = (Path(__file__).parent / "prompts" / "fix.md").read_text(encoding="utf-8")
 MAX_REFERENCES = 5
+AT_MOST = re.compile(r"^Package less than or equal to (\S.*)$", re.IGNORECASE)
+BELOW = re.compile(r"^Package less than (\S.*)$", re.IGNORECASE)
 MESSAGE_FIELDS = {
     "finding_id",
     "kind",
@@ -74,6 +77,19 @@ def write_fix(
     return FixResult(recommendation, llm.model_name, latency)
 
 
+def fixed_when(finding: Finding) -> str | None:
+    if finding.kind is not FindingKind.VULNERABILITY or not finding.official_remediation:
+        return None
+    condition = finding.official_remediation.strip()
+    at_most = AT_MOST.match(condition)
+    if at_most:
+        return f"a version newer than {at_most.group(1)}"
+    below = BELOW.match(condition)
+    if below:
+        return f"version {below.group(1)} or newer"
+    return None
+
+
 def finding_message(finding: Finding, other_cves: list[str] | None = None) -> str:
     data = {
         key: value
@@ -81,6 +97,9 @@ def finding_message(finding: Finding, other_cves: list[str] | None = None) -> st
         if value is not None
     }
     data["references"] = finding.references[:MAX_REFERENCES]
+    fixed = fixed_when(finding)
+    if fixed:
+        data["fixed_when"] = fixed
     if other_cves:
         data["other_cves_in_this_program"] = other_cves[:20]
     return (

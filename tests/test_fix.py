@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 
-from agent.fix import FIX_PROMPT, finding_message, write_fix
+from agent.fix import FIX_PROMPT, finding_message, fixed_when, write_fix
 from agent.llm import Recording, ReplayClient
-from contracts.models import FindingKind
+from contracts.models import Finding, FindingKind
 from tests.conftest import make_finding
 from tests.test_investigate import Capturing
 
@@ -80,3 +80,24 @@ def test_the_finding_goes_to_the_model_as_data() -> None:
     assert data["title"] == INJECTED
     assert "raw" not in data and "not sent" not in message
     assert data["official_remediation"] == "Set it."
+
+
+def test_fixed_when_reads_the_wazuh_condition() -> None:
+    def vuln(condition: str | None) -> Finding:
+        return make_finding("cve:CVE-2026-1:app", cve="CVE-2026-1", package="app").model_copy(
+            update={"official_remediation": condition}
+        )
+
+    assert fixed_when(vuln("Package less than 1.136.2")) == "version 1.136.2 or newer"
+    assert fixed_when(vuln("Package less than or equal to 24.18.0")) == (
+        "a version newer than 24.18.0"
+    )
+    assert fixed_when(vuln("package less than or equal to 2021-04-10")) == (
+        "a version newer than 2021-04-10"
+    )
+    assert fixed_when(vuln("Package greater than 2.0")) is None
+    assert fixed_when(vuln(None)) is None
+    assert fixed_when(make_finding("sca:p:1", kind=FindingKind.CONFIGURATION)) is None
+    message = json.loads(finding_message(vuln("Package less than 8.2.9")).split("\n", 1)[1])
+    assert message["fixed_when"] == "version 8.2.9 or newer"
+    assert "fixed_when" not in finding_message(vuln(None))
