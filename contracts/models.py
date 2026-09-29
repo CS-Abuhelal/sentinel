@@ -14,7 +14,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-CONTRACT_VERSION = "1.6.0"
+CONTRACT_VERSION = "1.7.0"
 
 
 def _new_id(prefix: str) -> str:
@@ -552,6 +552,16 @@ class IncidentRun(SentinelModel):
     audit: list[AuditRecord] = Field(default_factory=list)
 
 
+class PcSample(SentinelModel):
+    """A sanitized, recorded snapshot of the live My PC page, for the public demo."""
+
+    created_at: datetime
+    note: str
+    feed: PcFeed
+    assessment: HostAssessment | None = None
+    runs: list[IncidentRun] = Field(default_factory=list)
+
+
 __all__ = [
     "CONTRACT_VERSION",
     "AccountRecord",
@@ -587,6 +597,7 @@ __all__ = [
     "NetworkInfo",
     "PcFeed",
     "PcIncidentSummary",
+    "PcSample",
     "PcStatus",
     "PolicyDecision",
     "PolicyOutcome",

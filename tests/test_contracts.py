@@ -34,6 +34,7 @@ from contracts.models import (
     LiveAlert,
     PcFeed,
     PcIncidentSummary,
+    PcSample,
     PcStatus,
     PolicyDecision,
     PolicyOutcome,
@@ -69,6 +70,7 @@ FIXTURE_MODEL_MAP = {
     "live_alert": LiveAlert,
     "pc_feed": PcFeed,
     "pc_incident_summary": PcIncidentSummary,
+    "pc_sample": PcSample,
     "finding_vulnerability": Finding,
     "finding_configuration": Finding,
     "recommendation": Recommendation,
@@ -252,3 +254,17 @@ def test_pc_status_defaults_to_not_synced() -> None:
         alert_count=0,
     )
     assert status.sync == ServiceState(reachable=False, detail="Not synced yet.")
+
+
+def test_pc_sample_defaults() -> None:
+    feed = PcFeed(
+        status=PcStatus(
+            checked_at=datetime(2026, 9, 29, tzinfo=UTC),
+            wazuh_api=ServiceState(reachable=True),
+            backfill=ServiceState(reachable=True),
+            alert_count=0,
+        )
+    )
+    sample = PcSample(created_at=datetime(2026, 9, 29, tzinfo=UTC), note="n", feed=feed)
+    assert sample.assessment is None
+    assert sample.runs == []

@@ -776,6 +776,279 @@
       "title": "ExecutionStatus",
       "type": "string"
     },
+    "Finding": {
+      "additionalProperties": false,
+      "description": "One weak spot on a monitored PC: a vulnerable package or a failed CIS check.",
+      "properties": {
+        "finding_id": {
+          "title": "Finding Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/FindingKind"
+        },
+        "key": {
+          "minLength": 1,
+          "title": "Key",
+          "type": "string"
+        },
+        "host": {
+          "title": "Host",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "priority": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Priority",
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/FindingStatus",
+          "default": "open"
+        },
+        "cve": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cve"
+        },
+        "package": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Package"
+        },
+        "installed_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Installed Version"
+        },
+        "cvss": {
+          "anyOf": [
+            {
+              "maximum": 10.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cvss"
+        },
+        "policy_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Policy Id"
+        },
+        "check_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Check Id"
+        },
+        "rationale": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rationale"
+        },
+        "official_remediation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Official Remediation"
+        },
+        "references": {
+          "items": {
+            "type": "string"
+          },
+          "title": "References",
+          "type": "array"
+        },
+        "related_alert_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Related Alert Count",
+          "type": "integer"
+        },
+        "first_seen": {
+          "format": "date-time",
+          "title": "First Seen",
+          "type": "string"
+        },
+        "last_seen": {
+          "format": "date-time",
+          "title": "Last Seen",
+          "type": "string"
+        },
+        "raw": {
+          "additionalProperties": true,
+          "title": "Raw",
+          "type": "object"
+        }
+      },
+      "required": [
+        "finding_id",
+        "kind",
+        "key",
+        "host",
+        "title",
+        "severity",
+        "priority",
+        "status",
+        "cve",
+        "package",
+        "installed_version",
+        "cvss",
+        "policy_id",
+        "check_id",
+        "rationale",
+        "official_remediation",
+        "references",
+        "related_alert_count",
+        "first_seen",
+        "last_seen",
+        "raw"
+      ],
+      "title": "Finding",
+      "type": "object"
+    },
+    "FindingKind": {
+      "enum": [
+        "vulnerability",
+        "configuration"
+      ],
+      "title": "FindingKind",
+      "type": "string"
+    },
+    "FindingStatus": {
+      "enum": [
+        "open",
+        "resolved"
+      ],
+      "title": "FindingStatus",
+      "type": "string"
+    },
+    "HostAssessment": {
+      "additionalProperties": false,
+      "description": "The weak spots found on one PC and the advice written for them.",
+      "properties": {
+        "assessment_id": {
+          "title": "Assessment Id",
+          "type": "string"
+        },
+        "host": {
+          "title": "Host",
+          "type": "string"
+        },
+        "contract_version": {
+          "default": "1.7.0",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "synced_at": {
+          "format": "date-time",
+          "title": "Synced At",
+          "type": "string"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "recommendations": {
+          "items": {
+            "$ref": "#/$defs/Recommendation"
+          },
+          "title": "Recommendations",
+          "type": "array"
+        },
+        "model_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Name"
+        }
+      },
+      "required": [
+        "assessment_id",
+        "host",
+        "contract_version",
+        "created_at",
+        "synced_at",
+        "findings",
+        "recommendations",
+        "model_name"
+      ],
+      "title": "HostAssessment",
+      "type": "object"
+    },
     "Incident": {
       "additionalProperties": false,
       "description": "Correlated group of alerts. The unit the agent investigates.",
@@ -863,6 +1136,118 @@
       "title": "Incident",
       "type": "object"
     },
+    "IncidentRun": {
+      "additionalProperties": false,
+      "description": "One incident taken through every pipeline stage. The run file and the API response.",
+      "properties": {
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "case_id": {
+          "title": "Case Id",
+          "type": "string"
+        },
+        "contract_version": {
+          "default": "1.7.0",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/Event"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "alerts": {
+          "items": {
+            "$ref": "#/$defs/Alert"
+          },
+          "title": "Alerts",
+          "type": "array"
+        },
+        "incident": {
+          "$ref": "#/$defs/Incident"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/EvidenceItem"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "verdict": {
+          "$ref": "#/$defs/Verdict"
+        },
+        "risk_score": {
+          "$ref": "#/$defs/RiskScore"
+        },
+        "policy_decisions": {
+          "items": {
+            "$ref": "#/$defs/PolicyDecision"
+          },
+          "title": "Policy Decisions",
+          "type": "array"
+        },
+        "scenario": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Scenario"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "approvals": {
+          "items": {
+            "$ref": "#/$defs/Approval"
+          },
+          "title": "Approvals",
+          "type": "array"
+        },
+        "executions": {
+          "items": {
+            "$ref": "#/$defs/ExecutionResult"
+          },
+          "title": "Executions",
+          "type": "array"
+        },
+        "audit": {
+          "items": {
+            "$ref": "#/$defs/AuditRecord"
+          },
+          "title": "Audit",
+          "type": "array"
+        }
+      },
+      "required": [
+        "run_id",
+        "case_id",
+        "contract_version",
+        "created_at",
+        "events",
+        "alerts",
+        "incident",
+        "evidence",
+        "verdict",
+        "risk_score",
+        "policy_decisions",
+        "scenario",
+        "approvals",
+        "executions",
+        "audit"
+      ],
+      "title": "IncidentRun",
+      "type": "object"
+    },
     "IncidentStatus": {
       "enum": [
         "new",
@@ -885,6 +1270,43 @@
       ],
       "title": "InvestigationStopReason",
       "type": "string"
+    },
+    "LiveAlert": {
+      "additionalProperties": false,
+      "description": "A Wazuh alert from the live feed, with the event and alert it was converted into.",
+      "properties": {
+        "wazuh_id": {
+          "minLength": 1,
+          "title": "Wazuh Id",
+          "type": "string"
+        },
+        "received_at": {
+          "format": "date-time",
+          "title": "Received At",
+          "type": "string"
+        },
+        "level": {
+          "maximum": 15,
+          "minimum": 0,
+          "title": "Level",
+          "type": "integer"
+        },
+        "event": {
+          "$ref": "#/$defs/Event"
+        },
+        "alert": {
+          "$ref": "#/$defs/Alert"
+        }
+      },
+      "required": [
+        "wazuh_id",
+        "received_at",
+        "level",
+        "event",
+        "alert"
+      ],
+      "title": "LiveAlert",
+      "type": "object"
     },
     "NetworkInfo": {
       "additionalProperties": false,
@@ -997,6 +1419,140 @@
         "domain"
       ],
       "title": "NetworkInfo",
+      "type": "object"
+    },
+    "PcFeed": {
+      "additionalProperties": false,
+      "description": "What the live My PC page polls for.",
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/PcStatus"
+        },
+        "alerts": {
+          "items": {
+            "$ref": "#/$defs/LiveAlert"
+          },
+          "title": "Alerts",
+          "type": "array"
+        },
+        "incidents": {
+          "items": {
+            "$ref": "#/$defs/PcIncidentSummary"
+          },
+          "title": "Incidents",
+          "type": "array"
+        }
+      },
+      "required": [
+        "status",
+        "alerts",
+        "incidents"
+      ],
+      "title": "PcFeed",
+      "type": "object"
+    },
+    "PcIncidentSummary": {
+      "additionalProperties": false,
+      "description": "One incident on a monitored PC, as the live page lists it.",
+      "properties": {
+        "incident": {
+          "$ref": "#/$defs/Incident"
+        },
+        "alert_count": {
+          "minimum": 0,
+          "title": "Alert Count",
+          "type": "integer"
+        },
+        "max_level": {
+          "maximum": 15,
+          "minimum": 0,
+          "title": "Max Level",
+          "type": "integer"
+        },
+        "classification": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Classification"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "recommendation_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Recommendation Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "incident",
+        "alert_count",
+        "max_level",
+        "classification",
+        "recommendation_count"
+      ],
+      "title": "PcIncidentSummary",
+      "type": "object"
+    },
+    "PcStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "checked_at": {
+          "format": "date-time",
+          "title": "Checked At",
+          "type": "string"
+        },
+        "wazuh_api": {
+          "$ref": "#/$defs/ServiceState"
+        },
+        "backfill": {
+          "$ref": "#/$defs/ServiceState"
+        },
+        "alert_count": {
+          "minimum": 0,
+          "title": "Alert Count",
+          "type": "integer"
+        },
+        "last_alert_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Alert At"
+        },
+        "queue_length": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Queue Length",
+          "type": "integer"
+        },
+        "model": {
+          "$ref": "#/$defs/ServiceState"
+        },
+        "sync": {
+          "$ref": "#/$defs/ServiceState"
+        }
+      },
+      "required": [
+        "checked_at",
+        "wazuh_api",
+        "backfill",
+        "alert_count",
+        "last_alert_at",
+        "queue_length",
+        "model",
+        "sync"
+      ],
+      "title": "PcStatus",
       "type": "object"
     },
     "PolicyDecision": {
@@ -1383,6 +1939,33 @@
       "title": "Scenario",
       "type": "object"
     },
+    "ServiceState": {
+      "additionalProperties": false,
+      "properties": {
+        "reachable": {
+          "title": "Reachable",
+          "type": "boolean"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        }
+      },
+      "required": [
+        "reachable",
+        "detail"
+      ],
+      "title": "ServiceState",
+      "type": "object"
+    },
     "Severity": {
       "enum": [
         "info",
@@ -1546,67 +2129,24 @@
     }
   },
   "additionalProperties": false,
-  "description": "One incident taken through every pipeline stage. The run file and the API response.",
+  "description": "A sanitized, recorded snapshot of the live My PC page, for the public demo.",
   "properties": {
-    "run_id": {
-      "title": "Run Id",
-      "type": "string"
-    },
-    "case_id": {
-      "title": "Case Id",
-      "type": "string"
-    },
-    "contract_version": {
-      "default": "1.7.0",
-      "title": "Contract Version",
-      "type": "string"
-    },
     "created_at": {
       "format": "date-time",
       "title": "Created At",
       "type": "string"
     },
-    "events": {
-      "items": {
-        "$ref": "#/$defs/Event"
-      },
-      "title": "Events",
-      "type": "array"
+    "note": {
+      "title": "Note",
+      "type": "string"
     },
-    "alerts": {
-      "items": {
-        "$ref": "#/$defs/Alert"
-      },
-      "title": "Alerts",
-      "type": "array"
+    "feed": {
+      "$ref": "#/$defs/PcFeed"
     },
-    "incident": {
-      "$ref": "#/$defs/Incident"
-    },
-    "evidence": {
-      "items": {
-        "$ref": "#/$defs/EvidenceItem"
-      },
-      "title": "Evidence",
-      "type": "array"
-    },
-    "verdict": {
-      "$ref": "#/$defs/Verdict"
-    },
-    "risk_score": {
-      "$ref": "#/$defs/RiskScore"
-    },
-    "policy_decisions": {
-      "items": {
-        "$ref": "#/$defs/PolicyDecision"
-      },
-      "title": "Policy Decisions",
-      "type": "array"
-    },
-    "scenario": {
+    "assessment": {
       "anyOf": [
         {
-          "$ref": "#/$defs/Scenario"
+          "$ref": "#/$defs/HostAssessment"
         },
         {
           "type": "null"
@@ -1614,45 +2154,21 @@
       ],
       "default": null
     },
-    "approvals": {
+    "runs": {
       "items": {
-        "$ref": "#/$defs/Approval"
+        "$ref": "#/$defs/IncidentRun"
       },
-      "title": "Approvals",
-      "type": "array"
-    },
-    "executions": {
-      "items": {
-        "$ref": "#/$defs/ExecutionResult"
-      },
-      "title": "Executions",
-      "type": "array"
-    },
-    "audit": {
-      "items": {
-        "$ref": "#/$defs/AuditRecord"
-      },
-      "title": "Audit",
+      "title": "Runs",
       "type": "array"
     }
   },
   "required": [
-    "run_id",
-    "case_id",
-    "contract_version",
     "created_at",
-    "events",
-    "alerts",
-    "incident",
-    "evidence",
-    "verdict",
-    "risk_score",
-    "policy_decisions",
-    "scenario",
-    "approvals",
-    "executions",
-    "audit"
+    "note",
+    "feed",
+    "assessment",
+    "runs"
   ],
-  "title": "IncidentRun",
+  "title": "PcSample",
   "type": "object"
 }

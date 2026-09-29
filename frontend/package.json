@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "gen:types": "json2ts -i ../contracts/schemas/IncidentRun.schema.json -o src/types/contracts.ts --bannerComment \"\" && json2ts -i ../contracts/schemas/PcFeed.schema.json -o src/types/pc.ts --bannerComment \"\" && json2ts -i ../contracts/schemas/HostAssessment.schema.json -o src/types/assessment.ts --bannerComment \"\""
+    "gen:types": "json2ts -i ../contracts/schemas/IncidentRun.schema.json -o src/types/contracts.ts --bannerComment \"\" && json2ts -i ../contracts/schemas/PcFeed.schema.json -o src/types/pc.ts --bannerComment \"\" && json2ts -i ../contracts/schemas/HostAssessment.schema.json -o src/types/assessment.ts --bannerComment \"\" && json2ts -i ../contracts/schemas/PcSample.schema.json -o src/types/sample.ts --bannerComment \"\""
   },
   "dependencies": {
     "@fontsource/barlow-condensed": "^5.3.0",

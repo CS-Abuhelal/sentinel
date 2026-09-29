@@ -6,6 +6,25 @@ Superseded entries are removed, and numbers are never reused.
 
 ---
 
+## D-16 — Contracts 1.7.0 and a sanitized public sample (2026-09-29)
+
+**Decision.** Add `PcSample`, a recorded snapshot of the My PC page (feed, assessment, runs).
+`pipeline.sample` exports it from the live database, and `pipeline.sanitize` replaces every
+host name, user name, profile-path user, IPv4 and MAC address and agent id with a stable
+placeholder. The export refuses to write if any term in `SENTINEL_FORBIDDEN_TERMS` survives. The
+owner reviews the file before it is committed to `lab/wazuh/sample/`, and GitHub Pages serves it
+read-only.
+
+**Why.** Recruiters should see the live advisor working on real data without the owner's PC
+being exposed. Learning identifiers from the data catches the names that occur in free text,
+not only those in known fields. The runtime deny-list is the last check, and it never lives in
+the repo.
+
+**Consequence.** The public page is a snapshot, so it does not update. Regenerating it means
+running the export again and reviewing it again.
+
+---
+
 ## D-15 — Weak spots: sources, fix steps and contracts 1.6.0 (2026-09-28, updated 2026-09-29)
 
 **Decision.**
