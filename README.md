@@ -98,11 +98,15 @@ personal PC.
 - **Fix steps.** The AI writes one fix per program, not one per CVE, for the top 10. Code tells
   it the version that fixes every CVE of that program: "8.2.13 or newer" covers all 77 MongoDB
   CVEs.
-- **Checker.** A deterministic checker drops any step that would weaken the PC, mentions another
-  CVE, or links to an unknown site.
-- **Honesty.** Reading the real output caught three model mistakes before they shipped: a
-  version rule said backwards, `winget` suggested for npm libraries, and a safe firewall setting
-  blocked as unsafe. Each is now fixed in code and covered by a test.
+- **Checker.** A deterministic checker drops any step that would weaken the PC or links to an
+  unknown site. It drops the whole fix when its title does, or when it mentions a CVE from
+  another program. It errs on the side of dropping.
+- **Honesty.** Reading the real output caught three model mistakes before they shipped:
+  - a version rule said backwards: code now states the safe version;
+  - `winget` suggested for npm libraries: the model is now told the package type;
+  - a safe firewall setting blocked as unsafe: fixed in the checker.
+
+  Each change has a test.
 
 ![Weak spots ranked on the PC](docs/screenshots/13-my-pc-fixes.png)
 

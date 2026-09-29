@@ -104,12 +104,34 @@ before matching, so `–enc` and `–Enabled False` match, and registry values m
 notifications", are not counted. A recommendation whose title matches is removed whole, not just
 its steps.
 
+Further rules:
+- Before matching, text is NFKC-normalized and stripped of invisible format characters, so a
+  zero-width space, a soft hyphen or fullwidth letters cannot hide a word.
+- The direct match stops only at `at`, `in`, `with`, `using`, `keep`, `not`, `never` and `;`/`:`.
+- A second rule catches a protection named right after "and", "then", "also" or "plus" at any
+  distance ("Stop the app and then the firewall").
+- A third catches "keep/leave it off … <protection>".
+- A fourth catches a protection named first with "disable it" later.
+- Also matched:
+  - every `Set-MpPreference -Disable…` (unless set to false or 0) and the other Defender
+    weakening switches;
+  - `-e`/`-ec`/`-en` and `/enc` encoded commands;
+  - piping into PowerShell;
+  - `-ExecutionPolicy Bypass`;
+  - `-DefaultInboundAction Allow`;
+  - the Defender services' `Start` value 4;
+  - the SmartScreen and secure-desktop registry values.
+- Incident advice goes through the same link allow-list as fix steps (`check_advice`), not only
+  the deny-list.
+
 **Why.** The final phase-2 review found wordings the narrow list missed, such as "Turn Windows
 Defender off" and "Set the UAC slider to Never notify". Log content can steer the model, so the
 checker has to hold without trusting the model's phrasing.
 
-**Consequence.** Some harmless text is dropped too. A CIS step that names the policy "Turn off
-Microsoft Defender Antivirus" is removed. The dashboard shows how many steps were removed. That
+**Consequence.** The list is a deterministic backstop, not a proof: it errs toward dropping.
+Some harmless text is dropped too. A CIS step that names the policy "Turn off Microsoft Defender
+Antivirus" is removed, and so is "Stop the app and make sure the firewall stays enabled", because
+the verb and the protection sit close together. The dashboard shows how many steps were removed. That
 count also includes steps cut for length or number, not only the ones the checker removed. The
 removed steps are kept with the advice (`dropped_steps`), so the owner knows something was
 taken out.
