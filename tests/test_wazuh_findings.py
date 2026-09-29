@@ -11,6 +11,7 @@ from ingest.wazuh_findings import (
     MAX_TEXT,
     FindingError,
     sca_check_key,
+    sca_cleared_key,
     sca_finding,
     vulnerability_finding,
 )
@@ -84,6 +85,16 @@ def test_passed_check_is_not_a_finding() -> None:
     alert = wazuh_payload("sca_check_passed")
     assert sca_finding(alert, NOW) is None
     assert sca_check_key(alert)[2] == "26481"
+
+
+def test_passed_and_not_applicable_checks_clear_their_finding() -> None:
+    passed = wazuh_payload("sca_check_passed")
+    _host, policy, check_id = sca_check_key(passed)
+    assert sca_cleared_key(passed) == f"sca:{policy}:{check_id}"
+    skipped = copy.deepcopy(passed)
+    skipped["data"]["sca"]["check"]["result"] = "not applicable"
+    assert sca_cleared_key(skipped) == f"sca:{policy}:{check_id}"
+    assert sca_cleared_key(wazuh_payload("sca_check_failed")) is None
 
 
 def test_check_references_are_split() -> None:

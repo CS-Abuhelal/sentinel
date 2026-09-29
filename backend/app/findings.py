@@ -20,6 +20,7 @@ ADVICE_FAILED = "failed"
 RETRY_FAILED_ADVICE = timedelta(hours=1)
 OPEN = FindingStatus.OPEN.value
 RESOLVED = FindingStatus.RESOLVED.value
+VULNERABILITY = FindingKind.VULNERABILITY.value
 NO_ADVICE = {"advice": None, "advice_state": None, "advice_model": None, "advice_at": None}
 WITHOUT_RAW = findings_table.c.finding.op("-", return_type=JSONB)(literal("raw", Text))
 PACKAGE_TYPE = findings_table.c.finding[("raw", "package", "type")].astext
@@ -33,16 +34,23 @@ class StoredAdvice:
 
 
 def upsert_findings(
-    engine: Engine, host: str, found: list[Finding], now: datetime
+    engine: Engine,
+    host: str,
+    found: list[Finding],
+    now: datetime,
+    resolvable_config_keys: set[str] | None = None,
+    resolve_vulnerabilities: bool = True,
 ) -> tuple[int, int]:
     table = findings_table
     keys = {finding.key for finding in found}
+    cleared = resolvable_config_keys or set()
     with engine.begin() as connection:
         existing = {
             row.key: row
             for row in connection.execute(
                 select(
                     table.c.key,
+                    table.c.kind,
                     table.c.finding_id,
                     table.c.first_seen,
                     table.c.status,
@@ -70,8 +78,16 @@ def upsert_findings(
                 .on_conflict_do_update(constraint="uq_findings_host_key", set_=values)
             )
         resolved = 0
+        kept = 0
         for key, row in existing.items():
             if key in keys or row.status != OPEN:
+                continue
+            if row.kind == VULNERABILITY:
+                resolves = resolve_vulnerabilities
+            else:
+                resolves = key in cleared
+            if not resolves:
+                kept += 1
                 continue
             closed = Finding.model_validate(row.finding).model_copy(
                 update={"status": FindingStatus.RESOLVED}
@@ -91,7 +107,7 @@ def upsert_findings(
             )
             .values(**NO_ADVICE)
         )
-    return len(found), resolved
+    return len(found) + kept, resolved
 
 
 def open_findings(engine: Engine, host: str, package: str | None = None) -> list[Finding]:
@@ -157,7 +173,7 @@ def advice_unit(finding: Finding) -> str:
 
 
 def _unit(kind: str, package: str | None, finding_id: str) -> str:
-    if kind == FindingKind.VULNERABILITY.value and package:
+    if kind == VULNERABILITY and package:
         return "package:" + package.lower()
     return "finding:" + finding_id
 

@@ -301,3 +301,24 @@ def test_assessment_without_a_sync_uses_the_newest_last_seen(db: Engine) -> None
     view = assessment(db, "my-pc", NOW)
     assert view is not None
     assert view.synced_at == NOW - timedelta(hours=1)
+
+
+def test_configuration_findings_resolve_only_on_positive_evidence(db: Engine) -> None:
+    check = FindingKind.CONFIGURATION
+    upsert_findings(
+        db,
+        "my-pc",
+        [make_finding("v"), make_finding("c1", kind=check), make_finding("c2", kind=check)],
+        NOW,
+    )
+    assert upsert_findings(db, "my-pc", [], NOW + timedelta(hours=6)) == (2, 1)
+    assert sorted(f.key for f in open_findings(db, "my-pc")) == ["c1", "c2"]
+    assert upsert_findings(db, "my-pc", [], NOW + timedelta(hours=12), {"c2"}) == (1, 1)
+    assert [f.key for f in open_findings(db, "my-pc")] == ["c1"]
+
+
+def test_vulnerabilities_can_be_left_open_when_their_results_were_cut_off(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [make_finding("v")], NOW)
+    later = NOW + timedelta(hours=6)
+    assert upsert_findings(db, "my-pc", [], later, resolve_vulnerabilities=False) == (1, 0)
+    assert [f.key for f in open_findings(db, "my-pc")] == ["v"]

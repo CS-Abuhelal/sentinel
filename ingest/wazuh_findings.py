@@ -8,6 +8,7 @@ from ingest.wazuh import WazuhAlertError, parse_timestamp
 
 MAX_TEXT = 1000
 MAX_REFERENCES = 10
+CLEARED_RESULTS = frozenset({"passed", "not applicable"})
 SEVERITIES = {
     "critical": Severity.CRITICAL,
     "high": Severity.HIGH,
@@ -65,6 +66,16 @@ def sca_check_key(alert: dict[str, Any]) -> tuple[str, str, str]:
     return host, policy, check_id
 
 
+def sca_key(policy: str, check_id: str) -> str:
+    return f"sca:{policy}:{check_id}"
+
+
+def sca_cleared_key(alert: dict[str, Any]) -> str | None:
+    _host, policy, check_id = sca_check_key(alert)
+    result = _sca_parts(alert)[2].get("result")
+    return sca_key(policy, check_id) if result in CLEARED_RESULTS else None
+
+
 def sca_finding(alert: dict[str, Any], now: datetime) -> Finding | None:
     host, policy, check_id = sca_check_key(alert)
     check = _sca_parts(alert)[2]
@@ -73,7 +84,7 @@ def sca_finding(alert: dict[str, Any], now: datetime) -> Finding | None:
     title = _clip(_text(check.get("title"))) or f"CIS check {check_id}"
     return Finding(
         kind=FindingKind.CONFIGURATION,
-        key=f"sca:{policy}:{check_id}",
+        key=sca_key(policy, check_id),
         host=host,
         title=title,
         severity=Severity.MEDIUM,
