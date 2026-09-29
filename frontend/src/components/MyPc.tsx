@@ -39,6 +39,9 @@ export function MyPc({ url }: { url: string }) {
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const [tab, setTab] = useState<Tab>(initialTab);
   const [incidentId, setIncidentId] = useState<string | null>(initialIncidentId);
+  const [linkedFinding] = useState<string | null>(() =>
+    new URLSearchParams(window.location.search).get("finding"),
+  );
   const [runLoad, setRunLoad] = useState<RunLoad>({ state: "idle" });
 
   useEffect(() => {
@@ -136,7 +139,9 @@ export function MyPc({ url }: { url: string }) {
           onBack={() => setIncidentId(null)}
         />
       )}
-      {feed && tab === "fixes" && <FixPanel sync={feed.status.sync} />}
+      {feed && tab === "fixes" && (
+        <FixPanel sync={feed.status.sync} initialFinding={linkedFinding} />
+      )}
     </section>
   );
 }

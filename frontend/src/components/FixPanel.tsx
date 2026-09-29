@@ -50,10 +50,16 @@ function subtitle(finding: Finding): string {
   return `CIS check ${finding.check_id ?? "—"}`;
 }
 
-export function FixPanel({ sync }: { sync: ServiceState }) {
+export function FixPanel({
+  sync,
+  initialFinding = null,
+}: {
+  sync: ServiceState;
+  initialFinding?: string | null;
+}) {
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const [rescanState, setRescanState] = useState<RescanState>({ state: "idle" });
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(initialFinding);
   const [showAll, setShowAll] = useState(false);
   const mountedRef = useRef(true);
 
