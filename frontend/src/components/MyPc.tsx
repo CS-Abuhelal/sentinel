@@ -25,6 +25,7 @@ type RunLoad =
 function initialTab(): Tab {
   const params = new URLSearchParams(window.location.search);
   if (params.get("incident")) return "incidents";
+  if (params.get("finding")) return "fixes";
   const tab = params.get("tab");
   if (tab === "incidents") return "incidents";
   if (tab === "fixes") return "fixes";

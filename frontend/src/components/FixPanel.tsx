@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { fetchAssessment, rescan } from "../api";
 import type { Finding, HostAssessment, Recommendation } from "../types/assessment";
@@ -61,6 +61,7 @@ export function FixPanel({
   const [rescanState, setRescanState] = useState<RescanState>({ state: "idle" });
   const [expanded, setExpanded] = useState<string | null>(initialFinding);
   const [showAll, setShowAll] = useState(false);
+  const showEverything = useCallback(() => setShowAll(true), []);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -148,7 +149,7 @@ export function FixPanel({
           expanded={expanded}
           onToggle={setExpanded}
           showAll={showAll}
-          onShowAll={() => setShowAll(true)}
+          onShowAll={showEverything}
         />
       )}
     </div>
@@ -169,7 +170,15 @@ function FixTable({
   onShowAll: () => void;
 }) {
   const total = assessment.findings.length;
-  const visible = showAll ? assessment.findings : assessment.findings.slice(0, VISIBLE_ROWS);
+  const expandedIndex = assessment.findings.findIndex((item) => item.finding_id === expanded);
+  const hidden = expandedIndex >= VISIBLE_ROWS;
+  const everything = showAll || hidden;
+  const visible = everything ? assessment.findings : assessment.findings.slice(0, VISIBLE_ROWS);
+
+  useEffect(() => {
+    if (hidden) onShowAll();
+  }, [hidden, onShowAll]);
+
   const recommendedFindingIds = new Set(
     assessment.recommendations.flatMap((recommendation) => recommendation.finding_ids),
   );
@@ -211,7 +220,7 @@ function FixTable({
           })}
         </tbody>
       </table>
-      {!showAll && total > VISIBLE_ROWS && (
+      {!everything && total > VISIBLE_ROWS && (
         <button type="button" className="control control--quiet" onClick={onShowAll}>
           Show all {total}
         </button>
@@ -235,11 +244,17 @@ function FindingRow({
   expanded: boolean;
   onToggle: (findingId: string | null) => void;
 }) {
+  const rowRef = useRef<HTMLTableRowElement>(null);
   const toggle = () => onToggle(expanded ? null : finding.finding_id);
+
+  useEffect(() => {
+    if (expanded) rowRef.current?.scrollIntoView?.({ block: "center" });
+  }, []);
 
   return (
     <>
       <tr
+        ref={rowRef}
         data-open="true"
         tabIndex={0}
         aria-expanded={expanded}
