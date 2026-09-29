@@ -4,7 +4,6 @@ import json
 import re
 import time
 from dataclasses import dataclass
-from itertools import combinations
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -19,6 +18,8 @@ CONDITION = re.compile(
     r"^Package (less than or equal to|less than|equal to) (\S.*)$", re.IGNORECASE
 )
 DIGITS = re.compile(r"\d+")
+DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+LETTER_AFTER_DIGIT = re.compile(r"\d.*[A-Za-z]")
 PACKAGE_TYPES = {
     "npm": "npm library (lives inside a Node.js project; update it with npm in that project)",
     "pypi": "Python package (update it with pip)",
@@ -108,12 +109,12 @@ def _bound(condition: str) -> Bound | None:
         return None
     version = match.group(2).strip()
     parts = DIGITS.findall(version)
-    if not parts:
+    if not parts or LETTER_AFTER_DIGIT.search(version):
         return None
     return Bound(
         version=version,
         key=tuple(int(part) for part in parts),
-        dated=len(parts[0]) == 4,
+        dated=DATE.fullmatch(version) is not None,
         inclusive=match.group(1).lower() != "less than",
     )
 
@@ -123,9 +124,8 @@ def strictest_fix(conditions: list[str]) -> str | None:
     known = [bound for bound in bounds if bound is not None]
     if not known or len(known) < len(bounds):
         return None
-    for first, second in combinations(known, 2):
-        if len(first.key) != len(second.key) and first.dated != second.dated:
-            return None
+    if len({bound.dated for bound in known}) > 1:
+        return None
     top = max(known, key=lambda bound: (bound.key, bound.inclusive))
     if top.inclusive:
         return f"a version newer than {top.version}"

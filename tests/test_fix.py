@@ -99,6 +99,7 @@ def test_fixed_when_reads_the_wazuh_condition() -> None:
     )
     assert fixed_when(vuln("Package equal to 3.14.0")) == "a version newer than 3.14.0"
     assert fixed_when(vuln("Package greater than 2.0")) is None
+    assert fixed_when(vuln("Package less than 1.2.3-rc1")) is None
     assert fixed_when(vuln(None)) is None
     assert fixed_when(make_finding("sca:p:1", kind=FindingKind.CONFIGURATION)) is None
     message = json.loads(finding_message(vuln("Package less than 8.2.9")).split("\n", 1)[1])
@@ -146,6 +147,8 @@ def test_the_package_type_goes_to_the_model_without_the_path() -> None:
             ["Package less than 2021-04-12", "Package less than or equal to 2021-04-10"],
             "version 2021-04-12 or newer",
         ),
+        (["Package less than v1.2.3", "Package less than v1.10.0"], "version v1.10.0 or newer"),
+        (["Package less than 2024.3.1", "Package less than 1.2.3"], "version 2024.3.1 or newer"),
     ],
 )
 def test_strictest_fix_picks_the_highest_bound(conditions: list[str], expected: str) -> None:
@@ -161,6 +164,13 @@ def test_strictest_fix_picks_the_highest_bound(conditions: list[str], expected: 
         ["Package less than 8.2.9", ""],
         ["Package less than latest"],
         ["Package less than 1.2", "Package less than or equal to 2021-04-10"],
+        ["Package less than 1.2.3", "Package less than 2021-04-10"],
+        ["Package less than 2021-04-10", "Package less than 1.2.3"],
+        ["Package less than 5", "Package less than 2021-04-10", "Package less than 1.2.3"],
+        ["Package less than 1.2.3-rc1"],
+        ["Package less than 1.2.3", "Package less than 1.2.4-rc1"],
+        ["Package less than 1.2.3b"],
+        ["Package less than 10.0.19045.3803 (22H2)"],
     ],
 )
 def test_strictest_fix_gives_up_on_unknown_or_mixed_bounds(conditions: list[str]) -> None:
