@@ -16,7 +16,10 @@ SWITCHED_OFF = (
 
 NEGATED = r"(?<!not\s)(?<!never\s)(?<!n't\s)"
 DENIAL = r"\b(?:not|never)\b|n't\b"
-BETWEEN_VERB_AND_TARGET = r"\b(?:at|in|with|using|keep|not|never)\b|[;:]"
+BETWEEN_VERB_AND_TARGET = (
+    r"\b(?:at|in|with|using|keep|not|never|and|then|also|plus|open|check|verify|ensure"
+    r"|make\s+sure|enable)\b|[;:]"
+)
 ONLY_NOTIFICATIONS = r"(?!(?:\s+firewall)?\s+notifications?\b)"
 SERVICES = r"(?:mpssvc|WinDefend|wscsvc|SecurityHealthService)"
 SWITCHED_ON = r"(?:1|true|0x0*1|dword:0*1)"
@@ -35,6 +38,12 @@ WEAKENING = tuple(
         r"\b(iex|invoke-expression)\b",
         r"downloadstring",
         r"-enc(odedcommand)?\b",
+        r"(?<![\w-])-e(c|n\w*)?\s+['\"]?[A-Za-z0-9+/]{16,}={0,2}",
+        r"\b(disable|turn\s+off|switch\s+off|stop|kill|uninstall|pause|deactivate)\b[^.\n]*"
+        r"\b(and|then|also|plus)\b"
+        r"(?:(?!\b(?:keep|leave|not|never|enable|turn\s+on|check|verify|make\s+sure|ensure)\b)"
+        r"[^.\n])*\b(defender|firewall|anti-?virus|uac|smartscreen"
+        r"|real-?time\s+protection|tamper\s+protection)\b" + ONLY_NOTIFICATIONS,
         r"certutil\b[^\n]*-urlcache",
         r"bitsadmin\b[^\n]*/transfer",
         r"\|\s*(iex|sh|bash|cmd)\b",

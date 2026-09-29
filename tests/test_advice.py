@@ -357,3 +357,32 @@ def test_advice_with_no_steps_left_is_rejected() -> None:
     finding = _vulnerability([])
     steps = ["Turn off the firewall.", "Download https://evil.example/x.exe"]
     assert check_fix(_fix(steps, [finding.finding_id]), {finding.finding_id: finding}) is None
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Turn off Windows Defender Firewall notifications and then the firewall",
+        "Disable the prompts, then turn the antivirus scanning down and also the Defender",
+        "powershell -e SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoA",
+        "powershell -ec SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoA",
+        "pwsh -en 'SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoA'",
+    ],
+)
+def test_chained_and_short_encoded_forms_are_caught(step: str) -> None:
+    assert weakens_security(step)
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Turn off the notifications and keep the firewall on.",
+        "Disable the startup app, then check that Windows Defender is on.",
+        "Stop the app and make sure the firewall stays enabled.",
+        "Run npm install and then restart the app.",
+        "Uninstall the old version and then open Windows Security to scan.",
+        "Use winget upgrade -e --id Microsoft.VisualStudioCode.",
+    ],
+)
+def test_safe_chained_steps_pass(step: str) -> None:
+    assert not weakens_security(step)
