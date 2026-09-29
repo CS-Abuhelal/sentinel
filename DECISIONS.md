@@ -13,30 +13,43 @@ Superseded entries are removed, and numbers are never reused.
   `wazuh-states-vulnerabilities-*`. CIS check results are the newest SCA check alert per host,
   policy and check in `wazuh-alerts-4.x-*`. The manager's own agent is skipped.
 - The backend runs the sync on start, every 6 hours and on `POST /api/pc/rescan`. After a failed
-  sync it tries again in 5 minutes. Every run is logged with its real start and finish time,
-  including runs that fail while storing the findings.
-- A vulnerability that is no longer in the state index is resolved. A failed CIS check is
+  sync it tries again in 5 minutes. A run that reaches the indexer is logged in `sync_runs` with
+  its real start and finish time, including runs that fail while storing the findings. A
+  failure to build the indexer client (for example a missing certificate) is only shown in the
+  sync status and the server log, not logged in `sync_runs`.
+- A vulnerability that is no longer in the state index is resolved, but only for a host that
+  appears in that sync (through a vulnerability state or a check result). A failed CIS check is
   resolved only on positive evidence: its newest result is `passed` or `not applicable`. A check
-  the sync does not see stays open. When a search is cut off at 10,000 documents, nothing of that
-  kind is resolved in that sync, and the sync status says so.
+  the sync does not see stays open. When the vulnerability search is cut off at 10,000
+  documents, no vulnerability is resolved in that sync. The check search is sorted newest
+  first, so a cut-off page still holds the newest result of every check it names: those checks
+  are still resolved on a pass, the oldest checks are not read, and the sync status says so.
 - Fix steps are written per advice unit: one unit per program (a vulnerability's package,
   lower-cased), otherwise one per finding. The unit's lead is its highest-ranked finding, and the
   "top 10" counts units. The worker makes one model call per unit with the lead's details and the
   program's other CVEs.
 - `fixed_when` is the strictest version bound across all of the program's open CVEs (the highest
   bound, and "less than or equal" beats "less than" at the same version). When a bound cannot be
-  read, no version is named and the owner is told to install the latest one.
-- Advice is stored on the lead and cites every member. Storing it clears the other members'
-  advice, and resolving a finding clears its own, so a program never shows two recommendations.
-  A unit is written again when its advice does not cover every open member, for example when a
-  new CVE joins the program. Failed advice is retried after an hour.
-- `check_fix` also drops any step with a link whose host is not allowed. Allowed hosts are the
-  hosts of the cited vulnerabilities' references, a fixed vendor list (`learn.microsoft.com`,
-  `support.microsoft.com`, `www.microsoft.com`, `code.visualstudio.com`, `nodejs.org`,
+  read (unknown wording, letters after the digits such as `1.2.3-rc1`, or a `YYYY-MM-DD` date
+  mixed with other kinds of version), no version is named and the owner is told to install the
+  latest one.
+- Advice is stored on the lead and cites every member, and only on a finding that is still
+  open. Storing it clears the other members' advice, and resolving a finding clears its own, so
+  a program never shows two recommendations. A finding that reopens starts without advice. A
+  unit is written again when its advice does not cover every open member, for example when a new
+  CVE joins the program. Failed advice is retried after an hour, and each successful sync also
+  retries it at once, which is how a new member of a program gets its advice.
+- `check_fix` also drops any step with a link whose host is not allowed, and drops the whole
+  recommendation when its title has one. It finds every `http(s)` link, including a second one
+  glued onto the first, plus `www.` links without a scheme and `https:\\host`. A UNC path
+  (`\\host\share`) is never allowed. Allowed hosts are the hosts of the cited vulnerabilities'
+  references, a fixed vendor list (`learn.microsoft.com`, `support.microsoft.com`,
+  `www.microsoft.com`, `go.microsoft.com`, `aka.ms`, `code.visualstudio.com`, `nodejs.org`,
   `www.python.org`, `python.org`, `www.mongodb.com`, `store.steampowered.com`, `www.npmjs.com`,
   `pypi.org`) and their subdomains. Advice with no steps left is stored as failed.
 - CIS checks about notifications score 35 and checks about logging 55, like audit checks, even
-  when they mention the firewall or Defender. Ties in the ranking are broken by the finding's key.
+  when they mention the firewall or Defender. "Log on" and "logged on" are not logging. Ties in
+  the ranking are broken by the finding's key.
 - The `HostAssessment` is built when it is requested. Incident investigations gain
   `host_posture`. Contracts 1.6.0 add `PcStatus.sync`.
 
@@ -65,7 +78,9 @@ Superseded entries are removed, and numbers are never reused.
   changes, the first scan's alert is the only one. If retention deletes it before SENTINEL has
   stored the check (for example with a fresh database), the check is missing until its result
   changes. If that bites, the way out is the Wazuh server API route
-  `GET /sca/{agent_id}/checks/{policy_id}`, which returns every check's current result.
+  `GET /sca/{agent_id}/checks/{policy_id}`, which returns every check's current result. The same
+  route would fix a renamed SCA policy: its checks get new keys, so the findings under the old
+  policy name never see a pass and stay open until then.
 - A useful link to a site outside the allow-list is dropped, and it counts as a removed step.
 - A vulnerability's "related alert" is a non-posture alert in the last 7 days whose process name
   or log text mentions the package name; CIS findings have none.
@@ -82,17 +97,22 @@ followed by "off" or "disabled", UAC "never notify", and download-and-run comman
 shell). It also matches the PowerShell, registry and service forms of the same changes:
 `Set-NetFirewallProfile -Enabled False`, Defender's `DisableAntiSpyware`-style values set to 1,
 `EnableLUA` or `ConsentPromptBehaviorAdmin` set to 0, Defender exclusions, and stopping or
-reconfiguring the firewall, Defender or Security Center services. A recommendation whose title
-matches is removed whole, not just its steps.
+reconfiguring the firewall, Defender or Security Center services (`sc`, `net stop`,
+`Stop-Service`, including `Get-Service x | Stop-Service`). Unicode dashes become plain hyphens
+before matching, so `–enc` and `–Enabled False` match, and registry values match in decimal,
+`0x` and `dword:` forms. Firewall notification settings, including "Windows Defender Firewall
+notifications", are not counted. A recommendation whose title matches is removed whole, not just
+its steps.
 
 **Why.** The final phase-2 review found wordings the narrow list missed, such as "Turn Windows
 Defender off" and "Set the UAC slider to Never notify". Log content can steer the model, so the
 checker has to hold without trusting the model's phrasing.
 
 **Consequence.** Some harmless text is dropped too. A CIS step that names the policy "Turn off
-Microsoft Defender Antivirus" is removed. The dashboard shows how many steps the checker removed,
-and the removed steps are kept with the advice (`dropped_steps`), so the owner knows something
-was taken out.
+Microsoft Defender Antivirus" is removed. The dashboard shows how many steps were removed. That
+count also includes steps cut for length or number, not only the ones the checker removed. The
+removed steps are kept with the advice (`dropped_steps`), so the owner knows something was
+taken out.
 
 ---
 
