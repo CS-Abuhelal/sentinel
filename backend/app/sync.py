@@ -33,7 +33,10 @@ SYNC_INTERVAL = timedelta(hours=6)
 RETRY_AFTER_FAILURE = timedelta(minutes=5)
 RELATED_WINDOW = timedelta(days=7)
 SKIP_MANAGER = [{"term": {"agent.id": MANAGER_AGENT_ID}}]
-CUT_OFF = " The {} results were cut off, so none were marked resolved."
+VULNERABILITIES_CUT_OFF = (
+    " The vulnerability results were cut off, so none were marked resolved."
+)
+CHECKS_CUT_OFF = " The security check results were cut off, so the oldest ones were not read."
 
 
 @dataclass(frozen=True)
@@ -152,7 +155,7 @@ def sync(engine: Engine, client: httpx.Client, clock: Callable[[], datetime]) ->
                 host,
                 ranked,
                 started,
-                set() if checks.truncated else collected.resolvable.get(host, set()),
+                collected.resolvable.get(host, set()),
                 resolve_vulnerabilities=not vulnerabilities.truncated,
             )
             total += opened
@@ -165,9 +168,9 @@ def sync(engine: Engine, client: httpx.Client, clock: Callable[[], datetime]) ->
     if resolved:
         detail = f"{detail} {resolved} resolved."
     if vulnerabilities.truncated:
-        detail += CUT_OFF.format("vulnerability")
+        detail += VULNERABILITIES_CUT_OFF
     if checks.truncated:
-        detail += CUT_OFF.format("security check")
+        detail += CHECKS_CUT_OFF
     return ServiceState(reachable=True, detail=detail)
 
 

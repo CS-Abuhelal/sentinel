@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy import select, update
 from sqlalchemy.engine import Engine
 
+from backend.app.db import findings as findings_table
 from backend.app.findings import (
     ADVICE_FAILED,
     ADVICE_READY,
@@ -274,15 +276,77 @@ def test_failed_advice_is_retried_after_an_hour(db: Engine) -> None:
     assert lead is not None and lead.finding_id == a.finding_id
 
 
-def test_failed_advice_older_than_a_new_member_is_retried_at_once(db: Engine) -> None:
-    newer = _mongo("b", 80, "CVE-2026-2").model_copy(
-        update={"first_seen": NOW + timedelta(minutes=10)}
+def test_failed_advice_is_retried_at_once_when_a_sync_adds_a_member(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [_mongo("a", 90, "CVE-2026-1")], NOW)
+    [a] = open_findings(db, "my-pc")
+    set_advice(db, a.finding_id, None, "test", NOW)
+    assert next_finding_to_advise(db, NOW + timedelta(minutes=20), top=10) is None
+    both = [_mongo("a", 90, "CVE-2026-1"), _mongo("b", 80, "CVE-2026-2")]
+    upsert_findings(db, "my-pc", both, NOW + timedelta(minutes=30))
+    lead = next_finding_to_advise(db, NOW + timedelta(minutes=31), top=10)
+    assert lead is not None and lead.finding_id == a.finding_id
+
+
+def test_a_future_first_seen_does_not_make_failed_advice_retry_every_cycle(db: Engine) -> None:
+    skewed = _mongo("b", 80, "CVE-2026-2").model_copy(
+        update={"first_seen": NOW + timedelta(days=2)}
     )
-    upsert_findings(db, "my-pc", [_mongo("a", 90, "CVE-2026-1"), newer], NOW)
+    upsert_findings(db, "my-pc", [_mongo("a", 90, "CVE-2026-1"), skewed], NOW)
     [a, _b] = open_findings(db, "my-pc")
     set_advice(db, a.finding_id, None, "test", NOW)
-    lead = next_finding_to_advise(db, NOW + timedelta(minutes=20), top=10)
+    assert next_finding_to_advise(db, NOW + timedelta(minutes=1), top=10) is None
+    assert next_finding_to_advise(db, NOW + timedelta(minutes=59), top=10) is None
+    lead = next_finding_to_advise(db, NOW + timedelta(minutes=61), top=10)
     assert lead is not None and lead.finding_id == a.finding_id
+
+
+def _store_advice(db: Engine, finding_id: str) -> None:
+    values = {
+        "advice": _advice(finding_id).model_dump(mode="json"),
+        "advice_state": ADVICE_READY,
+        "advice_model": "test",
+        "advice_at": NOW,
+    }
+    with db.begin() as connection:
+        connection.execute(
+            update(findings_table).where(findings_table.c.finding_id == finding_id).values(**values)
+        )
+
+
+def _advice_columns(db: Engine, finding_id: str) -> tuple[object, ...]:
+    table = findings_table
+    statement = select(
+        table.c.advice, table.c.advice_state, table.c.advice_model, table.c.advice_at
+    ).where(table.c.finding_id == finding_id)
+    with db.connect() as connection:
+        return tuple(connection.execute(statement).one())
+
+
+def test_advice_is_not_stored_on_a_finding_that_was_resolved_meanwhile(db: Engine) -> None:
+    both = [_mongo("a", 90, "CVE-2026-1"), _mongo("b", 80, "CVE-2026-2")]
+    upsert_findings(db, "my-pc", both, NOW)
+    [a, b] = open_findings(db, "my-pc")
+    set_advice(db, b.finding_id, _advice(b.finding_id), "test", NOW)
+    upsert_findings(db, "my-pc", [_mongo("b", 80, "CVE-2026-2")], NOW + timedelta(hours=6))
+    set_advice(db, a.finding_id, _advice(a.finding_id), "test", NOW + timedelta(hours=6))
+    assert _advice_columns(db, a.finding_id) == (None, None, None, None)
+    assert advice_states(db, "my-pc") == {b.finding_id: ADVICE_READY}
+    set_advice(db, a.finding_id, None, "test", NOW + timedelta(hours=6))
+    assert _advice_columns(db, a.finding_id) == (None, None, None, None)
+
+
+def test_reopening_a_finding_clears_advice_left_on_it(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [make_finding("a")], NOW)
+    [a] = open_findings(db, "my-pc")
+    upsert_findings(db, "my-pc", [], NOW + timedelta(hours=6))
+    assert open_findings(db, "my-pc") == []
+    _store_advice(db, a.finding_id)
+    assert _advice_columns(db, a.finding_id)[1] == ADVICE_READY
+    upsert_findings(db, "my-pc", [make_finding("a")], NOW + timedelta(hours=12))
+    [again] = open_findings(db, "my-pc")
+    assert again.finding_id == a.finding_id
+    assert _advice_columns(db, a.finding_id) == (None, None, None, None)
+    assert next_finding_to_advise(db, NOW + timedelta(hours=12), top=10) is not None
 
 
 def test_open_findings_carry_only_the_package_type_from_raw(db: Engine) -> None:

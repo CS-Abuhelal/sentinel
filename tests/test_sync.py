@@ -191,24 +191,39 @@ def test_a_vulnerability_missing_from_the_state_index_is_resolved(db: Engine) ->
     assert open_findings(db, "my-pc") == []
 
 
-def test_truncated_results_resolve_nothing(db: Engine) -> None:
+def test_cut_off_vulnerability_results_resolve_nothing(db: Engine) -> None:
+    sync(db, _client([wazuh_payload("vulnerability_state")], []), lambda: NOW)
+    passed = _check("1", "passed", "2026-09-28T10:00:00.000+0000")
+    client = _client([], [passed], vulnerability_total={"value": 10000, "relation": "gte"})
+    state = sync(db, client, lambda: NOW + timedelta(hours=6))
+    assert state.reachable is True
+    assert state.detail == (
+        "Synced 1 open findings at 18:00:00 UTC. The vulnerability results were cut off, so "
+        "none were marked resolved."
+    )
+    assert [f.kind for f in open_findings(db, "my-pc")] == [FindingKind.VULNERABILITY]
+
+
+def test_cut_off_check_results_still_resolve_what_they_report_passed(db: Engine) -> None:
     failed = _check("26138", "failed", "2026-09-27T23:17:30.577+0000")
-    sync(db, _client([wazuh_payload("vulnerability_state")], [failed]), lambda: NOW)
+    unread = _check("26139", "failed", "2026-09-27T23:17:31.577+0000")
+    sync(db, _client([wazuh_payload("vulnerability_state")], [failed, unread]), lambda: NOW)
     passed = _check("26138", "passed", "2026-09-28T11:00:00.000+0000")
     client = _client(
-        [],
+        [wazuh_payload("vulnerability_state")],
         [passed],
-        vulnerability_total={"value": 10000, "relation": "gte"},
         check_total={"value": 25000, "relation": "eq"},
     )
     state = sync(db, client, lambda: NOW + timedelta(hours=6))
     assert state.reachable is True
     assert state.detail == (
-        "Synced 2 open findings at 18:00:00 UTC. The vulnerability results were cut off, so "
-        "none were marked resolved. The security check results were cut off, so none were "
-        "marked resolved."
+        "Synced 2 open findings at 18:00:00 UTC. 1 resolved. "
+        "The security check results were cut off, so the oldest ones were not read."
     )
-    assert len(open_findings(db, "my-pc")) == 2
+    open_ids = {f.key for f in open_findings(db, "my-pc")}
+    assert len(open_ids) == 2
+    assert not any(key.endswith("26138") for key in open_ids)
+    assert any(key.endswith("26139") for key in open_ids)
 
 
 def test_a_sync_records_when_it_started_and_finished(db: Engine) -> None:

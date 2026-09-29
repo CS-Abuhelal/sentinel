@@ -72,10 +72,14 @@ def upsert_findings(
                 "last_seen": now,
                 "finding": current.model_dump(mode="json"),
             }
+            reopened = old is not None and old.status != OPEN
             connection.execute(
                 pg_insert(table)
                 .values(finding_id=current.finding_id, host=host, key=current.key, **values)
-                .on_conflict_do_update(constraint="uq_findings_host_key", set_=values)
+                .on_conflict_do_update(
+                    constraint="uq_findings_host_key",
+                    set_=(values | NO_ADVICE) if reopened else values,
+                )
             )
         resolved = 0
         kept = 0
@@ -196,7 +200,6 @@ def next_finding_to_advise(engine: Engine, now: datetime, top: int = 10) -> Find
 
 def _advised(members: list[Finding], stored: dict[str, StoredAdvice], now: datetime) -> bool:
     open_ids = {f.finding_id for f in members}
-    newest = max(f.first_seen for f in members)
     for member in members:
         advice = stored.get(member.finding_id)
         if advice is None:
@@ -206,7 +209,6 @@ def _advised(members: list[Finding], stored: dict[str, StoredAdvice], now: datet
         if (
             advice.state == ADVICE_FAILED
             and advice.at is not None
-            and advice.at > newest
             and now - advice.at < RETRY_FAILED_ADVICE
         ):
             return True
@@ -233,7 +235,13 @@ def set_advice(
         "advice_at": now,
     }
     with engine.begin() as connection:
-        connection.execute(update(table).where(table.c.finding_id == finding_id).values(**values))
+        stored = connection.execute(
+            update(table)
+            .where(table.c.finding_id == finding_id, table.c.status == OPEN)
+            .values(**values)
+        )
+        if stored.rowcount == 0:
+            return
         others = _other_members(connection, finding_id)
         if others:
             connection.execute(
