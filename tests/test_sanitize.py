@@ -218,10 +218,10 @@ def test_a_profile_folder_with_a_space_or_an_apostrophe_is_replaced_whole() -> N
 
 
 def test_a_profile_path_followed_by_more_text_learns_only_the_folder() -> None:
-    doc = {"cmd": "dir C:\\Users\\amy.smith /s /b", "note": "amy.smith"}
+    doc = {"cmd": "dir C:\\Users\\amy.smith then more /s /b", "note": "amy.smith"}
     sanitizer = Sanitizer()
     sanitizer.learn(doc)
-    assert sanitizer.apply(doc) == {"cmd": "dir C:\\Users\\user1 /s /b", "note": "user1"}
+    assert sanitizer.apply(doc) == {"cmd": "dir C:\\Users\\user1 then more /s /b", "note": "user1"}
     assert sorted(sanitizer.mapping) == ["amy.smith"]
 
 
@@ -553,14 +553,16 @@ def test_labels_in_a_whitespace_collapsed_message_are_learned() -> None:
         "Account Domain: WORKGROUP Logon ID: 0x3E7 Account For Which Logon Failed: "
         "Security ID: S-1-0-0 Account Name: amy.smith Account Domain: ZULU-BOX "
         "Failure Information: Failure Reason: Unknown user name or bad password. "
-        "Network Information: Workstation Name: ALPHA-BOX Source Network Address: 192.168.1.23"
+        "Network Information: Workstation Name: ALPHA-BOX Source Network Address: 192.168.1.23 "
+        "New Logon: Account Name: Bob Jones Account Domain: ZULU-BOX Logon ID: 0x3E7"
     )
-    doc = {"content": {"example": example}, "note": "amy.smith on zulu-box from alpha-box"}
+    doc = {"content": {"example": example}, "note": "amy.smith, Bob Jones on zulu-box, alpha-box"}
     clean = _run(doc)
-    assert clean["note"] == "user1 on HOST-3 from HOST-2"
+    assert clean["note"] == "user1, user2 on HOST-3, HOST-2"
     assert clean["content"]["example"] == (
         example.replace("ZULU-BOX", "HOST-3")
         .replace("amy.smith", "user1")
+        .replace("Bob Jones", "user2")
         .replace("ALPHA-BOX", "HOST-2")
         .replace("192.168.1.23", "203.0.113.1")
     )
