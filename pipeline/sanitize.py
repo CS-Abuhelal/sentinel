@@ -47,7 +47,9 @@ USER_KEYS = frozenset(
     }
 )
 FULL_NAME_KEYS = frozenset({"displayName", "decided_by", "approved_by"})
-ACCOUNT_NAME_PARENTS = frozenset({"user", "win_perm_before", "win_perm_after"})
+ACCOUNT_NAME_PARENTS = frozenset({"user"})
+PERMISSION_KEYS = frozenset({"win_perm_before", "win_perm_after"})
+REGISTRY_PATH = re.compile(r"(?i)\s*(?:HKEY_|HKLM|HKU|HKCU|HKCR)")
 ACCOUNT_CONTAINER_KEYS = frozenset({"accounts", "by_account", "by_user"})
 HOST_CONTAINER_KEYS = frozenset({"by_host", "hosts"})
 SERVICE_DOMAINS = frozenset(
@@ -124,6 +126,19 @@ KEEP = frozenset(
         "OWNER RIGHTS",
         "ALL APPLICATION PACKAGES",
         "ALL RESTRICTED APPLICATION PACKAGES",
+        "RESTRICTED",
+        "WRITE RESTRICTED",
+        "LOCAL",
+        "CONSOLE LOGON",
+        "IUSR",
+        "ALL SERVICES",
+        "DIALUP",
+        "REMOTE INTERACTIVE LOGON",
+        "This Organization",
+        "Local account",
+        "Local account and member of Administrators group",
+        "SELF",
+        "TERMINAL SERVER USER",
     }
 )
 KEEP_FOLDED = frozenset(value.casefold() for value in KEEP)
@@ -161,6 +176,7 @@ GENERIC = frozenset(
         "tsclient",
         "wpad",
         "isatap",
+        "workstation",
     }
 )
 LOCAL_SUFFIXES = frozenset(
@@ -273,6 +289,10 @@ def _agent_id_key(key: str | None, parent: str | None) -> bool:
 
 def _mail_key(key: str | None) -> bool:
     return key is not None and bool(MAIL_KEY.search(key))
+
+
+def _registry_path(path: Any) -> bool:
+    return isinstance(path, str) and bool(REGISTRY_PATH.match(path))
 
 
 def _local_suffix(rest: str) -> bool:
@@ -420,10 +440,18 @@ class Sanitizer:
             return self._replace(doc, not numbers_only)
         return doc
 
-    def _walk(self, value: Any, key: str | None, parent: str | None, numbers_only: bool) -> None:
+    def _walk(
+        self,
+        value: Any,
+        key: str | None,
+        parent: str | None,
+        numbers_only: bool,
+        registry: bool = False,
+    ) -> None:
         numbers_only = numbers_only or _numbers_only_key(key)
         if isinstance(value, dict):
             self._learn_entity(value)
+            registry = registry or _registry_path(value.get("path"))
             for child_key, child in value.items():
                 if isinstance(child_key, str):
                     self._learn_text(child_key, numbers_only)
@@ -433,11 +461,11 @@ class Sanitizer:
                         self._add_host(child_key, own=False)
                     elif _mail_key(key):
                         self._learn_account_emails(child_key)
-                self._walk(child, str(child_key), key, numbers_only)
+                self._walk(child, str(child_key), key, numbers_only, registry)
             return
         if isinstance(value, (list, tuple)):
             for child in value:
-                self._walk(child, key, parent, numbers_only)
+                self._walk(child, key, parent, numbers_only, registry)
             return
         if not isinstance(value, str):
             return
@@ -450,7 +478,8 @@ class Sanitizer:
             self._add_host(text, own=False)
         elif key in LOCAL_HOST_KEYS:
             self._add_host(text, own=False, local_only=True)
-        if key in USER_KEYS or (key == "name" and parent in ACCOUNT_NAME_PARENTS):
+        principal = parent in PERMISSION_KEYS and not registry
+        if key in USER_KEYS or (key == "name" and (parent in ACCOUNT_NAME_PARENTS or principal)):
             self._add_account(text)
         elif key in FULL_NAME_KEYS:
             self._add_account(text, parts=True)

@@ -650,6 +650,101 @@ def test_names_in_file_permissions_are_learned() -> None:
     assert clean["note"] == "user2 and user1; ALL APPLICATION PACKAGES"
 
 
+def test_names_in_registry_key_permissions_are_not_learned() -> None:
+    services = r"HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services"
+    doc = {
+        "fim": [
+            {
+                "syscheck": {
+                    "path": services + r"\EventLog\Application\Foo",
+                    "win_perm_after": [
+                        {"name": "EventLog"},
+                        {"name": "SYSTEM"},
+                        {"name": "Administrators"},
+                        {"name": "Users"},
+                    ],
+                }
+            },
+            {
+                "syscheck": {
+                    "path": services + r"\Tcpip\Parameters\Interfaces\{a1}",
+                    "win_perm_after": [
+                        {"name": "Dhcp"},
+                        {"name": "NETWORK SERVICE"},
+                        {"name": "SYSTEM"},
+                    ],
+                }
+            },
+            {
+                "syscheck": {
+                    "path": r"HKEY_USERS\S-1-5-21-111-222-333-1001\Software\Run",
+                    "win_perm_before": [{"name": "amy.smith"}, {"name": "RESTRICTED"}],
+                    "win_perm_after": [{"name": "jdoe"}, {"name": "LOCAL"}, {"name": "IUSR"}],
+                }
+            },
+            {"syscheck": {"path": r"hklm\SOFTWARE\x", "win_perm_after": [{"name": "MpsSvc"}]}},
+            {
+                "syscheck": {
+                    "path": r"c:\tools\x.txt",
+                    "win_perm_after": [{"name": "jdoe"}, {"name": "RESTRICTED"}],
+                }
+            },
+        ],
+        "system_event": {"providerName": "Microsoft-Windows-Dhcp-Client"},
+        "sca": {
+            "registry": r"HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog"
+            r"\Application:MaxSize"
+        },
+        "message4624": "\tRestricted Admin Mode:\t-\r\n",
+        "note": "EventLog, Dhcp, DHCP, MpsSvc, RESTRICTED and amy.smith; jdoe",
+    }
+    sanitizer = Sanitizer()
+    sanitizer.learn(doc)
+    clean = sanitizer.apply(doc)
+    assert sorted(sanitizer.mapping) == ["S-1-5-21-111-222-333", "jdoe"]
+    expected = copy.deepcopy(doc)
+    third = expected["fim"][2]["syscheck"]
+    third["path"] = r"HKEY_USERS\S-1-5-21-1000000000-1000000000-1000000000-1001\Software\Run"
+    third["win_perm_after"][0]["name"] = "user1"
+    expected["fim"][4]["syscheck"]["win_perm_after"][0]["name"] = "user1"
+    expected["note"] = "EventLog, Dhcp, DHCP, MpsSvc, RESTRICTED and amy.smith; user1"
+    assert clean == expected
+
+
+def test_well_known_principals_in_file_permissions_are_kept() -> None:
+    principals = [
+        "RESTRICTED",
+        "WRITE RESTRICTED",
+        "LOCAL",
+        "CONSOLE LOGON",
+        "IUSR",
+        "ALL SERVICES",
+        "DIALUP",
+        "REMOTE INTERACTIVE LOGON",
+        "This Organization",
+        "Local account",
+        "Local account and member of Administrators group",
+        "SELF",
+        "TERMINAL SERVER USER",
+    ]
+    doc = {
+        "syscheck": {
+            "path": r"c:\tools\x.txt",
+            "win_perm_after": [{"name": name, "allowed": ["read"]} for name in principals],
+        },
+        "note": "; ".join(principals) + "; HKEY_LOCAL_MACHINE; LOCAL SERVICE; self-signed",
+    }
+    assert _run(doc) == doc
+
+
+def test_a_generic_workstation_name_is_not_learned_as_a_host() -> None:
+    doc = {
+        "workstationName": "WORKSTATION",
+        "message": "Network Information:\r\n\tWorkstation Name:\tWORKSTATION\r\n",
+    }
+    assert _run(doc) == doc
+
+
 def test_sysmon_and_account_management_user_fields_are_learned() -> None:
     doc = {
         "eventdata": {
