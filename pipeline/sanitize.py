@@ -210,8 +210,35 @@ PROFILE = re.compile(_PROFILE_ROOT + r"(All Users|Default User|[^\\/\s\x22\x27<>
 UNC = re.compile(r"(?:(?<![\w.$:\\-])|(?<=\\[nrt]))(\\{2,})([^\\\s]{3,})(\\+)")
 LONG_UNC = re.compile(r"(?i)(?<!\\)(\\+)(?:\1\?\1UNC|Device\1Mup)\1([^\\\s;]{3,})\1")
 HOME_FOLDER = re.compile(
-    r"(?:(?<![\w.%-])|(?<=\\[nrt]))/home/([^/\s\x22\x27<>|:*?%,;(){}\[\]\\]+)/"
+    r"(?:(?<![^\s\x22\x27(=])|(?<=\\[nrt]))/home/(?P<home>[^/\s\x22\x27<>|:*?%,;(){}\[\]\\]+)/"
 )
+WSL_HOME = re.compile(
+    r"(?i)(\\+)(?:wsl\.localhost|wsl\$)\1[^\\\s]+\1home\1(?P<home>[^\\\s\x22]+)\1"
+)
+NON_PERSON_HOMES = frozenset(
+    {
+        "node",
+        "ubuntu",
+        "debian",
+        "kali",
+        "docker",
+        "runner",
+        "vagrant",
+        "ec2-user",
+        "app",
+        "azureuser",
+        "pi",
+        "about",
+        "index",
+        "news",
+        "assets",
+    }
+)
+NON_PERSON_PROFILES = frozenset({"current", "self", "login", "auth", "names", "shared"})
+TOKEN_BREAK = re.compile(r"[\s\x22\x27<>]")
+FILE_SCHEME = re.compile(r"(?i)(?:(?<![a-z0-9+.-])|(?<=\\[nrt]))file$")
+SAM_PATH = re.compile(r"(?i)\\+SAM(?:\\|$)")
+TOKEN_WINDOW = 512
 DOMAIN_ACCOUNT = re.compile(
     r"(?:(?<![\w.$\\-])|(?<=\\[nrt]))([^\W_][\w.-]*)"
     r"(?:(?:\\\\){1,2}|\\(?![nrt\x22]|u[0-9A-Fa-f]{4}))([^\W_][\w.$-]*)"
@@ -302,6 +329,16 @@ def _registry_path(path: Any) -> bool:
 def _local_suffix(rest: str) -> bool:
     folded = rest.casefold()
     return any(folded == suffix or folded.endswith("." + suffix) for suffix in LOCAL_SUFFIXES)
+
+
+def _person_profile(text: str, start: int, folder: str) -> bool:
+    if folder.casefold() in NON_PERSON_PROFILES:
+        return False
+    token = TOKEN_BREAK.split(text[max(0, start - TOKEN_WINDOW) : start])[-1]
+    if SAM_PATH.search(token):
+        return False
+    head, found, _ = token.rpartition("://")
+    return text[start] != "/" or not found or bool(FILE_SCHEME.search(head))
 
 
 def _canonical_ipv4(text: str) -> str:
@@ -553,12 +590,19 @@ class Sanitizer:
     def _learn_paths(self, text: str) -> None:
         for match in PROFILE_FOLDER.finditer(text):
             folder = match.group(1)
-            if folder == folder.strip() and not folder.endswith("."):
+            if (
+                folder == folder.strip()
+                and not folder.endswith(".")
+                and _person_profile(text, match.start(), folder)
+            ):
                 self._add_account(folder)
         for match in PROFILE.finditer(text):
-            self._add_account(match.group(1).rstrip("."))
-        for match in HOME_FOLDER.finditer(text):
-            self._add_account(match.group(1))
+            folder = match.group(1).rstrip(".")
+            if _person_profile(text, match.start(), folder):
+                self._add_account(folder)
+        for match in (*HOME_FOLDER.finditer(text), *WSL_HOME.finditer(text)):
+            if match.group("home").casefold() not in NON_PERSON_HOMES:
+                self._add_account(match.group("home"))
         for match in UNC.finditer(text):
             lead, host, trail = match.groups()
             if len(lead) == 2 * len(trail):

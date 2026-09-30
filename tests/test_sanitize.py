@@ -290,6 +290,95 @@ def test_the_user_folder_of_a_linux_home_path_is_learned() -> None:
     }
 
 
+def test_a_linux_home_path_is_learned_only_at_the_start_of_a_token() -> None:
+    doc = {
+        "a": "/home/amy.smith/x",
+        "b": 'cd "/home/bob.jones/y"',
+        "c": "(/home/cy.lee/z)",
+        "d": "HOME=/home/dan.kim/",
+        "e": "line\\n/home/eve.ross/x",
+        "f": "x:/home/fay.wong/",
+        "g": "a/home/gus.hill/",
+        "h": "C:/home/hal.berg/",
+        "note": "amy.smith bob.jones cy.lee dan.kim eve.ross fay.wong gus.hill hal.berg",
+    }
+    clean = _run(doc)
+    assert clean["note"] == "user1 user2 user3 user4 user5 fay.wong gus.hill hal.berg"
+
+
+def test_container_cloud_and_web_home_folders_are_not_learned() -> None:
+    doc = {
+        "docker": r"docker run -v C:\src:/home/node/app node:20",
+        "scp": "scp build.zip admin@10.0.0.9:/home/ubuntu/app/",
+        "href": "<a href=/home/about/>About</a>",
+        "get": "GET /home/index/ HTTP/1.1",
+        "drive": "C:/home/assets/",
+        "runner": "cat /home/runner/work/x/y",
+        "kali": "wsl.exe -d kali-linux -e ls /home/kali/",
+        "cloud": "ssh /home/ec2-user/ /home/azureuser/ /home/vagrant/ /home/debian/ /home/docker/",
+        "note": "Node.js 20.11 is affected; Ubuntu 22.04 LTS; about, index, assets, runner, kali",
+    }
+    sanitizer = Sanitizer()
+    sanitizer.learn(doc)
+    assert sanitizer.apply(doc) == {
+        **doc,
+        "scp": "scp build.zip admin@203.0.113.1:/home/ubuntu/app/",
+    }
+    assert sorted(sanitizer.mapping) == ["10.0.0.9"]
+
+
+def test_the_user_folder_of_a_wsl_path_is_learned() -> None:
+    doc = {
+        "defender": r"\\wsl.localhost\Ubuntu\home\jdoe\notes.txt",
+        "sysmon": r"\\wsl$\Ubuntu-22.04\home\amy.smith\.bashrc",
+        "escaped": json.dumps({"path": r"\\wsl.localhost\Debian\home\bob.jones\x"}),
+        "kali": r"\\wsl.localhost\kali-linux\home\kali\x",
+        "note": "jdoe amy.smith bob.jones kali Ubuntu Debian",
+    }
+    clean = _run(doc)
+    assert clean == {
+        "defender": r"\\wsl.localhost\Ubuntu\home\user3\notes.txt",
+        "sysmon": r"\\wsl$\Ubuntu-22.04\home\user1\.bashrc",
+        "escaped": json.dumps({"path": r"\\wsl.localhost\Debian\home\user2\x"}),
+        "kali": doc["kali"],
+        "note": "user3 user1 user2 kali Ubuntu Debian",
+    }
+
+
+def test_web_urls_and_the_sam_hive_are_not_profile_paths() -> None:
+    doc = {
+        "jira": "curl https://jira.example.com/rest/api/2/users/current/settings",
+        "gitlab": "chrome.exe https://gitlab.com/users/auth/google_oauth2/callback?code=x",
+        "login": "chrome.exe https://example.com/users/login/?next=/",
+        "canvas": "chrome.exe https://canvas.example.edu/api/v1/users/self/profile",
+        "json": json.dumps({"url": "https://api.example.com/users/octocat/repos"}),
+        "share": r"\\NAS\Users\Shared\x.doc",
+        "sam": r"HKLM\SAM\SAM\Domains\Account\Users\Names\jdoe",
+        "rid": r"HKLM\SAM\SAM\Domains\Account\Users\000003E9\V",
+        "hive": r"\REGISTRY\MACHINE\SAM\Users\zed.quinn\x",
+        "no_drive": r"cd \Users\jdoe\Downloads",
+        "file": "file:///C:/Users/amy.smith/notes.txt",
+        "compact": '{"a":"https://x.example.com/","b":"C:/Users/kim.lee/x"}',
+        "lines": json.dumps({"m": "seen\nfile:///D:/Users/lee.park/x"}),
+        "text": (
+            r"HKEY_CURRENT_USER\Software\x; the current version; auth_history returned 3 events;"
+            " Failed login; Names are listed; Shared Folders; self-signed; octocat"
+        ),
+    }
+    sanitizer = Sanitizer()
+    sanitizer.learn(doc)
+    assert sanitizer.apply(doc) == {
+        **doc,
+        "share": r"\\HOST-2\Users\Shared\x.doc",
+        "sam": r"HKLM\SAM\SAM\Domains\Account\Users\Names\user2",
+        "no_drive": r"cd \Users\user2\Downloads",
+        "file": "file:///C:/Users/user1/notes.txt",
+        "compact": '{"a":"https://x.example.com/","b":"C:/Users/user3/x"}',
+        "lines": json.dumps({"m": "seen\nfile:///D:/Users/user4/x"}),
+    }
+    assert sorted(sanitizer.mapping) == ["NAS", "amy.smith", "jdoe", "kim.lee", "lee.park"]
+
+
 def test_domain_qualified_accounts_are_split() -> None:
     doc = [
         {"host": "DESKTOP-9QXZ7"},
