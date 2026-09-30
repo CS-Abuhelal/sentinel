@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { PC_FEED_URL, fetchRuns } from "./api";
+import { PC_FEED_URL, PC_SAMPLE_URL, fetchRuns } from "./api";
+import type { PcSource } from "./api";
 import { MyPc } from "./components/MyPc";
 import { RunDetail } from "./components/RunDetail";
 import { RunList } from "./components/RunList";
@@ -11,8 +12,14 @@ type Load =
   | { state: "failed"; message: string }
   | { state: "ready"; runs: IncidentRun[] };
 
+const PC_SOURCE: PcSource | null = PC_FEED_URL
+  ? { kind: "live", url: PC_FEED_URL }
+  : PC_SAMPLE_URL
+    ? { kind: "sample", url: PC_SAMPLE_URL }
+    : null;
+
 const PC_VIEW =
-  PC_FEED_URL !== null && new URLSearchParams(window.location.search).get("view") === "pc";
+  PC_SOURCE !== null && new URLSearchParams(window.location.search).get("view") === "pc";
 
 export function App() {
   return (
@@ -20,13 +27,13 @@ export function App() {
       <header className="masthead">
         <span className="wordmark">SENTINEL</span>
         <span className="masthead-tag">The AI proposes. Deterministic policy decides.</span>
-        {PC_FEED_URL && (
+        {PC_SOURCE && (
           <nav className="views" aria-label="Views">
             <a href="?" aria-current={PC_VIEW ? undefined : "page"}>
               Incidents
             </a>
             <a href="?view=pc" aria-current={PC_VIEW ? "page" : undefined}>
-              My PC
+              {PC_SOURCE.kind === "live" ? "My PC" : "My PC (sample)"}
             </a>
           </nav>
         )}
@@ -34,10 +41,10 @@ export function App() {
           Source on GitHub
         </a>
       </header>
-      {PC_VIEW && PC_FEED_URL ? (
+      {PC_VIEW && PC_SOURCE ? (
         <div className="layout">
           <main className="main">
-            <MyPc url={PC_FEED_URL} />
+            <MyPc source={PC_SOURCE} />
           </main>
         </div>
       ) : (

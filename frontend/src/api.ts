@@ -1,11 +1,16 @@
 import type { HostAssessment } from "./types/assessment";
 import type { IncidentRun } from "./types/contracts";
 import type { PcFeed } from "./types/pc";
+import type { PcSample } from "./types/sample";
 
 const RUNS_URL: string = import.meta.env.VITE_RUNS_URL ?? "/api/runs";
 
 export const PC_FEED_URL: string | null =
   import.meta.env.VITE_PC_FEED_URL ?? (import.meta.env.VITE_RUNS_URL ? null : "/api/pc/feed");
+
+export const PC_SAMPLE_URL: string | null = import.meta.env.VITE_PC_SAMPLE_URL ?? null;
+
+export type PcSource = { kind: "live"; url: string } | { kind: "sample"; url: string };
 
 export async function fetchRuns(): Promise<IncidentRun[]> {
   const response = await fetch(RUNS_URL);
@@ -16,6 +21,14 @@ export async function fetchRuns(): Promise<IncidentRun[]> {
 }
 
 export async function fetchPcFeed(url: string): Promise<PcFeed> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Got ${response.status} from ${url}.`);
+  }
+  return response.json();
+}
+
+export async function fetchPcSample(url: string): Promise<PcSample> {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Got ${response.status} from ${url}.`);

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 
-import { fetchPcFeed, fetchPcRun, retryIncident } from "../api";
+import { fetchPcFeed, fetchPcRun, fetchPcSample, retryIncident } from "../api";
+import type { PcSource } from "../api";
 import { STATUS, utc } from "../format";
 import type { IncidentRun } from "../types/contracts";
 import type { PcFeed, PcIncidentSummary, ServiceState } from "../types/pc";
+import type { PcSample } from "../types/sample";
 import { FixPanel } from "./FixPanel";
 import { RunDetail } from "./RunDetail";
 
@@ -20,7 +22,15 @@ type RunLoad =
   | { state: "idle" }
   | { state: "loading" }
   | { state: "failed"; message: string }
+  | { state: "missing" }
   | { state: "ready"; run: IncidentRun };
+
+function sampleRunLoad(sample: PcSample | null, incidentId: string | null): RunLoad {
+  if (!incidentId) return { state: "idle" };
+  if (!sample) return { state: "loading" };
+  const run = sample.runs.find((candidate) => candidate.incident.incident_id === incidentId);
+  return run ? { state: "ready", run } : { state: "missing" };
+}
 
 function initialTab(): Tab {
   const params = new URLSearchParams(window.location.search);
@@ -36,8 +46,11 @@ function initialIncidentId(): string | null {
   return new URLSearchParams(window.location.search).get("incident");
 }
 
-export function MyPc({ url }: { url: string }) {
+export function MyPc({ source }: { source: PcSource }) {
+  const { kind, url } = source;
+  const sampled = kind === "sample";
   const [load, setLoad] = useState<Load>({ state: "loading" });
+  const [sample, setSample] = useState<PcSample | null>(null);
   const [tab, setTab] = useState<Tab>(initialTab);
   const [incidentId, setIncidentId] = useState<string | null>(initialIncidentId);
   const [linkedFinding] = useState<string | null>(() =>
@@ -47,6 +60,20 @@ export function MyPc({ url }: { url: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    if (sampled) {
+      fetchPcSample(url)
+        .then((loaded) => {
+          if (cancelled) return;
+          setSample(loaded);
+          setLoad({ state: "ready", feed: loaded.feed });
+        })
+        .catch((error: Error) => {
+          if (!cancelled) setLoad({ state: "failed", message: error.message, last: null });
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
     let last: PcFeed | null = null;
     const poll = () => {
       fetchPcFeed(url)
@@ -64,7 +91,7 @@ export function MyPc({ url }: { url: string }) {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [url]);
+  }, [sampled, url]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -76,6 +103,7 @@ export function MyPc({ url }: { url: string }) {
   }, [tab, incidentId]);
 
   useEffect(() => {
+    if (sampled) return;
     if (!incidentId) {
       setRunLoad({ state: "idle" });
       return;
@@ -92,7 +120,9 @@ export function MyPc({ url }: { url: string }) {
     return () => {
       cancelled = true;
     };
-  }, [incidentId]);
+  }, [sampled, incidentId]);
+
+  const shownRunLoad = sampled ? sampleRunLoad(sample, incidentId) : runLoad;
 
   const feed = load.state === "ready" ? load.feed : load.state === "failed" ? load.last : null;
 
@@ -104,11 +134,23 @@ export function MyPc({ url }: { url: string }) {
   return (
     <section className="pc">
       <header className="pc-head">
-        <p className="eyebrow">Live · refreshes every 5 seconds</p>
+        <p className="eyebrow">
+          {sampled ? "Recorded sample" : "Live · refreshes every 5 seconds"}
+        </p>
         <h1>My PC</h1>
+        {sample && <p className="notice">{sample.note}</p>}
       </header>
-      {load.state === "loading" && <p className="notice">Connecting to the SENTINEL service…</p>}
-      {load.state === "failed" && (
+      {load.state === "loading" && (
+        <p className="notice">
+          {sampled ? "Loading the recorded sample…" : "Connecting to the SENTINEL service…"}
+        </p>
+      )}
+      {load.state === "failed" && sampled && (
+        <p className="notice">
+          <strong>Can’t load the recorded sample.</strong> {load.message}
+        </p>
+      )}
+      {load.state === "failed" && !sampled && (
         <div className="notice">
           <p>
             <strong>Can’t reach the SENTINEL service.</strong> {load.message}
@@ -130,18 +172,23 @@ export function MyPc({ url }: { url: string }) {
           Fix these first
         </button>
       </nav>
-      {feed && tab === "alerts" && <AlertTable feed={feed} />}
+      {feed && tab === "alerts" && <AlertTable feed={feed} readOnly={sampled} />}
       {feed && tab === "incidents" && (
         <IncidentsPanel
           feed={feed}
           incidentId={incidentId}
-          runLoad={runLoad}
+          runLoad={shownRunLoad}
+          readOnly={sampled}
           onSelect={setIncidentId}
           onBack={() => setIncidentId(null)}
         />
       )}
       {feed && tab === "fixes" && (
-        <FixPanel sync={feed.status.sync} initialFinding={linkedFinding} />
+        <FixPanel
+          sync={feed.status.sync}
+          initialFinding={linkedFinding}
+          sample={sampled ? (sample?.assessment ?? null) : undefined}
+        />
       )}
     </section>
   );
@@ -183,8 +230,9 @@ function Service({ label, state }: { label: string; state: ServiceState }) {
   );
 }
 
-function AlertTable({ feed }: { feed: PcFeed }) {
+function AlertTable({ feed, readOnly }: { feed: PcFeed; readOnly: boolean }) {
   if (feed.alerts.length === 0) {
+    if (readOnly) return <p className="notice">No alerts in this sample.</p>;
     return (
       <p className="notice">
         No alerts yet. Follow <code>lab/wazuh/README.md</code> to connect Wazuh, then trigger a
@@ -227,12 +275,14 @@ function IncidentsPanel({
   feed,
   incidentId,
   runLoad,
+  readOnly,
   onSelect,
   onBack,
 }: {
   feed: PcFeed;
   incidentId: string | null;
   runLoad: RunLoad;
+  readOnly: boolean;
   onSelect: (incidentId: string) => void;
   onBack: () => void;
 }) {
@@ -266,12 +316,16 @@ function IncidentsPanel({
             <strong>Can’t load this incident.</strong> {runLoad.message}
           </p>
         )}
+        {runLoad.state === "missing" && (
+          <p className="notice">Not investigated in this sample.</p>
+        )}
         {runLoad.state === "ready" && <RunDetail key={runLoad.run.run_id} run={runLoad.run} />}
       </div>
     );
   }
 
   if (feed.incidents.length === 0) {
+    if (readOnly) return <p className="notice">No incidents in this sample.</p>;
     return (
       <p className="notice">
         No incidents yet. Alerts become incidents within 10 seconds; those at level 7 or higher
@@ -298,6 +352,7 @@ function IncidentsPanel({
           <IncidentRow
             key={item.incident.incident_id}
             item={item}
+            readOnly={readOnly}
             onSelect={onSelect}
             retryStatus={retryState[item.incident.incident_id]}
             onRetry={handleRetry}
@@ -310,11 +365,13 @@ function IncidentsPanel({
 
 function IncidentRow({
   item,
+  readOnly,
   onSelect,
   retryStatus,
   onRetry,
 }: {
   item: PcIncidentSummary;
+  readOnly: boolean;
   onSelect: (incidentId: string) => void;
   retryStatus: "busy" | "failed" | undefined;
   onRetry: (incidentId: string) => void;
@@ -348,7 +405,7 @@ function IncidentRow({
       <td className="mono">{utc(incident.window_end)}</td>
       <td>
         <span className={`status status--${incident.status}`}>{label}</span>
-        {incident.status === "investigation_failed" && (
+        {incident.status === "investigation_failed" && !readOnly && (
           <>
             {" "}
             <button

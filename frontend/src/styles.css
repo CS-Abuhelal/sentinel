@@ -1458,6 +1458,10 @@ a {
   letter-spacing: 0.02em;
 }
 
+.pc-head .notice {
+  margin: 12px 0 0;
+}
+
 .pc-status {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));

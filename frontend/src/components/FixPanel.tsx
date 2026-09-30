@@ -53,11 +53,15 @@ function subtitle(finding: Finding): string {
 export function FixPanel({
   sync,
   initialFinding = null,
+  sample,
 }: {
   sync: ServiceState;
   initialFinding?: string | null;
+  sample?: HostAssessment | null;
 }) {
-  const [load, setLoad] = useState<Load>({ state: "loading" });
+  const sampled = sample !== undefined;
+  const [fetched, setLoad] = useState<Load>({ state: "loading" });
+  const load: Load = sampled ? toLoad(sample) : fetched;
   const [rescanState, setRescanState] = useState<RescanState>({ state: "idle" });
   const [expanded, setExpanded] = useState<string | null>(initialFinding);
   const [showAll, setShowAll] = useState(false);
@@ -72,6 +76,7 @@ export function FixPanel({
   }, []);
 
   useEffect(() => {
+    if (sampled) return;
     let cancelled = false;
     const poll = () => {
       fetchAssessment()
@@ -88,7 +93,7 @@ export function FixPanel({
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, []);
+  }, [sampled]);
 
   const handleRescan = () => {
     setRescanState({ state: "busy" });
@@ -116,24 +121,28 @@ export function FixPanel({
         Weak spots Wazuh found on this PC, most important first. The AI writes fix steps for the
         top 10; SENTINEL never changes anything itself.
       </p>
-      <div className="fix-head">
-        {sync.detail && <span className="small muted">{sync.detail}</span>}
-        <button
-          type="button"
-          className="control"
-          disabled={rescanState.state === "busy"}
-          onClick={handleRescan}
-        >
-          {rescanState.state === "busy"
-            ? "Rescanning…"
-            : rescanState.state === "failed"
-              ? "Rescan again"
-              : "Rescan"}
-        </button>
-        {rescanState.state === "failed" && (
-          <span className="small muted">{rescanState.message}</span>
-        )}
-      </div>
+      {(sync.detail || !sampled) && (
+        <div className="fix-head">
+          {sync.detail && <span className="small muted">{sync.detail}</span>}
+          {!sampled && (
+            <button
+              type="button"
+              className="control"
+              disabled={rescanState.state === "busy"}
+              onClick={handleRescan}
+            >
+              {rescanState.state === "busy"
+                ? "Rescanning…"
+                : rescanState.state === "failed"
+                  ? "Rescan again"
+                  : "Rescan"}
+            </button>
+          )}
+          {!sampled && rescanState.state === "failed" && (
+            <span className="small muted">{rescanState.message}</span>
+          )}
+        </div>
+      )}
       {load.state === "loading" && <p className="notice">Loading weak spots…</p>}
       {load.state === "failed" && (
         <p className="notice">
@@ -141,7 +150,11 @@ export function FixPanel({
         </p>
       )}
       {load.state === "empty" && (
-        <p className="notice">No weak spots yet. Press Rescan to pull them from Wazuh.</p>
+        <p className="notice">
+          {sampled
+            ? "No weak spots in this sample."
+            : "No weak spots yet. Press Rescan to pull them from Wazuh."}
+        </p>
       )}
       {load.state === "ready" && (
         <FixTable
