@@ -49,8 +49,13 @@ sanitizer bullet, "Dashboard" Report tab and public sample).
     messages or CI.
   - The owner reviews the exported sample before it is committed.
 - Values:
-  - The sample holds at most 50 alerts, 30 incident summaries, the top 25 findings with their
-    recommendations, and at most 10 investigated runs.
+  - The sample holds:
+    - at most 50 alerts;
+    - at most 30 incident summaries, always including the newest 10 investigated incidents
+      (newer low-priority noise would otherwise push them out);
+    - at most 10 investigated runs;
+    - the top 25 findings, plus the top finding of each of the 10 programs the AI wrote a
+      fix for, with their recommendations (so every fix is in the sample).
   - Loopback (`127.0.0.1`, `::1`), the unspecified addresses (`0.0.0.0`, `::`) and
     already-placeholder values are kept.
   - Built-in Windows accounts are kept: `SYSTEM`, `LOCAL SERVICE`, `NETWORK SERVICE`,

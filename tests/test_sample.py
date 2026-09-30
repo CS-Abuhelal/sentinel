@@ -96,10 +96,51 @@ def test_limits_cut_every_part_of_the_sample(recorded: Engine) -> None:
     assert sample.feed.status.alert_count == 3
     assert sample.runs == []
     assert sample.assessment is not None
-    [kept] = sample.assessment.findings
-    assert kept.priority == 70
-    [advice] = sample.assessment.recommendations
-    assert advice.finding_ids == [kept.finding_id]
+    assert [f.priority for f in sample.assessment.findings] == [70, 40]
+    assert len(sample.assessment.recommendations) == 2
+
+
+def test_investigated_incidents_are_kept_when_newer_noise_fills_the_list(db: Engine) -> None:
+    stored = [
+        make_wazuh_alert("n.1", 1),
+        make_wazuh_alert("n.2", 2, **BURST),
+        make_wazuh_alert("n.3", 30, rule_id="60106", techniques=["T1078"]),
+        make_wazuh_alert("n.4", 40, rule_id="60107", techniques=["T1021"]),
+    ]
+    for live, payload in stored:
+        insert_alert(db, live, payload)
+    assert group_new_alerts(db, NOW) == 4
+    summaries = incident_summaries(db)
+    oldest = summaries[-1].incident
+    closed = oldest.model_copy(update={"status": IncidentStatus.CLOSED_BENIGN})
+    save_run(db, RUN.model_copy(update={"incident": closed}), NOW)
+    sample = build_sample(db, NOW, incidents=2, runs=1)
+    kept = [s.incident.incident_id for s in sample.feed.incidents]
+    assert len(kept) == 2
+    assert oldest.incident_id in kept
+    assert kept[0] == summaries[0].incident.incident_id
+    [run] = sample.runs
+    assert run.incident.incident_id == oldest.incident_id
+
+
+def test_every_fixed_program_keeps_its_top_weak_spot_and_fix(db: Engine) -> None:
+    found = [
+        make_finding("a1", priority=90, cve="CVE-2026-0011", package="Alpha"),
+        make_finding("a2", priority=85, cve="CVE-2026-0012", package="Alpha"),
+        make_finding("a3", priority=80, cve="CVE-2026-0013", package="Alpha"),
+        make_finding("b1", priority=40, cve="CVE-2026-0021", package="Beta"),
+        make_finding("b2", priority=30, cve="CVE-2026-0022", package="Beta"),
+    ]
+    assert upsert_findings(db, "my-pc", found, NOW) == (5, 0)
+    leads = {"a1", "b1"}
+    for finding in open_findings(db, "my-pc"):
+        if finding.key in leads:
+            advice = _advice(finding.finding_id, finding.priority)
+            set_advice(db, finding.finding_id, advice, "m", NOW)
+    view = build_sample(db, NOW, findings=2).assessment
+    assert view is not None
+    assert [f.key for f in view.findings] == ["a1", "a2", "b1"]
+    assert len(view.recommendations) == 2
 
 
 def test_an_empty_database_gives_an_empty_sample(db: Engine) -> None:

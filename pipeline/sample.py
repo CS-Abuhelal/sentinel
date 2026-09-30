@@ -8,11 +8,12 @@ from pathlib import Path
 from sqlalchemy.engine import Engine
 
 from backend.app.db import get_engine
-from backend.app.findings import assessment, finding_hosts
+from backend.app.findings import advice_unit, assessment, finding_hosts
 from backend.app.incidents import get_run, incident_summaries
 from backend.app.store import alert_count, latest_alerts, newest_alert_time
 from contracts.models import PcFeed, PcSample, PcStatus, ServiceState
 from pipeline.sanitize import Sanitizer, forbidden_terms, leftovers
+from pipeline.worker import FIX_TOP
 
 DEFAULT_OUT = Path("lab/wazuh/sample/pc-sample.json")
 NOTE = (
@@ -20,6 +21,7 @@ NOTE = (
     "Nothing here is live."
 )
 RECORDED = ServiceState(reachable=True, detail="Recorded sample.")
+MAX_SCANNED_INCIDENTS = 10000
 
 
 class SampleLeak(ValueError):
@@ -35,7 +37,12 @@ def build_sample(
     findings: int = 25,
     runs: int = 10,
 ) -> PcSample:
-    summaries = incident_summaries(engine, limit=incidents)
+    every = incident_summaries(engine, limit=MAX_SCANNED_INCIDENTS)
+    investigated = [s for s in every if s.classification is not None][: min(runs, incidents)]
+    chosen = {s.incident.incident_id for s in investigated}
+    others = [s for s in every if s.incident.incident_id not in chosen]
+    chosen |= {s.incident.incident_id for s in others[: incidents - len(investigated)]}
+    summaries = [s for s in every if s.incident.incident_id in chosen]
     status = PcStatus(
         checked_at=now,
         wazuh_api=RECORDED,
@@ -50,8 +57,12 @@ def build_sample(
     hosts = finding_hosts(engine)
     view = assessment(engine, hosts[0], now) if hosts else None
     if view is not None:
-        kept = view.findings[:findings]
-        ids = {finding.finding_id for finding in kept}
+        leads: dict[str, str] = {}
+        for finding in view.findings:
+            leads.setdefault(advice_unit(finding), finding.finding_id)
+        fixed = set(list(leads.values())[:FIX_TOP])
+        ids = {finding.finding_id for finding in view.findings[:findings]} | fixed
+        kept = [finding for finding in view.findings if finding.finding_id in ids]
         view = view.model_copy(
             update={
                 "findings": kept,
@@ -60,7 +71,6 @@ def build_sample(
                 ],
             }
         )
-    investigated = [s for s in summaries if s.classification is not None][:runs]
     recorded = [get_run(engine, s.incident.incident_id) for s in investigated]
     return PcSample(
         created_at=now,
