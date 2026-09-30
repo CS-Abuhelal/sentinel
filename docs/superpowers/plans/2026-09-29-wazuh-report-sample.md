@@ -45,7 +45,8 @@ sanitizer bullet, "Dashboard" Report tab and public sample).
     documentation range, RFC 3849), `00:00:5e:00:53:NN` (the documentation MAC range) and
     agent ids `001`, `002`, ….
   - The owner's real names are only ever passed at run time in `SENTINEL_FORBIDDEN_TERMS`,
-    comma-separated. They never appear in code, tests, docs, commit messages or CI.
+    separated by commas, semicolons or newlines. They never appear in code, tests, docs, commit
+    messages or CI.
   - The owner reviews the exported sample before it is committed.
 - Values:
   - The sample holds at most 50 alerts, 30 incident summaries, the top 25 findings with their

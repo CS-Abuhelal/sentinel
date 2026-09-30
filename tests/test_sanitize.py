@@ -104,11 +104,19 @@ def test_leftovers_and_forbidden_terms(monkeypatch: pytest.MonkeyPatch) -> None:
     assert forbidden_terms() == []
 
 
+def test_forbidden_terms_split_on_commas_semicolons_and_newlines(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SENTINEL_FORBIDDEN_TERMS", "jane;doe, DESKTOP-9QXZ7\n,  ;\r\nzulu")
+    assert forbidden_terms() == ["jane", "doe", "DESKTOP-9QXZ7", "zulu"]
+
+
 def test_leftovers_looks_at_keys_numbers_and_ignores_blank_terms() -> None:
     assert leftovers({"jane.doe": 1}, ["jane"]) == ["jane"]
     assert leftovers({"port": 4433, "nested": [{"n": 4433}]}, ["4433"]) == ["4433"]
     assert leftovers({"a": "ja", "b": "ne"}, ["jane"]) == []
     assert leftovers(DOC, ["", "  "]) == []
+    assert leftovers({"m": "STRASSE"}, ["straße"]) == ["straße"]
 
 
 def test_short_user_names_are_never_learned() -> None:
@@ -604,6 +612,16 @@ def test_addresses_and_names_in_dict_keys_are_learned() -> None:
     assert _run(clean) == clean
 
 
+def test_keys_that_collide_after_sanitizing_raise() -> None:
+    sanitizer = Sanitizer()
+    sanitizer.learn({"user": ["jane.doe", "JANE.DOE"]})
+    with pytest.raises(ValueError) as error:
+        sanitizer.apply({"jane.doe": 1, "JANE.DOE": 2})
+    assert "jane" not in str(error.value).lower()
+    with pytest.raises(ValueError):
+        sanitizer.apply({"nested": [{"user1": 1, "jane.doe": 2}]})
+
+
 def test_entities_are_learned_from_their_type() -> None:
     doc = {
         "entities": [
@@ -648,12 +666,23 @@ def test_placeholders_do_not_depend_on_the_order_of_the_data() -> None:
     }
 
 
-def test_agent_ids_are_replaced_only_as_whole_strings() -> None:
-    doc = {"agent": {"id": "007", "name": "my-pc"}, "note": "rule 007 on 0070", "ids": ["007"]}
-    clean = _run(doc)
-    assert clean["agent"]["id"] == "001"
-    assert clean["note"] == "rule 007 on 0070"
-    assert clean["ids"] == ["001"]
+def test_agent_ids_are_replaced_only_in_agent_id_fields() -> None:
+    doc = {
+        "agent": {"id": "007", "name": "my-pc"},
+        "agent_id": ["007"],
+        "level": "007",
+        "ipPort": "007",
+        "ids": ["007"],
+        "note": "rule 007 on 0070",
+    }
+    assert _run(doc) == {
+        "agent": {"id": "001", "name": "my-pc"},
+        "agent_id": ["001"],
+        "level": "007",
+        "ipPort": "007",
+        "ids": ["007"],
+        "note": "rule 007 on 0070",
+    }
 
 
 def test_the_manager_agent_is_kept() -> None:
@@ -697,6 +726,23 @@ def test_section_numbers_that_look_like_addresses_are_kept() -> None:
     assert clean["src"] == "203.0.113.1"
     assert clean["rule"] == doc["rule"]
     assert clean["data"] == doc["data"]
+
+
+def test_benchmark_numbers_and_versions_are_kept_but_lookalike_keys_are_not() -> None:
+    doc = {
+        "src": "192.168.1.23",
+        "rule": {
+            "cis": ["2.3.7.4", "18.9.47.5"],
+            "cis_csc_v8": ["4.5.1.2"],
+            "nist_800_53": ["1.2.3.4"],
+        },
+        "conversion": {"ip": "192.168.1.24"},
+        "os_version": "10.0.1.2",
+        "packageVersion": "1.2.3.4",
+        "version": "5.6.7.8",
+    }
+    clean = _run(doc)
+    assert clean == {**doc, "src": "203.0.113.1", "conversion": {"ip": "203.0.113.2"}}
 
 
 def test_neighbouring_addresses_are_told_apart() -> None:
@@ -757,6 +803,18 @@ def test_times_and_code_with_colons_are_not_ipv6() -> None:
     assert _run(doc) == {"src": "2001:db8::1", "m": text}
 
 
+def test_addresses_and_names_after_a_unicode_escape_are_replaced() -> None:
+    doc = {
+        "user": "jane.doe",
+        "full_log": "\\u0022192.168.1.23\\u0022 \\u00223C:52:82:AA:BB:CC\\u0022 "
+        "\\u0022fe80::1\\u0022 \\u0022jane.doe\\u0022 \\u00223c5282aabbcd\\u0022",
+    }
+    assert _run(doc)["full_log"] == (
+        "\\u0022203.0.113.1\\u0022 \\u002200:00:5e:00:53:01\\u0022 "
+        "\\u00222001:db8::1\\u0022 \\u0022user1\\u0022 \\u002200:00:5e:00:53:02\\u0022"
+    )
+
+
 def test_sanitizing_ipv6_twice_changes_nothing() -> None:
     doc = {
         "a": "fe80::3e52:82ff:feaa:bbcc%12",
@@ -768,6 +826,33 @@ def test_sanitizing_ipv6_twice_changes_nothing() -> None:
     assert _run(first) == first
 
 
+def test_mac_addresses_in_other_notations_are_replaced() -> None:
+    doc = {
+        "a": "3c5282aabbcc",
+        "b": "3c52.82aa.bbcc",
+        "c": "0x3C5282AABBCC",
+        "d": "mac=3C:52:82:AA:BB:CC;",
+    }
+    assert _run(doc) == {
+        "a": "00:00:5e:00:53:01",
+        "b": "00:00:5e:00:53:01",
+        "c": "00:00:5e:00:53:01",
+        "d": "mac=00:00:5e:00:53:01;",
+    }
+
+
+def test_hex_that_is_not_a_mac_is_kept() -> None:
+    doc = {
+        "mac": "3C:52:82:AA:BB:CC",
+        "guid": "{54849625-5478-4994-a5ba-3e3b0328c30d}",
+        "number": "123456789012",
+        "sha1": "3c5282aabbcc3c5282aabbcc3c5282aabbcc3c52",
+        "keywords": "0x8010000000000000",
+        "build": "1234.5678.9012",
+    }
+    assert _run(doc) == {**doc, "mac": "00:00:5e:00:53:01"}
+
+
 def test_windows_machine_sids_are_generalised() -> None:
     doc = {
         "sid": "S-1-5-21-1234567890-987654321-1122334455-1001",
@@ -777,6 +862,17 @@ def test_windows_machine_sids_are_generalised() -> None:
         "sid": "S-1-5-21-1000000000-1000000000-1000000000-1001",
         "note": "S-1-5-21-1000000000-1000000000-1000000000-500 and S-1-5-18",
     }
+
+
+def test_azure_ad_sids_are_generalised() -> None:
+    doc = {
+        "sid": "S-1-12-1-1234567890-1234567890-1234567890-1234567890",
+        "S-1-12-1-111-222-333-444": "as a key",
+    }
+    clean = _run(doc)
+    placeholder = "S-1-12-1-1000000000-1000000000-1000000000-1000000000"
+    assert clean == {"sid": placeholder, placeholder: "as a key"}
+    assert _run(clean) == clean
 
 
 def test_unicode_case_variants_are_replaced_without_crashing() -> None:
