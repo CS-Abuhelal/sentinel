@@ -603,7 +603,7 @@ if __name__ == "__main__":
        `sample.runs`.
   4. **Totals.** Open weak spots by severity; incidents by status.
 - **Print CSS** in `styles.css`, under `@media print`:
-  - hide `.masthead`, `.pc-tabs`, `.pc-status`, `.fix-head` and every `button`;
+  - hide `.masthead`, `.pc-head`, `.pc-tabs`, `.pc-status`, `.fix-head` and every `button`;
   - white background and black text;
   - `a` shows its URL after the text;
   - no page break inside a recommendation block (`.report-item { break-inside: avoid }`);

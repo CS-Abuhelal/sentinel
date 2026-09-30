@@ -103,9 +103,8 @@ export function ReportPanel({ feed, sample }: { feed: PcFeed; sample: PcSample |
     : fetchedAssessment;
   const assessment = assessmentLoad.state === "ready" ? assessmentLoad.assessment : null;
 
-  const investigated = feed.incidents
-    .filter((item) => item.classification !== null)
-    .slice(0, MAX_ITEMS);
+  const allInvestigated = feed.incidents.filter((item) => item.classification !== null);
+  const investigated = allInvestigated.slice(0, MAX_ITEMS);
   const idsKey = investigated.map((item) => item.incident.incident_id).join("\n");
 
   useEffect(() => {
@@ -158,7 +157,9 @@ export function ReportPanel({ feed, sample }: { feed: PcFeed; sample: PcSample |
       <header className="report-head">
         <div>
           <h2>SENTINEL report for {host}</h2>
-          <p className="report-meta">Generated {generated} UTC</p>
+          <p className="report-meta">
+            {sample ? `Recorded ${utc(sample.created_at)} UTC` : `Generated ${generated} UTC`}
+          </p>
           <p className="report-meta">
             {sample ? sample.note : "Live data from Wazuh on this PC."}
           </p>
@@ -223,6 +224,17 @@ export function ReportPanel({ feed, sample }: { feed: PcFeed; sample: PcSample |
             })}
           </ul>
         )}
+        {allInvestigated.length > investigated.length && (
+          <p className="small muted">
+            And{" "}
+            {plural(
+              allInvestigated.length - investigated.length,
+              "more investigated incident",
+              "more investigated incidents",
+            )}{" "}
+            not listed here.
+          </p>
+        )}
       </section>
 
       <section className="report-section">
@@ -250,7 +262,8 @@ function FixSection({ load, recorded }: { load: AssessmentLoad; recorded: boolea
   const findings = new Map(
     load.assessment.findings.map((finding) => [finding.finding_id, finding]),
   );
-  const top = inFindingOrder(load.assessment).slice(0, MAX_ITEMS);
+  const ordered = inFindingOrder(load.assessment);
+  const top = ordered.slice(0, MAX_ITEMS);
 
   if (top.length === 0) {
     return (
@@ -283,6 +296,11 @@ function FixSection({ load, recorded }: { load: AssessmentLoad; recorded: boolea
           </li>
         );
       })}
+      {ordered.length > top.length && (
+        <li className="small muted">
+          And {plural(ordered.length - top.length, "more fix", "more fixes")} not listed here.
+        </li>
+      )}
     </ul>
   );
 }
