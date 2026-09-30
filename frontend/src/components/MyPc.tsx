@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 
 import { fetchPcFeed, fetchPcRun, fetchPcSample, retryIncident } from "../api";
 import type { PcSource } from "../api";
-import { STATUS, utc } from "../format";
+import { incidentLabel, utc } from "../format";
 import type { IncidentRun } from "../types/contracts";
 import type { PcFeed, PcIncidentSummary, ServiceState } from "../types/pc";
 import type { PcSample } from "../types/sample";
 import { FixPanel } from "./FixPanel";
+import { ReportPanel } from "./ReportPanel";
 import { RunDetail } from "./RunDetail";
 
 const POLL_MS = 5000;
@@ -16,7 +17,7 @@ type Load =
   | { state: "failed"; message: string; last: PcFeed | null }
   | { state: "ready"; feed: PcFeed };
 
-type Tab = "alerts" | "incidents" | "fixes";
+type Tab = "alerts" | "incidents" | "fixes" | "report";
 
 type RunLoad =
   | { state: "idle" }
@@ -39,6 +40,7 @@ function initialTab(): Tab {
   const tab = params.get("tab");
   if (tab === "incidents") return "incidents";
   if (tab === "fixes") return "fixes";
+  if (tab === "report") return "report";
   return "alerts";
 }
 
@@ -98,6 +100,7 @@ export function MyPc({ source }: { source: PcSource }) {
     params.set("view", "pc");
     if (tab === "incidents") params.set("tab", "incidents");
     if (tab === "fixes") params.set("tab", "fixes");
+    if (tab === "report") params.set("tab", "report");
     if (incidentId) params.set("incident", incidentId);
     window.history.replaceState(null, "", `?${params.toString()}`);
   }, [tab, incidentId]);
@@ -179,6 +182,9 @@ export function MyPc({ source }: { source: PcSource }) {
         <button type="button" aria-pressed={tab === "fixes"} onClick={() => selectTab("fixes")}>
           Fix these first
         </button>
+        <button type="button" aria-pressed={tab === "report"} onClick={() => selectTab("report")}>
+          Report
+        </button>
       </nav>
       {feed && tab === "alerts" && <AlertTable feed={feed} readOnly={sampled} />}
       {feed && tab === "incidents" && (
@@ -198,6 +204,9 @@ export function MyPc({ source }: { source: PcSource }) {
           initialFinding={linkedFinding}
           sample={sampled ? (sample?.assessment ?? null) : undefined}
         />
+      )}
+      {feed && tab === "report" && (!sampled || sample) && (
+        <ReportPanel feed={feed} sample={sample} />
       )}
     </section>
   );
@@ -404,10 +413,7 @@ function IncidentRow({
 }) {
   const { incident, classification, max_level, alert_count, recommendation_count } = item;
   const openable = classification !== null && hasRun;
-  const label =
-    classification !== null && incident.status === "investigating"
-      ? "Advice ready"
-      : STATUS[incident.status];
+  const label = incidentLabel(incident.status, classification);
 
   const openRow = () => onSelect(incident.incident_id);
 

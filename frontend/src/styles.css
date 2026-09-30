@@ -1613,3 +1613,125 @@ a {
   margin: 0;
   padding-left: 20px;
 }
+
+.report {
+  display: grid;
+  gap: 24px;
+  max-width: 820px;
+}
+
+.report-head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.report-head h2 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 26px;
+  letter-spacing: 0.02em;
+}
+
+.report-meta {
+  margin: 0 0 4px;
+  color: var(--ink-2);
+}
+
+.report-section h3 {
+  margin: 0 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 16px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.report-lines {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.report-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.report-item {
+  border-left: 3px solid var(--rule);
+  padding: 2px 0 2px 12px;
+}
+
+.report-item p {
+  margin: 0 0 4px;
+}
+
+.report-item ul,
+.report-item ol {
+  margin: 0 0 6px;
+  padding-left: 20px;
+}
+
+.report-title {
+  font-weight: 600;
+}
+
+@media print {
+  :root {
+    --paper: #fff;
+    --panel: #fff;
+    --ink: #000;
+    --ink-2: #000;
+    --ink-3: #000;
+    --agent: #000;
+    --allow: #000;
+    --approve: #000;
+    --deny: #000;
+    --rule: #888;
+    --rule-soft: #ccc;
+  }
+
+  @page {
+    margin: 16mm;
+  }
+
+  html,
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .masthead,
+  .pc-tabs,
+  .pc-status,
+  .fix-head,
+  button {
+    display: none !important;
+  }
+
+  .layout {
+    max-width: none;
+    padding: 0;
+  }
+
+  .report {
+    max-width: none;
+  }
+
+  a[href]::after {
+    content: " (" attr(href) ")";
+  }
+
+  .report-item {
+    break-inside: avoid;
+  }
+}
