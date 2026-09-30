@@ -17,6 +17,9 @@ DEFAULT_SAMPLE = Path("lab/wazuh/sample/pc-sample.json")
 DEFAULT_LABELS = Path("lab/wazuh/sample/labels.yml")
 DEFAULT_OUT = Path("docs/pc-accuracy.md")
 BOUND = re.compile(r"^(?:version (?P<newer>\S.*) or newer|a version newer than (?P<above>\S.*))$")
+DATED = re.compile(r"\d{4}-\d{2}-\d{2}")
+DATED_IN_TEXT = re.compile(r"(?<![\d.-])\d{4}-\d{2}-\d{2}(?![\d-])")
+VERSION_IN_TEXT = re.compile(r"(?<![\d.])\d+(?:\.\d+)*(?![\d-]|\.\d)")
 NO_VALUE = "-"
 
 
@@ -105,8 +108,18 @@ def states_bound(bound: str, steps: list[str]) -> bool:
     if match is None:
         raise ValueError(f"Unknown version bound wording: {bound}")
     number = (match.group("newer") or match.group("above")).lstrip("vV")
-    pattern = re.compile(rf"(?<!\d)(?<!\d\.){re.escape(number)}(?!\.?\d)")
-    return any(pattern.search(step) for step in steps)
+    dated = DATED.fullmatch(number) is not None
+    needed = _parts(number)
+    found = DATED_IN_TEXT if dated else VERSION_IN_TEXT
+    return any(
+        len(_parts(token)) >= len(needed) and _parts(token) >= needed
+        for step in steps
+        for token in found.findall(step)
+    )
+
+
+def _parts(version: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in re.findall(r"\d+", version))
 
 
 def fix_checks(assessment: HostAssessment) -> FixChecks:
@@ -239,8 +252,8 @@ def _fix_section(fix: FixChecks | None) -> list[str]:
         lines.append("- No recommendation has a version bound to check.")
         return lines
     lines.append(
-        f"- {fix.bound_stated} of {fix.with_bound} recommendations with a version bound state "
-        "it in their steps."
+        f"- {fix.bound_stated} of {fix.with_bound} recommendations with a version bound name a "
+        "version at least that new in their steps."
     )
     if fix.without_bound:
         lines.append(
@@ -249,10 +262,10 @@ def _fix_section(fix: FixChecks | None) -> list[str]:
         )
     lines += [
         "",
-        "The version bound is worked out again from the weak spots kept in this sample, so it can "
-        "be lower than the one the model was given when a program has more weak spots than the "
-        "sample keeps. The check only looks for the version number in a step, not whether the "
-        "step is right.",
+        "The version bound is worked out again from the weak spots kept in this sample, which can "
+        "be fewer than the program has, so a step passes when it names a version at least as new "
+        "as that bound. The check only looks for such a version number in a step, not whether "
+        "the step is right.",
     ]
     return lines
 

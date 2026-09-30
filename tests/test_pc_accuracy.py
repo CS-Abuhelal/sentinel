@@ -288,14 +288,17 @@ def test_render_reports_the_fix_step_checks() -> None:
     assert "Recommendations: 3" in text
     assert "Steps: 8" in text
     assert "Dropped steps: 2" in text
-    assert "1 of 2 recommendations with a version bound state it in their steps" in text
+    assert (
+        "1 of 2 recommendations with a version bound name a version at least that new in their "
+        "steps" in text
+    )
     assert "1 recommendation has no version bound to check" in text
 
 
 def test_render_says_so_when_no_recommendation_has_a_bound() -> None:
     text = render(score(BASE, {}))
     assert "No recommendation has a version bound to check" in text
-    assert "recommendations with a version bound state it" not in text
+    assert "recommendations with a version bound name a version" not in text
 
 
 def test_a_sample_without_an_assessment_has_no_fix_checks() -> None:
@@ -313,15 +316,19 @@ def test_a_sample_without_an_assessment_has_no_fix_checks() -> None:
         ("a version newer than 24.18.0", ["Pick something after v24.18.0."], True),
         ("version v1.10.0 or newer", ["Install 1.10.0"], True),
         ("version 2021-04-11 or newer", ["Install the 2021-04-11 build"], True),
-        ("version 8.2.13 or newer", ["Install 18.2.13"], False),
-        ("version 8.2.13 or newer", ["Install 8.2.130"], False),
+        ("version 8.0.1 or newer", ["Install MongoDB 8.2.13 or newer."], True),
+        ("version 8.2.13 or newer", ["Install 8.2.130"], True),
+        ("version 8.2.13 or newer", ["Install 8.2.13.4"], True),
+        ("version 8.2.13 or newer", ["Replace version 8.0.4 with 8.2.12."], False),
         ("version 8.2.13 or newer", ["Install 1.8.2.13"], False),
-        ("version 8.2.13 or newer", ["Install 8.2.13.4"], False),
+        ("version 8.2.13 or newer", ["Install 8.2"], False),
+        ("version 2021-04-11 or newer", ["Install the 2020-12-01 build"], False),
+        ("version 2021-04-11 or newer", ["Install 2022.1.5"], False),
         ("version 8.2.13 or newer", ["Update it.", "Reboot."], False),
         ("version 8.2.13 or newer", [], False),
     ],
 )
-def test_states_bound_needs_the_whole_version_number(
+def test_states_bound_needs_a_version_at_least_as_new(
     bound: str, steps: list[str], expected: bool
 ) -> None:
     assert states_bound(bound, steps) is expected
