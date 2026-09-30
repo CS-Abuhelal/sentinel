@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import copy
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -31,6 +34,7 @@ DOC = {
 }
 
 WAZUH_FIXTURES = sorted((Path(__file__).parent / "data" / "wazuh").glob("*.json"))
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def _clean() -> tuple[Sanitizer, object]:
@@ -253,6 +257,19 @@ def test_profile_paths_in_other_forms_are_learned() -> None:
     }
 
 
+def test_the_user_folder_of_a_linux_home_path_is_learned() -> None:
+    doc = {
+        "cmd": "wsl.exe -e bash /home/jdoe/run.sh",
+        "url": "https://example.com/home/news/",
+        "note": "jdoe ran it; news at home",
+    }
+    assert _run(doc) == {
+        **doc,
+        "cmd": "wsl.exe -e bash /home/user1/run.sh",
+        "note": "user1 ran it; news at home",
+    }
+
+
 def test_domain_qualified_accounts_are_split() -> None:
     doc = [
         {"host": "DESKTOP-9QXZ7"},
@@ -278,6 +295,31 @@ def test_the_domain_of_an_account_is_learned_as_a_host() -> None:
 def test_the_domain_of_a_built_in_account_is_learned_too() -> None:
     doc = {"user": r"ZULU-BOX\Administrator", "message": "on ZULU-BOX"}
     assert _run(doc) == {"user": r"HOST-2\Administrator", "message": "on HOST-2"}
+
+
+def test_an_account_after_a_known_host_or_in_a_label_is_learned() -> None:
+    doc = {
+        "agent": {"id": "001", "name": "DESKTOP-9QXZ7"},
+        "eventdata": {
+            "contextInfo": r"Host Name = ConsoleHost; User = DESKTOP-9QXZ7\jdoe",
+            "detection User": r"DESKTOP-9QXZ7\jdoe",
+        },
+        "message": "Account Name:\t\t" + r"ZULU-BOX\amy.smith" + "\r\n",
+        "example": r"New Logon: Account Name: YANKEE-BOX\bob.jones Logon ID: 0x3E7",
+        "other": r"ALPHA-BOX\cy.lee and C:\Tools\eve.ross",
+        "full_log": json.dumps({"contextInfo": "User =\t" + r"desktop-9qxz7\kim.lee"}),
+        "note": "jdoe, amy.smith, bob.jones, cy.lee, eve.ross, kim.lee",
+    }
+    clean = _run(doc)
+    assert clean["eventdata"] == {
+        "contextInfo": r"Host Name = ConsoleHost; User = MY-PC\user3",
+        "detection User": r"MY-PC\user3",
+    }
+    assert clean["message"] == "Account Name:\t\t" + r"HOST-3\user1" + "\r\n"
+    assert clean["example"] == r"New Logon: Account Name: HOST-2\user2 Logon ID: 0x3E7"
+    assert clean["other"] == doc["other"]
+    assert json.loads(clean["full_log"]) == {"contextInfo": "User =\t" + r"MY-PC\user4"}
+    assert clean["note"] == "user3, user1, user2, cy.lee, eve.ross, user4"
 
 
 def test_built_in_pseudo_domains_are_kept() -> None:
@@ -313,6 +355,17 @@ def test_built_in_group_names_are_kept() -> None:
     expected[1]["subjectUserName"] = "user1"
     expected[2]["note"] = "user1 added a member to Administrators and Remote Desktop Users"
     assert _run(doc) == expected
+
+
+def test_windows_service_accounts_are_kept() -> None:
+    doc = {
+        "a": {"accountName": "LocalSystem"},
+        "b": {"accountName": "LocalService"},
+        "c": {"accountName": "NetworkService"},
+        "d": {"user": r"NT AUTHORITY\LOCAL SERVICE", "subjectUserName": "NETWORK SERVICE"},
+        "note": "Service runs as LocalSystem, LocalService or NetworkService",
+    }
+    assert _run(doc) == doc
 
 
 def test_keys_of_unrelated_dicts_are_not_learned_as_names() -> None:
@@ -459,6 +512,20 @@ def test_the_last_segment_of_an_escaped_path_is_not_a_unc_host() -> None:
     assert sanitizer.apply(doc)["message"] == message.replace("ZULU-NAS", "HOST-2")
 
 
+def test_hosts_after_long_unc_prefixes_are_learned() -> None:
+    doc = {
+        "a": r"\\?\UNC\ZULU-NAS\photos\x.jpg",
+        "b": r"\Device\Mup\ALPHA-NAS\share\y.jpg",
+        "full_log": json.dumps({"c": r"\\?\UNC\BRAVO-NAS\z"}),
+        "note": "zulu-nas alpha-nas bravo-nas",
+    }
+    clean = _run(doc)
+    assert clean["a"] == r"\\?\UNC\HOST-4\photos\x.jpg"
+    assert clean["b"] == r"\Device\Mup\HOST-2\share\y.jpg"
+    assert json.loads(clean["full_log"]) == {"c": r"\\?\UNC\HOST-3\z"}
+    assert clean["note"] == "HOST-4 HOST-2 HOST-3"
+
+
 def test_dns_query_names_are_learned_only_when_local() -> None:
     doc = {
         "agent": {"id": "001", "name": "my-pc"},
@@ -478,6 +545,21 @@ def test_dns_query_names_are_learned_only_when_local() -> None:
         {"queryName": "wpad"},
     ]
     assert clean["note"] == "HOST-2 HOST-3 login.example.com wpad"
+
+
+def test_home_router_dns_suffixes_are_local() -> None:
+    doc = {
+        "queries": [{"queryName": "marys-iphone.fritz.box"}, {"queryName": "zulu-tv.mshome.net"}],
+        "sourceHostname": "alpha-laptop.attlocal.net",
+        "hostname": "bravo-nas.router",
+        "note": "marys-iphone, zulu-tv, alpha-laptop and bravo-nas",
+    }
+    assert _run(doc) == {
+        "queries": [{"queryName": "HOST-4"}, {"queryName": "HOST-5"}],
+        "sourceHostname": "HOST-2",
+        "hostname": "HOST-3",
+        "note": "HOST-4, HOST-5, HOST-2 and HOST-3",
+    }
 
 
 def test_more_user_keys_are_learned() -> None:
@@ -506,6 +588,46 @@ def test_more_user_keys_are_learned() -> None:
     assert sanitizer.apply({"m": "Gus went home, Hill stayed"}) == {
         "m": "user7 went home, user10 stayed"
     }
+
+
+def test_the_parts_of_an_approver_name_are_learned() -> None:
+    doc = {
+        "approvals": [{"decided_by": "Jane Doe", "note": "ok"}, {"approved_by": "Amy Smith"}],
+        "summary": "Approved by Jane Doe. Jane checked it later; Doe signed. Amy agreed.",
+    }
+    assert _run(doc) == {
+        "approvals": [{"decided_by": "user5", "note": "ok"}, {"approved_by": "user2"}],
+        "summary": "Approved by user5. user4 checked it later; user3 signed. user1 agreed.",
+    }
+
+
+def test_names_in_file_permissions_are_learned() -> None:
+    doc = {
+        "syscheck": {
+            "path": r"c:\tools\x.txt",
+            "win_perm_before": [
+                {"name": "Administrators", "allowed": ["read"]},
+                {"name": "jdoe", "allowed": ["read"]},
+            ],
+            "win_perm_after": [
+                {"name": "SYSTEM", "allowed": ["read"]},
+                {"name": "ALL APPLICATION PACKAGES", "allowed": ["read"]},
+                {"name": "amy.smith", "allowed": ["delete"]},
+            ],
+        },
+        "note": "jdoe and amy.smith; ALL APPLICATION PACKAGES",
+    }
+    clean = _run(doc)
+    assert [entry["name"] for entry in clean["syscheck"]["win_perm_before"]] == [
+        "Administrators",
+        "user2",
+    ]
+    assert [entry["name"] for entry in clean["syscheck"]["win_perm_after"]] == [
+        "SYSTEM",
+        "ALL APPLICATION PACKAGES",
+        "user1",
+    ]
+    assert clean["note"] == "user2 and user1; ALL APPLICATION PACKAGES"
 
 
 def test_sysmon_and_account_management_user_fields_are_learned() -> None:
@@ -574,6 +696,41 @@ def test_labels_in_a_whitespace_collapsed_message_are_learned() -> None:
     )
 
 
+def test_an_empty_label_value_in_collapsed_text_learns_nothing() -> None:
+    examples = [
+        "Account For Which Logon Failed: Security ID: S-1-0-0 Account Name: sentinel-test-nobody "
+        "Account Domain: Failure Information: Failure Reason: Unknown user name or bad password.",
+        "Subject: Security ID: S-1-0-0 Account Name: Account Domain: Logon ID: 0x0",
+        "Workstation Name: Source Network Address: 192.168.1.50 Source Port: 0",
+        "Logon Account: sentinel-test-nobody Source Workstation: Error Code: 0xC000006A",
+        "Session: Client Name: Client Address: 192.168.1.5",
+        "New Logon: Account Name: jane.doe Account Domain: ZULU-BOX Logon ID: 0x3E7",
+        "New Account: Account Domain: Attributes: SAM Account Name: jane.doe",
+    ]
+    doc = {
+        "rule": {"description": "Logon Failure - Unknown user or bad password"},
+        "system": {"severityValue": "AUDIT_FAILURE"},
+        "evidence": [{"content": {"example": example}} for example in examples],
+        "note": "Source Network Address, Account Name, Error Code; jane.doe on zulu-box",
+    }
+    sanitizer = Sanitizer()
+    sanitizer.learn(doc)
+    clean = sanitizer.apply(doc)
+    assert sorted(sanitizer.mapping) == ["192.168.1.5", "192.168.1.50", "ZULU-BOX", "jane.doe"]
+    assert clean["rule"] == doc["rule"]
+    assert clean["system"] == doc["system"]
+    assert [item["content"]["example"] for item in clean["evidence"]] == [
+        examples[0],
+        examples[1],
+        examples[2].replace("192.168.1.50", "203.0.113.2"),
+        examples[3],
+        examples[4].replace("192.168.1.5", "203.0.113.1"),
+        "New Logon: Account Name: user1 Account Domain: HOST-2 Logon ID: 0x3E7",
+        "New Account: Account Domain: Attributes: SAM Account Name: user1",
+    ]
+    assert clean["note"] == "Source Network Address, Account Name, Error Code; user1 on HOST-2"
+
+
 def test_the_local_part_of_an_email_account_is_learned() -> None:
     doc = {
         "targetUserName": "jane.doe@example.org",
@@ -592,6 +749,37 @@ def test_the_local_part_of_an_email_account_is_learned() -> None:
 def test_role_mailboxes_are_replaced_whole_without_learning_their_local_part() -> None:
     doc = {"cmd": "git clone git@github.com:zulu/repo.git", "m": "mail noreply@example.org on git"}
     assert _run(doc) == {"cmd": "git clone user1:zulu/repo.git", "m": "mail user2 on git"}
+
+
+def test_emails_in_free_text_are_replaced_whole_without_learning_their_local_part() -> None:
+    doc = {
+        "vulnerability": {
+            "id": "CVE-2024-12345",
+            "description": "Reported via cve@mitre.org; see report@snyk.io",
+            "reference": "https://nvd.nist.gov/vuln/detail/CVE-2024-12345",
+        },
+        "title": "CVE-2024-12345 affects Foo",
+        "note": "Generate a report for CVE-2024-12345",
+    }
+    sanitizer = Sanitizer()
+    sanitizer.learn(doc)
+    clean = sanitizer.apply(doc)
+    description = "Reported via user1; see user2"
+    assert clean == {**doc, "vulnerability": {**doc["vulnerability"], "description": description}}
+    assert sorted(sanitizer.mapping) == ["cve@mitre.org", "report@snyk.io"]
+
+
+def test_email_local_parts_are_learned_from_account_and_mail_fields() -> None:
+    doc = {
+        "email": "jane.doe@example.org",
+        "contact": {"mailAddress": "amy.smith@example.net"},
+        "userPrincipalName": "bob.jones@example.com",
+        "mail": {"eve.ross@example.org": 2},
+        "note": "jane.doe, amy.smith, bob.jones and eve.ross; cy.lee@example.org wrote, cy.lee",
+    }
+    clean = _run(doc)
+    assert clean["mail"] == {"user4": 2}
+    assert clean["note"] == "user5, user1, user2 and user4; user3 wrote, cy.lee"
 
 
 def test_addresses_and_names_in_dict_keys_are_learned() -> None:
@@ -672,6 +860,28 @@ def test_placeholders_do_not_depend_on_the_order_of_the_data() -> None:
         "003": "001",
         "009": "002",
     }
+
+
+def test_names_that_share_a_form_are_replaced_the_same_way_under_any_hash_seed() -> None:
+    code = (
+        "from pipeline.sanitize import Sanitizer\n"
+        "sanitizer = Sanitizer()\n"
+        "sanitizer.learn({'user': ['jane doe', 'jane+doe', 'jane doe+x', 'jane+doe x']})\n"
+        "clean = sanitizer.apply({'a': 'jane+doe', 'b': 'jane+doe+x'})\n"
+        "print(clean['a'], clean['b'])\n"
+    )
+    results = set()
+    for seed in ("0", "1", "2", "3"):
+        done = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=ROOT,
+            env={**os.environ, "PYTHONHASHSEED": seed},
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        results.add(done.stdout.strip())
+    assert results == {"user3 user2"}
 
 
 def test_agent_ids_are_replaced_only_in_agent_id_fields() -> None:

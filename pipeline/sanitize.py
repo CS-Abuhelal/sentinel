@@ -39,15 +39,14 @@ USER_KEYS = frozenset(
         "newTargetUserName",
         "targetOutboundUserName",
         "account",
-        "decided_by",
-        "approved_by",
         "sourceUser",
         "targetUser",
         "parentUser",
         "userPrincipalName",
     }
 )
-FULL_NAME_KEYS = frozenset({"displayName"})
+FULL_NAME_KEYS = frozenset({"displayName", "decided_by", "approved_by"})
+ACCOUNT_NAME_PARENTS = frozenset({"user", "win_perm_before", "win_perm_after"})
 ACCOUNT_CONTAINER_KEYS = frozenset({"accounts", "by_account", "by_user"})
 HOST_CONTAINER_KEYS = frozenset({"by_host", "hosts"})
 SERVICE_DOMAINS = frozenset(
@@ -69,6 +68,9 @@ KEEP = frozenset(
         "SYSTEM",
         "LOCAL SERVICE",
         "NETWORK SERVICE",
+        "LocalSystem",
+        "LocalService",
+        "NetworkService",
         "ANONYMOUS LOGON",
         "Administrator",
         "Guest",
@@ -116,6 +118,11 @@ KEEP = frozenset(
         "NETWORK",
         "SERVICE",
         "BATCH",
+        "CREATOR OWNER",
+        "CREATOR GROUP",
+        "OWNER RIGHTS",
+        "ALL APPLICATION PACKAGES",
+        "ALL RESTRICTED APPLICATION PACKAGES",
     }
 )
 KEEP_FOLDED = frozenset(value.casefold() for value in KEEP)
@@ -156,7 +163,23 @@ GENERIC = frozenset(
     }
 )
 LOCAL_SUFFIXES = frozenset(
-    {"lan", "local", "localdomain", "home", "internal", "intranet", "corp", "private", "arpa"}
+    {
+        "lan",
+        "local",
+        "localdomain",
+        "home",
+        "internal",
+        "intranet",
+        "corp",
+        "private",
+        "arpa",
+        "home.arpa",
+        "fritz.box",
+        "mshome.net",
+        "attlocal.net",
+        "router",
+        "gateway",
+    }
 )
 MIN_NAME_LENGTH = 3
 NETBIOS_LENGTH = 15
@@ -168,15 +191,28 @@ _PROFILE_ROOT = r"(?i)(?:\\+|/+)(?:Users|Documents and Settings)(?:\\+|/+)"
 PROFILE_FOLDER = re.compile(_PROFILE_ROOT + r"([^\\/:*?\x22<>|\r\n\t%]{1,64}?)(?=[\\/])")
 PROFILE = re.compile(_PROFILE_ROOT + r"(All Users|Default User|[^\\/\s\x22\x27<>|:*?%,;(){}\[\]]+)")
 UNC = re.compile(r"(?:(?<![\w.$:\\-])|(?<=\\[nrt]))(\\{2,})([^\\\s]{3,})(\\+)")
+LONG_UNC = re.compile(r"(?i)(?<!\\)(\\+)(?:\1\?\1UNC|Device\1Mup)\1([^\\\s;]{3,})\1")
+HOME_FOLDER = re.compile(
+    r"(?:(?<![\w.%-])|(?<=\\[nrt]))/home/([^/\s\x22\x27<>|:*?%,;(){}\[\]\\]+)/"
+)
+DOMAIN_ACCOUNT = re.compile(
+    r"(?:(?<![\w.$\\-])|(?<=\\[nrt]))([^\W_][\w.-]*)"
+    r"(?:(?:\\\\){1,2}|\\(?![nrt\x22]|u[0-9A-Fa-f]{4}))([^\W_][\w.$-]*)"
+)
 LABEL = re.compile(
     r"(Account Name|Account Domain|Workstation Name|Source Workstation|Client Name"
-    r"|Target Server Name):(?:[ \t]|\\t)*(?=([^\t\r\n\\\x22]+))"
+    r"|Target Server Name):((?:[ \t]|\\t)*)"
 )
-LABEL_END = re.compile(
-    r"\s+(?:Account|Additional|Authentication|Caller|Client|Detailed|Elevated|Error|Failure"
+LABEL_VALUE = re.compile(r"[^\t\r\n\\\x22]+(?:\\[^\s\\\x22]+)?")
+ESCAPED_LABEL_VALUE = re.compile(r"[^\t\r\n\\\x22]+(?:\\\\[^\s\\\x22]+)?")
+_LABEL_WORD = (
+    r"(?:Account|Additional|Authentication|Caller|Client|Detailed|Elevated|Error|Failure"
     r"|Impersonation|Key|Linked|Logon|Network|New|Old|Package|Process|Restricted|Security"
-    r"|Source|Status|Sub|Subject|Target|Transited|Virtual|Workstation)\b[\w ()/-]{0,40}:"
+    r"|Source|Status|Sub|Subject|Target|Transited|Virtual|Workstation)\b"
 )
+LABEL_START = re.compile(_LABEL_WORD + r"(?: [A-Z][\w()/-]*){0,2}:|[^\s:]+:")
+LABEL_END = re.compile(r"\s+" + _LABEL_WORD + r"[\w ()/-]{0,40}:")
+MAIL_KEY = re.compile(r"(?i)mail")
 EMAIL = re.compile(
     r"(?:(?<![\w.+\\-])|(?<=\\)(?![nrt]|u[0-9A-Fa-f]{4})|" + _ESCAPED + r")"
     r"[\w+-][\w.+-]*@(?:[^\W_][\w-]*\.)+[^\W\d_]{2,}(?![\w-])"
@@ -224,6 +260,15 @@ def _numbers_only_key(key: str | None) -> bool:
 
 def _agent_id_key(key: str | None, parent: str | None) -> bool:
     return (key == "id" and parent == "agent") or key == "agent_id"
+
+
+def _mail_key(key: str | None) -> bool:
+    return key is not None and bool(MAIL_KEY.search(key))
+
+
+def _local_suffix(rest: str) -> bool:
+    folded = rest.casefold()
+    return any(folded == suffix or folded.endswith("." + suffix) for suffix in LOCAL_SUFFIXES)
 
 
 def _canonical_ipv4(text: str) -> str:
@@ -303,6 +348,7 @@ class Sanitizer:
         self._ips: set[str] = set()
         self._ipv6s: set[str] = set()
         self._macs: set[str] = set()
+        self._domain_accounts: set[tuple[str, str]] = set()
         self.mapping: dict[str, str] = {}
         self._ip_map: dict[str, str] = {}
         self._ipv6_map: dict[str, str] = {}
@@ -313,6 +359,7 @@ class Sanitizer:
 
     def learn(self, doc: Any) -> None:
         self._walk(doc, None, None, False)
+        self._learn_domain_accounts()
         self._build()
 
     def apply(self, doc: Any) -> Any:
@@ -350,6 +397,8 @@ class Sanitizer:
                         self._add_account(child_key)
                     elif key in HOST_CONTAINER_KEYS:
                         self._add_host(child_key, own=False)
+                    elif _mail_key(key):
+                        self._learn_account_emails(child_key)
                 self._walk(child, str(child_key), key, numbers_only)
             return
         if isinstance(value, (list, tuple)):
@@ -367,29 +416,27 @@ class Sanitizer:
             self._add_host(text, own=False)
         elif key in LOCAL_HOST_KEYS:
             self._add_host(text, own=False, local_only=True)
-        if key in USER_KEYS or (key == "name" and parent == "user"):
+        if key in USER_KEYS or (key == "name" and parent in ACCOUNT_NAME_PARENTS):
             self._add_account(text)
         elif key in FULL_NAME_KEYS:
             self._add_account(text, parts=True)
+        if _mail_key(key):
+            self._learn_account_emails(value)
         self._learn_text(value, numbers_only)
 
     def _learn_text(self, value: str, numbers_only: bool) -> None:
         decoded = unquote(value) if "%" in value else value
         for text in dict.fromkeys((value, decoded)):
-            for match in PROFILE_FOLDER.finditer(text):
-                folder = match.group(1)
-                if folder == folder.strip() and not folder.endswith("."):
-                    self._add_account(folder)
-            for match in PROFILE.finditer(text):
-                self._add_account(match.group(1).rstrip("."))
-            for match in UNC.finditer(text):
-                lead, host, trail = match.groups()
-                if len(lead) == 2 * len(trail):
-                    self._add_host(host, own=False)
+            self._learn_paths(text)
             for match in LABEL.finditer(text):
-                self._learn_label(match.group(1), match.group(2))
+                escaped = "\\t" in match.group(2)
+                found = (ESCAPED_LABEL_VALUE if escaped else LABEL_VALUE).match(text, match.end())
+                if found is not None:
+                    self._learn_label(match.group(1), found.group(0))
             for match in EMAIL.finditer(text):
-                self._add_user(match.group(0))
+                self._add_email(match.group(0))
+            for match in DOMAIN_ACCOUNT.finditer(text):
+                self._domain_accounts.add((match.group(1), match.group(2)))
             for match in IPV6.finditer(text):
                 address = _ipv6(match.group(0))
                 if address is not None and not _keep_ipv6(address):
@@ -404,7 +451,25 @@ class Sanitizer:
                     if not _keep_ipv4(address):
                         self._ips.add(address)
 
+    def _learn_paths(self, text: str) -> None:
+        for match in PROFILE_FOLDER.finditer(text):
+            folder = match.group(1)
+            if folder == folder.strip() and not folder.endswith("."):
+                self._add_account(folder)
+        for match in PROFILE.finditer(text):
+            self._add_account(match.group(1).rstrip("."))
+        for match in HOME_FOLDER.finditer(text):
+            self._add_account(match.group(1))
+        for match in UNC.finditer(text):
+            lead, host, trail = match.groups()
+            if len(lead) == 2 * len(trail):
+                self._add_host(host, own=False)
+        for match in LONG_UNC.finditer(text):
+            self._add_host(match.group(2), own=False)
+
     def _learn_label(self, label: str, value: str) -> None:
+        if LABEL_START.match(value):
+            return
         end = LABEL_END.search(value)
         if end is not None:
             value = value[: end.start()]
@@ -415,6 +480,16 @@ class Sanitizer:
             self._add_account(value)
         else:
             self._add_host(value, own=False)
+
+    def _learn_account_emails(self, text: str) -> None:
+        for match in EMAIL.finditer(text):
+            self._add_user(match.group(0))
+
+    def _learn_domain_accounts(self) -> None:
+        hosts = {name.casefold() for name in self._own_hosts | self._other_hosts}
+        for domain, name in self._domain_accounts:
+            if domain.casefold() in hosts:
+                self._add_user(name.rstrip("."))
 
     def _learn_entity(self, value: dict[Any, Any]) -> None:
         for type_key, value_key in (("entity_type", "value"), ("target_type", "target_value")):
@@ -429,7 +504,7 @@ class Sanitizer:
     def _add_host(self, text: str, own: bool, local_only: bool = False) -> None:
         name = text.strip().lstrip("\\").rstrip("$").rstrip(".")
         first, _, rest = name.partition(".")
-        local = rest.rsplit(".", 1)[-1].casefold() in LOCAL_SUFFIXES
+        local = _local_suffix(rest)
         if not _learnable(name) or (local_only and rest and not local):
             return
         hosts = self._own_hosts if own else self._other_hosts
@@ -464,6 +539,10 @@ class Sanitizer:
             for part in NAME_PARTS.split(name):
                 if part != name and _learnable(part):
                     self._users.add(part)
+
+    def _add_email(self, address: str) -> None:
+        if _learnable(address):
+            self._emails.add(address)
 
     def _build(self) -> None:
         if len(self._ips) > MAX_IPS or len(self._macs) > MAX_MACS:
@@ -519,8 +598,12 @@ class Sanitizer:
         mapping.update(self._mac_map)
         mapping.update(self._agent_map)
         self.mapping = mapping
+        ordered = [(key, group[key]) for group in (hosts, users, emails) for key in sorted(group)]
         alternatives: dict[str, str] = {}
-        for key, names in {**hosts, **users, **emails}.items():
+        for key, names in ordered:
+            for form in {key} | {name.lower() for name in names}:
+                alternatives.setdefault(form, placeholders[key])
+        for key, names in ordered:
             for form in _forms(key, names):
                 alternatives.setdefault(form, placeholders[key])
         words = sorted(alternatives, key=lambda word: (-len(word), word))
