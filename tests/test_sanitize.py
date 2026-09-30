@@ -935,6 +935,54 @@ def test_an_empty_label_value_in_collapsed_text_learns_nothing() -> None:
     assert clean["note"] == "Source Network Address, Account Name, Error Code; user1 on HOST-2"
 
 
+def test_a_label_value_that_is_only_a_label_word_learns_nothing() -> None:
+    examples = [
+        "Account Name: bob.smith Account Domain: Read Operation: Enumerate Credentials",
+        "Account Name: sentinel-test-nobody Account Domain: Failure",
+        "Network Information: Workstation Name: Source",
+        "Account Name: Account Domain: Changed Attributes: SAM Account Name: -",
+        "Account Information: Account Name: Supplied Realm Name: HOME User ID: S-1-0-0",
+        r"Account Domain: Device ID: SWD\x Device Name: y",
+        "Account Domain: Cryptographic Parameters: Provider Name: Microsoft",
+        r"Account Domain: Task Information: Task Name: \x",
+        r"Account Domain: Share Information: Share Name: \\*\C$",
+    ]
+    doc = {
+        "evidence": [{"example": example} for example in examples],
+        "fim": {"allowed": ["read"]},
+        "rule": "Logon Failure - Unknown user or bad password",
+        "note": "Read Operation, Failure Reason, Source Network Address, Changed Attributes, "
+        "Supplied Realm, Device ID, Cryptographic Parameters, Task Name, Share Name; bob.smith",
+    }
+    sanitizer = Sanitizer()
+    sanitizer.learn(doc)
+    clean = sanitizer.apply(doc)
+    assert sorted(sanitizer.mapping) == ["bob.smith"]
+    expected = copy.deepcopy(doc)
+    expected["evidence"][0]["example"] = examples[0].replace("bob.smith", "user1")
+    expected["note"] = doc["note"].replace("bob.smith", "user1")
+    assert clean == expected
+
+
+def test_a_label_value_takes_a_backslash_part_only_after_a_one_word_domain() -> None:
+    doc = {
+        "c": r"Account Name: SYSTEM Account Domain: kali \Device\Mup\x\y",
+        "d": r"New Logon: Account Name: NT AUTHORITY\SYSTEM Account Domain: NT AUTHORITY",
+        "e": r"Account Name: Font Driver Host\UMFD-0 Logon ID: 0x3E7",
+        "f": r"Account Name: ZULU-BOX\amy.smith Logon ID: 0x3E7",
+        "note": "kali amy.smith zulu-box",
+    }
+    first = _run(doc)
+    assert first == {
+        "c": r"Account Name: SYSTEM Account Domain: HOST-2 \Device\Mup\x\y",
+        "d": doc["d"],
+        "e": doc["e"],
+        "f": r"Account Name: HOST-3\user1 Logon ID: 0x3E7",
+        "note": "HOST-2 user1 HOST-3",
+    }
+    assert _run(first) == first
+
+
 def test_the_local_part_of_an_email_account_is_learned() -> None:
     doc = {
         "targetUserName": "jane.doe@example.org",

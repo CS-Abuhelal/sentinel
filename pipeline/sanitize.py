@@ -247,12 +247,18 @@ LABEL = re.compile(
     r"(Account Name|Account Domain|Workstation Name|Source Workstation|Client Name"
     r"|Target Server Name):((?:[ \t]|\\t)*)"
 )
-LABEL_VALUE = re.compile(r"[^\t\r\n\\\x22]+(?:\\[^\s\\\x22]+)?")
-ESCAPED_LABEL_VALUE = re.compile(r"[^\t\r\n\\\x22]+(?:\\\\[^\s\\\x22]+)?")
+_DOMAIN = (
+    r"(?:(?i:"
+    + "|".join(re.escape(domain) for domain in sorted(SERVICE_DOMAINS, key=len, reverse=True))
+    + r")|[^\s\\\x22]+)"
+)
+LABEL_VALUE = re.compile(_DOMAIN + r"\\[^\s\\\x22]+|[^\t\r\n\\\x22]+")
+ESCAPED_LABEL_VALUE = re.compile(_DOMAIN + r"\\\\[^\s\\\x22]+|[^\t\r\n\\\x22]+")
 _LABEL_WORD = (
-    r"(?:Account|Additional|Authentication|Caller|Client|Detailed|Elevated|Error|Failure"
-    r"|Impersonation|Key|Linked|Logon|Network|New|Old|Package|Process|Restricted|Security"
-    r"|Source|Status|Sub|Subject|Target|Transited|Virtual|Workstation)\b"
+    r"(?:Account|Additional|Authentication|Caller|Changed|Client|Cryptographic|Detailed|Device"
+    r"|Elevated|Error|Failure|Impersonation|Key|Linked|Logon|Network|New|Old|Package|Process"
+    r"|Read|Restricted|Security|Share|Source|Status|Sub|Subject|Supplied|Target|Task|Transited"
+    r"|Virtual|Workstation)\b"
 )
 LABEL_START = re.compile(_LABEL_WORD + r"(?: [A-Z][\w()/-]*){0,2}:|[^\s:]+:")
 LABEL_END = re.compile(r"\s+" + _LABEL_WORD + r"[\w ()/-]{0,40}:")
@@ -619,6 +625,8 @@ class Sanitizer:
         value = value.strip()
         if ":" in value:
             value = value.split()[0]
+        if re.fullmatch(_LABEL_WORD, value):
+            return
         if label == "Account Name":
             self._add_account(value)
         else:
