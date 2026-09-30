@@ -10,7 +10,7 @@
 
 **Architecture:**
 - `pipeline/sanitize.py` learns identifiers from the data and replaces them everywhere with stable
-  placeholders: computer and host names, user names, profile-path users, IPv4 and MAC
+  placeholders: computer and host names, user names, profile-path users, IPv4, IPv6 and MAC
   addresses, agent ids.
 - `pipeline/sample.py` exports a `PcSample` from the live database: a feed, the assessment and
   the investigated runs. It sanitizes the sample and refuses to write it if any term in
@@ -41,7 +41,8 @@ sanitizer bullet, "Dashboard" Report tab and public sample).
 - Baseline at the start: `749 passed, 2 skipped, 1 warning`.
 - **Privacy is the point of this phase.**
   - Nothing personal may be committed. Placeholders are `my-pc`, `MY-PC`, `user1`, `user2`, …,
-    `sentinel-test-nobody`, `10.0.0.N`, `00:00:5e:00:53:NN` (the documentation MAC range) and
+    `sentinel-test-nobody`, `203.0.113.N` (TEST-NET-3, RFC 5737), `2001:db8::N` (the IPv6
+    documentation range, RFC 3849), `00:00:5e:00:53:NN` (the documentation MAC range) and
     agent ids `001`, `002`, ….
   - The owner's real names are only ever passed at run time in `SENTINEL_FORBIDDEN_TERMS`,
     comma-separated. They never appear in code, tests, docs, commit messages or CI.
@@ -49,7 +50,8 @@ sanitizer bullet, "Dashboard" Report tab and public sample).
 - Values:
   - The sample holds at most 50 alerts, 30 incident summaries, the top 25 findings with their
     recommendations, and at most 10 investigated runs.
-  - Loopback (`127.0.0.1`, `::1`), `0.0.0.0` and already-placeholder values are kept.
+  - Loopback (`127.0.0.1`, `::1`), the unspecified addresses (`0.0.0.0`, `::`) and
+    already-placeholder values are kept.
   - Built-in Windows accounts are kept: `SYSTEM`, `LOCAL SERVICE`, `NETWORK SERVICE`,
     `ANONYMOUS LOGON`, `Administrator`, `Guest`, `DefaultAccount`, `WDAGUtilityAccount`, `-`.
   - Profile folders `Public`, `Default`, `Default User` and `All Users` are kept.

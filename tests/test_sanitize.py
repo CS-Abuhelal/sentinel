@@ -57,7 +57,7 @@ def test_placeholders_are_stable_and_sensible() -> None:
     sanitizer, clean = _clean()
     assert clean["event"]["host"] == "MY-PC"
     assert clean["event"]["user"] == "user1"
-    assert clean["event"]["network"]["src_ip"] == "10.0.0.1"
+    assert clean["event"]["network"]["src_ip"] == "203.0.113.1"
     assert clean["raw"]["agent"] == {"id": "001", "name": "my-pc"}
     assert clean["raw"]["data"]["win"]["eventdata"]["targetUserName"] == "SYSTEM"
     eventdata = clean["raw"]["data"]["win"]["eventdata"]
@@ -163,7 +163,7 @@ def test_a_name_after_a_literal_escape_sequence_is_replaced() -> None:
     }
     clean = _run(doc)
     assert clean["full_log"] == (
-        "Account Name:\\t\\tuser1\\r\\nMAC:\\t00:00:5e:00:53:01 at\\t10.0.0.1."
+        "Account Name:\\t\\tuser1\\r\\nMAC:\\t00:00:5e:00:53:01 at\\t203.0.113.1."
     )
 
 
@@ -223,7 +223,11 @@ def test_the_agent_name_is_the_pc_and_other_hosts_come_after() -> None:
 
 def test_a_host_written_as_an_address_is_an_address() -> None:
     doc = {"host": "192.168.1.5", "computer": "ZULU-PC", "note": "from 192.168.1.5 to ZULU-PC"}
-    assert _run(doc) == {"host": "10.0.0.1", "computer": "MY-PC", "note": "from 10.0.0.1 to MY-PC"}
+    assert _run(doc) == {
+        "host": "203.0.113.1",
+        "computer": "MY-PC",
+        "note": "from 203.0.113.1 to MY-PC",
+    }
 
 
 def test_a_remote_host_never_takes_the_pc_placeholder() -> None:
@@ -241,7 +245,7 @@ def test_entities_are_learned_from_their_type() -> None:
         "entities": [
             {"entity_type": "host", "value": "ZULU-LAPTOP"},
             {"entity_type": "account", "value": "amy.smith"},
-            {"entity_type": "ip", "value": "203.0.113.9"},
+            {"entity_type": "ip", "value": "192.168.7.9"},
         ],
         "actions": [{"target_type": "account", "target_value": "cy.lee"}],
         "message": "amy.smith and cy.lee on ZULU-LAPTOP",
@@ -250,14 +254,14 @@ def test_entities_are_learned_from_their_type() -> None:
     assert clean["message"] == "user1 and user2 on MY-PC"
     assert clean["entities"][0]["value"] == "MY-PC"
     assert clean["actions"][0]["target_value"] == "user2"
-    assert clean["entities"][2]["value"] == "10.0.0.1"
+    assert clean["entities"][2]["value"] == "203.0.113.1"
 
 
 def test_placeholders_do_not_depend_on_the_order_of_the_data() -> None:
     docs = [
         {"user": "zed.quinn", "src": "10.1.1.9", "id": "x"},
-        {"user": "amy.smith", "src": "9.9.9.9"},
-        {"agent": {"id": "009"}, "m": "aa:bb:cc:dd:ee:02"},
+        {"user": "amy.smith", "src": "9.9.9.9", "v6": "fd12::9"},
+        {"agent": {"id": "009"}, "m": "aa:bb:cc:dd:ee:02", "v6": "fd12::1"},
         {"agent": {"id": "003"}, "m": "AA:BB:CC:DD:EE:01"},
     ]
     forward = Sanitizer()
@@ -269,8 +273,10 @@ def test_placeholders_do_not_depend_on_the_order_of_the_data() -> None:
     assert forward.mapping == {
         "amy.smith": "user1",
         "zed.quinn": "user2",
-        "9.9.9.9": "10.0.0.1",
-        "10.1.1.9": "10.0.0.2",
+        "9.9.9.9": "203.0.113.1",
+        "10.1.1.9": "203.0.113.2",
+        "fd12::1": "2001:db8::1",
+        "fd12::9": "2001:db8::2",
         "AA:BB:CC:DD:EE:01": "00:00:5e:00:53:01",
         "AA:BB:CC:DD:EE:02": "00:00:5e:00:53:02",
         "003": "001",
@@ -297,14 +303,24 @@ def test_addresses_that_are_not_personal_are_kept() -> None:
         "os": "10.0.26200.9457",
         "mask": "255.255.255.0",
         "broadcast": "255.255.255.255",
-        "loopback": "127.0.0.1",
-        "any": "0.0.0.0",
+        "loopback": "127.0.0.1 and ::1 and [::1]:445",
+        "any": "0.0.0.0 and ::",
         "multicast": "224.0.0.251",
-        "placeholder": "10.0.0.7",
+        "placeholder": "203.0.113.7 and 2001:db8::7 and 2001:DB8:0:0:1::5",
         "mac": "00-00-5E-00-53-07 FF:FF:FF:FF:FF:FF",
         "not_an_ip": "999.1.1.1 and 1.2.3",
     }
     assert _run(doc) == doc
+
+
+def test_real_ten_dot_zero_addresses_are_replaced() -> None:
+    doc = {"src_ip": "10.0.0.23", "gw": "10.0.0.1", "placeholder": "203.0.113.9"}
+    assert _run(doc) == {"src_ip": "203.0.113.2", "gw": "203.0.113.1", "placeholder": "203.0.113.9"}
+
+
+def test_ipv4_with_leading_zeros_gets_the_same_placeholder() -> None:
+    doc = {"a": "192.168.1.23", "b": "from 192.168.001.023 now"}
+    assert _run(doc) == {"a": "203.0.113.1", "b": "from 203.0.113.1 now"}
 
 
 def test_section_numbers_that_look_like_addresses_are_kept() -> None:
@@ -314,14 +330,78 @@ def test_section_numbers_that_look_like_addresses_are_kept() -> None:
         "data": {"compliance": {"pci_dss_v4": {"0": "1.2.1,10.2.1.2,10.2.1.5"}}},
     }
     clean = _run(doc)
-    assert clean["src"] == "10.0.0.1"
+    assert clean["src"] == "203.0.113.1"
     assert clean["rule"] == doc["rule"]
     assert clean["data"] == doc["data"]
 
 
 def test_neighbouring_addresses_are_told_apart() -> None:
     doc = {"m": "192.168.1.23 then 192.168.1.230 and 192.168.1.23:445, ::ffff:192.168.1.23"}
-    assert _run(doc) == {"m": "10.0.0.1 then 10.0.0.2 and 10.0.0.1:445, ::ffff:10.0.0.1"}
+    assert _run(doc) == {
+        "m": "203.0.113.1 then 203.0.113.2 and 203.0.113.1:445, ::ffff:203.0.113.1"
+    }
+
+
+def test_global_ipv6_addresses_are_replaced() -> None:
+    doc = {
+        "ipAddress": "3fff:0:1234:5600:a1b2:c3d4:e5f6:789",
+        "note": "from [3FFF:0000:1234:5600:A1B2:C3D4:E5F6:0789]:443 and ipv6:fd12:3456:789a:1::23.",
+    }
+    assert _run(doc) == {
+        "ipAddress": "2001:db8::1",
+        "note": "from [2001:db8::1]:443 and ipv6:2001:db8::2.",
+    }
+
+
+def test_a_link_local_address_with_a_zone_is_replaced() -> None:
+    message = "Source Network Address:\tfe80::3e52:82ff:feaa:bbcc%12\r\n"
+    doc = {
+        "ipAddress": "fe80::3e52:82ff:feaa:bbcc%12",
+        "full_log": json.dumps({"message": message}),
+        "iface": "FE80:0:0:0:3E52:82FF:FEAA:BBCC%eth0 up",
+    }
+    clean = _run(doc)
+    assert clean["ipAddress"] == "2001:db8::1"
+    assert json.loads(clean["full_log"]) == {"message": "Source Network Address:\t2001:db8::1\r\n"}
+    assert clean["iface"] == "2001:db8::1 up"
+    assert leftovers(clean, ["3e52", "82ff", "feaa", "bbcc"]) == []
+
+
+def test_ipv6_loopback_is_kept_and_addresses_are_never_learned_as_hosts() -> None:
+    doc = {
+        "workstationName": "::1",
+        "m": "Source Network Address: ::1 and [::1]:445 and :: and 127.0.0.1",
+        "hostname": "fe80::1%3",
+    }
+    sanitizer = Sanitizer()
+    sanitizer.learn(doc)
+    assert sanitizer.apply(doc) == {**doc, "hostname": "2001:db8::1"}
+    assert sanitizer.mapping == {"fe80::1": "2001:db8::1"}
+
+
+def test_ipv4_mapped_ipv6_is_left_to_the_ipv4_rules() -> None:
+    doc = {"src": "::ffff:192.168.1.23", "other": "192.168.1.23", "hex": "::ffff:c0a8:117"}
+    assert _run(doc) == {"src": "::ffff:203.0.113.1", "other": "203.0.113.1", "hex": "2001:db8::1"}
+
+
+def test_times_and_code_with_colons_are_not_ipv6() -> None:
+    text = (
+        "at 23:18:56 on 2026-09-29T23:18:56.123Z std::vector [Convert]::FromBase64String "
+        "a:b Class::Add( dead:beef C:\\x"
+    )
+    doc = {"src": "fd12:3456:789a:1::23", "m": text}
+    assert _run(doc) == {"src": "2001:db8::1", "m": text}
+
+
+def test_sanitizing_ipv6_twice_changes_nothing() -> None:
+    doc = {
+        "a": "fe80::3e52:82ff:feaa:bbcc%12",
+        "b": "3fff::5 and ::ffff:192.168.1.23 and ::1",
+        "c": "2001:db8::7",
+    }
+    first = _run(doc)
+    assert first["c"] == "2001:db8::7"
+    assert _run(first) == first
 
 
 def test_windows_machine_sids_are_generalised() -> None:

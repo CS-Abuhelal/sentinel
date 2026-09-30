@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import os
 import re
 from collections.abc import Iterator
@@ -64,8 +65,12 @@ PROFILE = re.compile(
     r"(?i)[A-Z]:(?:\\+|/)Users(?:\\+|/)"
     r"(All Users|Default User|[^\\/\s\x22\x27<>|:*?%,;(){}\[\]]+)"
 )
-_OCTET = r"(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
+_OCTET = r"(?:25[0-5]|2[0-4]\d|1\d\d|0?[1-9]\d|0{0,2}\d)"
 IPV4 = re.compile(rf"(?<!\d)(?<!\d\.){_OCTET}(?:\.{_OCTET}){{3}}(?!\d)(?!\.\d)")
+IPV6 = re.compile(
+    r"(?:(?<![\w.])|(?<=\\[nrt]))(?=[0-9A-Fa-f]|::)"
+    r"[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7}(?:%[0-9A-Za-z_-]+)?(?![\w:])(?!\.\d)"
+)
 MAC = re.compile(
     r"(?i)(?<![0-9a-f])(?<![0-9a-f][:-])[0-9a-f]{2}(?:[:-][0-9a-f]{2}){5}"
     r"(?![0-9a-f])(?![:-][0-9a-f])"
@@ -78,7 +83,8 @@ NUMBERS_ONLY_KEYS = frozenset(
 )
 KEEP_MACS = frozenset({"00:00:00:00:00:00", "FF:FF:FF:FF:FF:FF"})
 PLACEHOLDER_MAC_PREFIX = "00:00:5E:00:53:"
-PLACEHOLDER_IP_PREFIX = "10.0.0."
+PLACEHOLDER_IP_PREFIX = "203.0.113."
+PLACEHOLDER_IPV6_NETWORK = ipaddress.IPv6Network("2001:db8::/32")
 MAX_IPS = 254
 MAX_MACS = 255
 
@@ -87,7 +93,11 @@ def _numbers_only_key(key: str | None) -> bool:
     return key in NUMBERS_ONLY_KEYS or "version" in (key or "").lower()
 
 
-def _keep_ip(address: str) -> bool:
+def _canonical_ipv4(text: str) -> str:
+    return ".".join(str(int(part)) for part in text.split("."))
+
+
+def _keep_ipv4(address: str) -> bool:
     first = int(address.split(".")[0])
     return (
         address == "0.0.0.0"
@@ -97,8 +107,23 @@ def _keep_ip(address: str) -> bool:
     )
 
 
-def _ip_order(address: str) -> tuple[int, ...]:
+def _ipv4_order(address: str) -> tuple[int, ...]:
     return tuple(int(part) for part in address.split("."))
+
+
+def _ipv6(text: str) -> ipaddress.IPv6Address | None:
+    try:
+        return ipaddress.IPv6Address(text.split("%", 1)[0])
+    except ValueError:
+        return None
+
+
+def _keep_ipv6(address: ipaddress.IPv6Address) -> bool:
+    return address.is_loopback or address.is_unspecified or address in PLACEHOLDER_IPV6_NETWORK
+
+
+def _is_address(text: str) -> bool:
+    return bool(IPV4.fullmatch(text)) or _ipv6(text.strip("[]")) is not None
 
 
 def _canonical_mac(text: str) -> str:
@@ -114,7 +139,7 @@ def _learnable(name: str) -> bool:
         and lowered not in GENERIC
         and not PLACEHOLDER.match(name)
         and not BUILTIN_ACCOUNT.match(name)
-        and not IPV4.fullmatch(name)
+        and not _is_address(name)
     )
 
 
@@ -125,10 +150,12 @@ class Sanitizer:
         self._users: set[str] = set()
         self._agents: set[str] = set()
         self._ips: set[str] = set()
+        self._ipv6s: set[str] = set()
         self._macs: set[str] = set()
         self.mapping: dict[str, str] = {}
         self._names: dict[str, str] = {}
         self._ip_map: dict[str, str] = {}
+        self._ipv6_map: dict[str, str] = {}
         self._mac_map: dict[str, str] = {}
         self._agent_map: dict[str, str] = {}
         self._pattern: re.Pattern[str] | None = None
@@ -182,8 +209,13 @@ class Sanitizer:
             self._add_account(match.group(1).rstrip("."))
         if not numbers_only:
             for match in IPV4.finditer(value):
-                if not _keep_ip(match.group(0)):
-                    self._ips.add(match.group(0))
+                address = _canonical_ipv4(match.group(0))
+                if not _keep_ipv4(address):
+                    self._ips.add(address)
+        for match in IPV6.finditer(value):
+            ipv6 = _ipv6(match.group(0))
+            if ipv6 is not None and not _keep_ipv6(ipv6):
+                self._ipv6s.add(ipv6.compressed)
         for match in MAC.finditer(value):
             mac = _canonical_mac(match.group(0))
             if mac not in KEEP_MACS and not mac.startswith(PLACEHOLDER_MAC_PREFIX):
@@ -232,7 +264,13 @@ class Sanitizer:
             mapping[user] = names[user] = f"user{index + 1}"
         self._ip_map = {
             ip: f"{PLACEHOLDER_IP_PREFIX}{index + 1}"
-            for index, ip in enumerate(sorted(self._ips, key=_ip_order))
+            for index, ip in enumerate(sorted(self._ips, key=_ipv4_order))
+        }
+        self._ipv6_map = {
+            address: f"2001:db8::{index + 1:x}"
+            for index, address in enumerate(
+                sorted(self._ipv6s, key=lambda text: int(ipaddress.IPv6Address(text)))
+            )
         }
         self._mac_map = {
             mac: f"{PLACEHOLDER_MAC_PREFIX.lower()}{index + 1:02x}"
@@ -242,6 +280,7 @@ class Sanitizer:
             agent: f"{index + 1:03d}" for index, agent in enumerate(sorted(self._agents))
         }
         mapping.update(self._ip_map)
+        mapping.update(self._ipv6_map)
         mapping.update(self._mac_map)
         mapping.update(self._agent_map)
         self.mapping = mapping
@@ -258,18 +297,26 @@ class Sanitizer:
     def _mac_placeholder(self, match: re.Match[str]) -> str:
         return self._mac_map.get(_canonical_mac(match.group(0)), match.group(0))
 
-    def _ip_placeholder(self, match: re.Match[str]) -> str:
-        return self._ip_map.get(match.group(0), match.group(0))
+    def _ipv4_placeholder(self, match: re.Match[str]) -> str:
+        return self._ip_map.get(_canonical_ipv4(match.group(0)), match.group(0))
+
+    def _ipv6_placeholder(self, match: re.Match[str]) -> str:
+        address = _ipv6(match.group(0))
+        if address is None:
+            return match.group(0)
+        return self._ipv6_map.get(address.compressed, match.group(0))
 
     def _replace(self, text: str, addresses: bool) -> str:
         stripped = text.strip()
         if stripped in self._agent_map:
             return text.replace(stripped, self._agent_map[stripped])
         text = SID.sub(SID_PLACEHOLDER, text)
+        if self._ipv6_map:
+            text = IPV6.sub(self._ipv6_placeholder, text)
         if self._mac_map:
             text = MAC.sub(self._mac_placeholder, text)
         if self._ip_map and addresses:
-            text = IPV4.sub(self._ip_placeholder, text)
+            text = IPV4.sub(self._ipv4_placeholder, text)
         if self._pattern is not None:
             text = self._pattern.sub(lambda m: self._names[m.group(0).lower()], text)
         return text
