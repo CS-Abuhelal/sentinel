@@ -1088,6 +1088,67 @@ def test_zero_network_addresses_and_cis_section_numbers_are_kept() -> None:
     assert _run(doc) == {**doc, "src_ip": "203.0.113.2", "note": "203.0.113.1 is also an address"}
 
 
+def test_an_address_after_a_word_that_ends_in_cis_is_replaced() -> None:
+    doc = {
+        "src_ip": "192.168.1.23",
+        "sshd": "Connection closed by invalid user francis 192.168.1.23 port 22",
+        "other": "Host narcis 10.20.30.40 contacted",
+        "recommendation": "CIS 2.3.7.4 and (cis 18.10.43.5)",
+    }
+    assert _run(doc) == {
+        **doc,
+        "src_ip": "203.0.113.2",
+        "sshd": "Connection closed by invalid user francis 203.0.113.2 port 22",
+        "other": "Host narcis 203.0.113.1 contacted",
+    }
+
+
+def test_versions_that_look_like_addresses_are_kept_when_a_version_key_holds_them() -> None:
+    doc = {
+        "findings": [
+            {"title": "CVE-2024-1234 in Steam 2.10.91.91", "installed_version": "2.10.91.91"},
+            {
+                "title": "CVE-2024-5678 in VLC media player 3.0.21.0",
+                "package": {"name": "VLC media player", "version": "3.0.21.0"},
+            },
+        ],
+        "advice": "Update Steam 2.10.91.91 and VLC media player 3.0.21.0 today.",
+        "other": "Epic Games Launcher 1.3.93.0",
+        "src_ip": "192.168.1.23",
+    }
+    sanitizer = Sanitizer()
+    sanitizer.learn(doc)
+    clean = sanitizer.apply(doc)
+    assert clean == {**doc, "other": "Epic Games Launcher 203.0.113.1", "src_ip": "203.0.113.2"}
+    assert sorted(sanitizer.mapping) == ["1.3.93.0", "192.168.1.23"]
+    assert _run(clean) == clean
+
+
+def test_an_address_is_replaced_even_when_a_version_has_the_same_digits() -> None:
+    doc = {
+        "finding": {"title": "Steam 2.10.91.91", "installed_version": "2.10.91.91"},
+        "eventdata": {"ipAddress": "::ffff:2.10.91.91"},
+        "other": {"title": "VLC media player 3.0.21.0", "version": "3.0.21.0"},
+        "entity": {"entity_type": "ip_address", "value": "3.0.21.0"},
+        "note": "Title 5.72.0.0 and address 5.72.0.0",
+        "agent": {"version": "6.1.0.4"},
+        "logons": {"6.1.0.4": 2},
+    }
+    assert _run(doc) == {
+        "finding": {"title": "Steam 203.0.113.1", "installed_version": "2.10.91.91"},
+        "eventdata": {"ipAddress": "::ffff:203.0.113.1"},
+        "other": {"title": "VLC media player 203.0.113.2", "version": "3.0.21.0"},
+        "entity": {"entity_type": "ip_address", "value": "203.0.113.2"},
+        "note": "Title 203.0.113.3 and address 203.0.113.3",
+        "agent": {"version": "6.1.0.4"},
+        "logons": {"203.0.113.4": 2},
+    }
+    for key in ("src_ip", "srcip", "sourceIp", "ip", "clientAddress", "remote_addr"):
+        assert _run({"version": "2.10.91.91", key: "2.10.91.91 port 22"})[key] == (
+            "203.0.113.1 port 22"
+        )
+
+
 def test_neighbouring_addresses_are_told_apart() -> None:
     doc = {"m": "192.168.1.23 then 192.168.1.230 and 192.168.1.23:445, ::ffff:192.168.1.23"}
     assert _run(doc) == {

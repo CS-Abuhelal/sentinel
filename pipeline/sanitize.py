@@ -236,7 +236,7 @@ EMAIL = re.compile(
 )
 _OCTET = r"(?:25[0-5]|2[0-4]\d|1\d\d|0?[1-9]\d|0{0,2}\d)"
 IPV4 = re.compile(
-    rf"(?<!(?i:CIS) )(?:(?<!\d)(?<!\d\.)|(?<=\\u[0-9A-Fa-f]{{4}}))"
+    rf"(?<!\b(?i:CIS) )(?:(?<!\d)(?<!\d\.)|(?<=\\u[0-9A-Fa-f]{{4}}))"
     rf"{_OCTET}(?:\.{_OCTET}){{3}}(?!\d)(?!\.\d)"
 )
 IPV6 = re.compile(
@@ -269,6 +269,10 @@ BENCHMARK_KEY = re.compile(
     r"|tsc|gpg13|soc_2|cmmc|iso_27001)(?:[_-]v?\d[\w.-]*)?"
 )
 VERSION_KEY = re.compile(r"(?:^|[_-])(?i:version)$|Version$")
+ADDRESS_KEY = re.compile(
+    r"(?:^|[_-])(?i:(?:src|dst)?ip(?:v[46])?(?:_?addr(?:ess)?)?|addr(?:ess)?)$"
+    r"|(?:Ip|IP|Addr|Address)$"
+)
 _NAME_START = r"(?:(?<![^\W_])|" + _ESCAPED + r")"
 KEEP_MACS = frozenset({"00:00:00:00:00:00", "FF:FF:FF:FF:FF:FF"})
 PLACEHOLDER_MAC_PREFIX = "00:00:5E:00:53:"
@@ -302,6 +306,10 @@ def _local_suffix(rest: str) -> bool:
 
 def _canonical_ipv4(text: str) -> str:
     return ".".join(str(int(part)) for part in text.split("."))
+
+
+def _ipv4s(text: str) -> set[str]:
+    return {_canonical_ipv4(match.group(0)) for match in IPV4.finditer(text)}
 
 
 def _keep_ipv4(address: str) -> bool:
@@ -394,6 +402,8 @@ class Sanitizer:
         self._emails: set[str] = set()
         self._agents: set[str] = set()
         self._ips: set[str] = set()
+        self._versions: set[str] = set()
+        self._address_ips: set[str] = set()
         self._ipv6s: set[str] = set()
         self._macs: set[str] = set()
         self._sids: set[str] = set()
@@ -455,6 +465,7 @@ class Sanitizer:
             for child_key, child in value.items():
                 if isinstance(child_key, str):
                     self._learn_text(child_key, numbers_only)
+                    self._learn_ipv4_role(child_key, None, numbers_only)
                     if key in ACCOUNT_CONTAINER_KEYS:
                         self._add_account(child_key)
                     elif key in HOST_CONTAINER_KEYS:
@@ -486,6 +497,15 @@ class Sanitizer:
         if _mail_key(key):
             self._learn_account_emails(value)
         self._learn_text(value, numbers_only)
+        self._learn_ipv4_role(value, key, numbers_only)
+
+    def _learn_ipv4_role(self, text: str, key: str | None, numbers_only: bool) -> None:
+        if key is not None and VERSION_KEY.search(key):
+            self._versions |= _ipv4s(text)
+        elif not numbers_only and (
+            IPV4.fullmatch(text.strip()) or (key is not None and ADDRESS_KEY.search(key))
+        ):
+            self._address_ips |= _ipv4s(text)
 
     def _learn_text(self, value: str, numbers_only: bool) -> None:
         decoded = unquote(value) if "%" in value else value
@@ -624,8 +644,9 @@ class Sanitizer:
             self._emails.add(address)
 
     def _build(self) -> None:
+        ips = self._ips - (self._versions - self._address_ips)
         if (
-            len(self._ips) > MAX_IPS
+            len(ips) > MAX_IPS
             or len(self._macs) > MAX_MACS
             or len(self._sids) + len(self._sid_taken) > MAX_SIDS
             or len(self._azure_sids) + len(self._azure_sid_taken) > MAX_SIDS
@@ -662,7 +683,7 @@ class Sanitizer:
         mapping.update({key: placeholders[key] for key in {**users, **emails}})
         self._ip_map = {
             ip: f"{PLACEHOLDER_IP_PREFIX}{index + 1}"
-            for index, ip in enumerate(sorted(self._ips, key=_ipv4_order))
+            for index, ip in enumerate(sorted(ips, key=_ipv4_order))
         }
         self._ipv6_map = {
             address: f"2001:db8::{index + 1:x}"
