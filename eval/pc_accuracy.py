@@ -103,7 +103,7 @@ def label_key(run: IncidentRun) -> str:
 def states_bound(bound: str, steps: list[str]) -> bool:
     match = BOUND.match(bound)
     if match is None:
-        return False
+        raise ValueError(f"Unknown version bound wording: {bound}")
     number = (match.group("newer") or match.group("above")).lstrip("vV")
     pattern = re.compile(rf"(?<!\d)(?<!\d\.){re.escape(number)}(?!\.?\d)")
     return any(pattern.search(step) for step in steps)
@@ -182,7 +182,10 @@ def _cell(text: str) -> str:
 def summary(report: Report) -> str:
     if report.labelled == 0:
         return "No incidents are labelled yet, so there is no accuracy number."
-    return f"{report.matched} of {report.labelled} labelled incidents matched."
+    return (
+        f"{report.matched} of {report.labelled} labelled incidents matched. "
+        "See How this was measured for what this number does and does not show."
+    )
 
 
 def _unlabelled_sentence(count: int) -> str:
@@ -228,8 +231,9 @@ def _fix_section(fix: FixChecks | None) -> list[str]:
     lines += [
         f"- Recommendations: {fix.recommendations}",
         f"- Steps: {fix.steps}",
-        f"- Dropped steps: {fix.dropped_steps} (removed for being too long, over the limit, or "
-        "weakening the PC)",
+        f"- Dropped steps: {fix.dropped_steps} (removed by the checker for weakening the PC, "
+        "linking to a site that is not on the allow-list, being too long, or going over the "
+        "step limit)",
     ]
     if fix.with_bound == 0:
         lines.append("- No recommendation has a version bound to check.")
@@ -243,6 +247,13 @@ def _fix_section(fix: FixChecks | None) -> list[str]:
             f"- {_count(fix.without_bound, 'recommendation')} "
             f"{'has' if fix.without_bound == 1 else 'have'} no version bound to check."
         )
+    lines += [
+        "",
+        "The version bound is worked out again from the weak spots kept in this sample, so it can "
+        "be lower than the one the model was given when a program has more weak spots than the "
+        "sample keeps. The check only looks for the version number in a step, not whether the "
+        "step is right.",
+    ]
     return lines
 
 
@@ -287,10 +298,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         sample = PcSample.model_validate_json(args.sample.read_text(encoding="utf-8"))
         labels = load_labels(args.labels)
+        report = score(sample, labels)
     except (OSError, ValueError, yaml.YAMLError) as error:
-        print(f"Could not read the inputs: {error}")
+        print(f"Could not score the sample: {error}")
         return 2
-    report = score(sample, labels)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(render(report), encoding="utf-8", newline="\n")
     print(f"Wrote {args.out}. {summary(report)}")

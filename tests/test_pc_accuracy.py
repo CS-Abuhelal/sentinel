@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from agent.fix import strictest_fix
 from contracts.models import (
     Classification,
     FindingKind,
@@ -318,13 +319,36 @@ def test_a_sample_without_an_assessment_has_no_fix_checks() -> None:
         ("version 8.2.13 or newer", ["Install 8.2.13.4"], False),
         ("version 8.2.13 or newer", ["Update it.", "Reboot."], False),
         ("version 8.2.13 or newer", [], False),
-        ("something else", ["8.2.13"], False),
     ],
 )
 def test_states_bound_needs_the_whole_version_number(
     bound: str, steps: list[str], expected: bool
 ) -> None:
     assert states_bound(bound, steps) is expected
+
+
+def test_states_bound_reads_both_phrasings_of_the_fix_writer() -> None:
+    newer = strictest_fix(["Package less than 8.2.13"])
+    above = strictest_fix(["Package less than or equal to 24.18.0"])
+    assert newer is not None and above is not None
+    assert states_bound(newer, ["Install MongoDB 8.2.13."])
+    assert states_bound(above, ["Install a Node.js release after 24.18.0."])
+
+
+def test_states_bound_refuses_a_phrasing_it_does_not_know() -> None:
+    with pytest.raises(ValueError, match="something else"):
+        states_bound("something else", ["8.2.13"])
+
+
+def test_render_qualifies_the_headline(labels_file: Path) -> None:
+    text = render(score(_sample(), load_labels(labels_file)))
+    assert "1 of 2 labelled incidents matched. See How this was measured" in text
+
+
+def test_render_explains_the_fix_checks() -> None:
+    text = render(score(_fix_sample(), {}))
+    assert "linking to a site that is not on the allow-list" in text
+    assert "worked out again from the weak spots kept in this sample" in text
 
 
 def _write(tmp_path: Path, sample: PcSample) -> Path:
