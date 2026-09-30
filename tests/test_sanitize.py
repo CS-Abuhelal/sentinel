@@ -187,6 +187,62 @@ def test_profile_paths_with_any_slash_style_are_learned() -> None:
     assert sorted(sanitizer.mapping) == ["amy.smith", "bob.jones", "cy.lee", "dan.kim"]
 
 
+def test_a_profile_folder_with_a_space_or_an_apostrophe_is_replaced_whole() -> None:
+    doc = {
+        "a": "C:\\Users\\Jane Doe\\AppData\\x.exe",
+        "b": "c:\\users\\jane doe\\desktop\\notes.txt",
+        "c": "C:\\Users\\O'Brien\\AppData\\x",
+        "d": "C:\\Users\\Doe,Jane\\x",
+    }
+    sanitizer = Sanitizer()
+    sanitizer.learn(doc)
+    clean = sanitizer.apply(doc)
+    assert clean == {
+        "a": "C:\\Users\\user4\\AppData\\x.exe",
+        "b": "c:\\users\\user4\\desktop\\notes.txt",
+        "c": "C:\\Users\\user5\\AppData\\x",
+        "d": "C:\\Users\\user2\\x",
+    }
+    assert sorted(sanitizer.mapping) == ["doe", "doe,jane", "jane", "jane doe", "o'brien"]
+    assert leftovers(clean, ["jane", "doe", "brien"]) == []
+
+
+def test_a_profile_path_followed_by_more_text_learns_only_the_folder() -> None:
+    doc = {"cmd": "dir C:\\Users\\amy.smith /s /b", "note": "amy.smith"}
+    sanitizer = Sanitizer()
+    sanitizer.learn(doc)
+    assert sanitizer.apply(doc) == {"cmd": "dir C:\\Users\\user1 /s /b", "note": "user1"}
+    assert sorted(sanitizer.mapping) == ["amy.smith"]
+
+
+def test_percent_encoded_profile_folders_are_replaced() -> None:
+    doc = {"a": "C%3A%5CUsers%5CJane%20Doe%5Cx", "b": "file:///C:/Users/Jane%20Doe/notes.txt"}
+    clean = _run(doc)
+    assert clean == {"a": "C%3A%5CUsers%5Cuser2%5Cx", "b": "file:///C:/Users/user2/notes.txt"}
+    assert leftovers(clean, ["jane", "doe"]) == []
+
+
+def test_profile_paths_in_other_forms_are_learned() -> None:
+    doc = {
+        "device": "\\Device\\HarddiskVolume3\\Users\\amy.smith\\x.exe",
+        "wsl": "/mnt/c/Users/bob.jones/x",
+        "msys": "/c/Users/cy.lee/x",
+        "env": "%SystemDrive%\\Users\\dan.kim\\x",
+        "doubled": "C://Users//eve.ross//x",
+        "old": "C:\\Documents and Settings\\fay.wong\\x",
+        "encoded": "C%3A%5CUsers%5Cgus.hill%5Cx",
+    }
+    assert _run(doc) == {
+        "device": "\\Device\\HarddiskVolume3\\Users\\user1\\x.exe",
+        "wsl": "/mnt/c/Users/user2/x",
+        "msys": "/c/Users/user3/x",
+        "env": "%SystemDrive%\\Users\\user4\\x",
+        "doubled": "C://Users//user5//x",
+        "old": "C:\\Documents and Settings\\user6\\x",
+        "encoded": "C%3A%5CUsers%5Cuser7%5Cx",
+    }
+
+
 def test_domain_qualified_accounts_are_split() -> None:
     doc = [
         {"host": "DESKTOP-9QXZ7"},

@@ -5,6 +5,7 @@ import os
 import re
 from collections.abc import Iterator
 from typing import Any
+from urllib.parse import quote, unquote
 
 OWN_HOST_KEYS = frozenset({"host", "agent_name", "computer"})
 OTHER_HOST_KEYS = frozenset({"workstationName", "hostname", "hostName"})
@@ -61,10 +62,9 @@ GENERIC = frozenset(
 MIN_NAME_LENGTH = 3
 PLACEHOLDER = re.compile(r"^(user\d+|HOST-\d+|MY-PC)\$?$", re.IGNORECASE)
 BUILTIN_ACCOUNT = re.compile(r"^(DWM|UMFD)-\d+$", re.IGNORECASE)
-PROFILE = re.compile(
-    r"(?i)[A-Z]:(?:\\+|/)Users(?:\\+|/)"
-    r"(All Users|Default User|[^\\/\s\x22\x27<>|:*?%,;(){}\[\]]+)"
-)
+_PROFILE_ROOT = r"(?i)(?:\\+|/+)(?:Users|Documents and Settings)(?:\\+|/+)"
+PROFILE_FOLDER = re.compile(_PROFILE_ROOT + r"([^\\/:*?\x22<>|\r\n\t%]{1,64}?)(?=[\\/])")
+PROFILE = re.compile(_PROFILE_ROOT + r"(All Users|Default User|[^\\/\s\x22\x27<>|:*?%,;(){}\[\]]+)")
 _OCTET = r"(?:25[0-5]|2[0-4]\d|1\d\d|0?[1-9]\d|0{0,2}\d)"
 IPV4 = re.compile(rf"(?<!\d)(?<!\d\.){_OCTET}(?:\.{_OCTET}){{3}}(?!\d)(?!\.\d)")
 IPV6 = re.compile(
@@ -205,21 +205,30 @@ class Sanitizer:
             self._add_host(text, own=False)
         if key in USER_KEYS:
             self._add_account(text)
-        for match in PROFILE.finditer(value):
-            self._add_account(match.group(1).rstrip("."))
-        if not numbers_only:
-            for match in IPV4.finditer(value):
-                address = _canonical_ipv4(match.group(0))
-                if not _keep_ipv4(address):
-                    self._ips.add(address)
-        for match in IPV6.finditer(value):
-            ipv6 = _ipv6(match.group(0))
-            if ipv6 is not None and not _keep_ipv6(ipv6):
-                self._ipv6s.add(ipv6.compressed)
-        for match in MAC.finditer(value):
-            mac = _canonical_mac(match.group(0))
-            if mac not in KEEP_MACS and not mac.startswith(PLACEHOLDER_MAC_PREFIX):
-                self._macs.add(mac)
+        self._learn_text(value, numbers_only)
+
+    def _learn_text(self, value: str, numbers_only: bool) -> None:
+        decoded = unquote(value) if "%" in value else value
+        for text in dict.fromkeys((value, decoded)):
+            for match in PROFILE_FOLDER.finditer(text):
+                folder = match.group(1)
+                if folder == folder.strip() and not folder.endswith("."):
+                    self._add_account(folder)
+            for match in PROFILE.finditer(text):
+                self._add_account(match.group(1).rstrip("."))
+            if not numbers_only:
+                for match in IPV4.finditer(text):
+                    address = _canonical_ipv4(match.group(0))
+                    if not _keep_ipv4(address):
+                        self._ips.add(address)
+            for match in IPV6.finditer(text):
+                ipv6 = _ipv6(match.group(0))
+                if ipv6 is not None and not _keep_ipv6(ipv6):
+                    self._ipv6s.add(ipv6.compressed)
+            for match in MAC.finditer(text):
+                mac = _canonical_mac(match.group(0))
+                if mac not in KEEP_MACS and not mac.startswith(PLACEHOLDER_MAC_PREFIX):
+                    self._macs.add(mac)
 
     def _learn_entity(self, value: dict[Any, Any]) -> None:
         for type_key, value_key in (("entity_type", "value"), ("target_type", "target_value")):
@@ -284,12 +293,16 @@ class Sanitizer:
         mapping.update(self._mac_map)
         mapping.update(self._agent_map)
         self.mapping = mapping
+        for word, placeholder in list(names.items()):
+            for form in (quote(word, safe="").lower(), word.replace(" ", "+")):
+                names.setdefault(form, placeholder)
         self._names = names
         if names:
             words = sorted(names, key=lambda word: (-len(word), word))
             alternatives = "|".join(re.escape(word) for word in words)
             self._pattern = re.compile(
-                rf"(?:(?<![^\W_])|(?<=\\[nrt]))(?:{alternatives})(?![^\W_])", re.IGNORECASE
+                rf"(?:(?<![^\W_])|(?<=\\[nrt])|(?<=%[0-9A-Fa-f]{{2}}))(?:{alternatives})(?![^\W_])",
+                re.IGNORECASE,
             )
         else:
             self._pattern = None
