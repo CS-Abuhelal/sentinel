@@ -93,7 +93,11 @@ def main(argv: list[str] | None = None) -> int:
     if not terms:
         print("Set SENTINEL_FORBIDDEN_TERMS to your real user and computer names first.")
         return 2
-    sample = sanitize_sample(build_sample(get_engine(), datetime.now(UTC)), terms)
+    try:
+        sample = sanitize_sample(build_sample(get_engine(), datetime.now(UTC)), terms)
+    except SampleLeak as leak:
+        print(f"{leak}. Nothing was written.")
+        return 3
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(sample.model_dump_json(indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"Wrote {args.out}. Review it before committing.")

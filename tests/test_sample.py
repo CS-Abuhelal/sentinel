@@ -160,11 +160,37 @@ def test_main_writes_the_sanitized_sample(
 
 
 def test_main_writes_nothing_when_a_term_survives(
-    recorded: Engine, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    recorded: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setenv("SENTINEL_FORBIDDEN_TERMS", "jane,Logon Failure")
     monkeypatch.setattr(sample_module, "get_engine", lambda: recorded)
     out = tmp_path / "pc-sample.json"
-    with pytest.raises(SampleLeak):
-        main(["--out", str(out)])
+    assert main(["--out", str(out)]) == 3
+    printed = capsys.readouterr().out
+    assert "Logon Failure" in printed
+    assert "Nothing was written." in printed
     assert not out.exists()
+
+
+def test_sanitizing_replaces_the_real_host_in_the_weak_spots(db: Engine) -> None:
+    host = "DESKTOP-9QXZ7"
+    assert upsert_findings(db, host, [make_finding("a", cve="CVE-2026-0001")], NOW) == (1, 0)
+    [finding] = open_findings(db, host)
+    advice = Recommendation(
+        title="Update Alpha",
+        priority=finding.priority,
+        steps=[f"Restart {host} after the update."],
+        finding_ids=[finding.finding_id],
+    )
+    set_advice(db, finding.finding_id, advice, "m", NOW)
+    sample = build_sample(db, NOW)
+    assert sample.assessment is not None and sample.assessment.host == host
+    clean = sanitize_sample(sample, [host])
+    assert host.lower() not in clean.model_dump_json().lower()
+    assert clean.assessment is not None
+    assert clean.assessment.host != host
+    [kept] = clean.assessment.recommendations
+    assert kept.steps == [f"Restart {clean.assessment.host} after the update."]
