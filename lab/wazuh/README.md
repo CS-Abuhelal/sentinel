@@ -179,4 +179,17 @@ SENTINEL groups the alerts into incidents, and a local model investigates every 
   Repeat step 2 whenever the integration script changes.
 
 - **The page says the backfill failed.** Read the detail line. A TLS error means
-  `WAZUH_CERTS_DIR` is wrong. A 401 means the indexer password in `.env` is wrong.
+  `WAZUH_CERTS_DIR` is wrong. A 401 means the indexer password in `.env` is wrong. If it says
+  "Retrying in 30 seconds", the indexer is still starting; SENTINEL keeps trying on its own.
+
+- **Wazuh shows as offline after Docker Desktop restarts, and no new alerts arrive.** The manager
+  container can start without its services when old process files are left over. Check and start
+  them:
+
+  ```powershell
+  docker compose exec wazuh.manager /var/ossec/bin/wazuh-control status
+  docker compose exec wazuh.manager /var/ossec/bin/wazuh-control start
+  ```
+
+  The first command reports "not running" for each service and removes the old process files.
+  The second starts them. Within a minute the agent reconnects and sends the alerts it queued.
