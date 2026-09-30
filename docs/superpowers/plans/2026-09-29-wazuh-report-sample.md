@@ -210,7 +210,7 @@ def test_placeholders_are_stable_and_sensible() -> None:
     sanitizer, clean = _clean()
     assert clean["event"]["host"] == "MY-PC"
     assert clean["event"]["user"] == "user1"
-    assert clean["event"]["network"]["src_ip"] == "10.0.0.1"
+    assert clean["event"]["network"]["src_ip"] == "203.0.113.1"
     assert clean["raw"]["agent"] == {"id": "001", "name": "my-pc"}
     assert clean["raw"]["data"]["win"]["eventdata"]["targetUserName"] == "SYSTEM"
     assert "\\\\Users\\\\user1\\\\AppData" in clean["raw"]["data"]["win"]["eventdata"]["processName"]
@@ -335,7 +335,7 @@ class Sanitizer:
         for match in PROFILE.finditer(value):
             self._add_user(match.group(1))
         for match in IPV4.finditer(value):
-            if match.group(0) not in KEEP_IPS and not match.group(0).startswith("10.0.0."):
+            if match.group(0) not in KEEP_IPS and not match.group(0).startswith("203.0.113."):
                 self._ips.add(match.group(0))
         for match in MAC.finditer(value):
             if not match.group(0).lower().startswith("00:00:5e:00:53"):
@@ -360,7 +360,7 @@ class Sanitizer:
         for index, user in enumerate(sorted(self._users)):
             mapping[user] = f"user{index + 1}"
         for index, ip in enumerate(sorted(self._ips)):
-            mapping[ip] = f"10.0.0.{index + 1}"
+            mapping[ip] = f"203.0.113.{index + 1}"
         for index, mac in enumerate(sorted(self._macs)):
             mapping[mac] = f"00:00:5e:00:53:{index + 1:02x}"
         for index, agent in enumerate(sorted(self._agents)):

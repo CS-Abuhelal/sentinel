@@ -19,12 +19,12 @@ DOC = {
                     "subjectUserName": "jane.doe",
                     "targetUserName": "SYSTEM",
                     "workstationName": "DESKTOP-9QXZ7",
-                    "processName": "C:\\\\Users\\\\jane.doe\\\\AppData\\\\app.exe",
+                    "processName": r"C:\\Users\\jane.doe\\AppData\\app.exe",
                 },
             }
         },
         "full_log": "Login by jane.doe from 192.168.1.23 on DESKTOP-9QXZ7 (mac 3C:52:82:AA:BB:CC)",
-        "message": "C:\\Users\\Jane.Doe\\Documents and C:\\Users\\Public\\x",
+        "message": r"C:\Users\Jane.Doe\Documents and C:\Users\Public\x",
     },
     "loopback": "127.0.0.1 and ::1",
     "keep": "sentinel-test-nobody on my-pc",
@@ -61,9 +61,9 @@ def test_placeholders_are_stable_and_sensible() -> None:
     assert clean["raw"]["agent"] == {"id": "001", "name": "my-pc"}
     assert clean["raw"]["data"]["win"]["eventdata"]["targetUserName"] == "SYSTEM"
     eventdata = clean["raw"]["data"]["win"]["eventdata"]
-    assert "\\\\Users\\\\user1\\\\AppData" in eventdata["processName"]
-    assert "C:\\Users\\user1\\Documents" in clean["raw"]["message"]
-    assert "C:\\Users\\Public\\x" in clean["raw"]["message"]
+    assert r"\\Users\\user1\\AppData" in eventdata["processName"]
+    assert r"C:\Users\user1\Documents" in clean["raw"]["message"]
+    assert r"C:\Users\Public\x" in clean["raw"]["message"]
     assert "00:00:5e:00:53:01" in clean["raw"]["full_log"]
     assert clean["loopback"] == "127.0.0.1 and ::1"
     assert clean["keep"] == "sentinel-test-nobody on my-pc"
@@ -124,7 +124,7 @@ def test_short_user_names_are_never_learned() -> None:
         "event": {"user": "al", "host": "DESKTOP-9QXZ7"},
         "raw": {
             "targetUserName": "ed",
-            "message": "Also a final total by al and ed at C:\\Users\\al\\x and C:\\Users\\ed\\x",
+            "message": r"Also a final total by al and ed at C:\Users\al\x and C:\Users\ed\x",
         },
     }
     sanitizer = Sanitizer()
@@ -179,49 +179,49 @@ def test_a_name_after_a_literal_escape_sequence_is_replaced() -> None:
 
 def test_profile_paths_with_any_slash_style_are_learned() -> None:
     doc = {
-        "a": "C:\\\\Users\\\\amy.smith\\\\x",
+        "a": r"C:\\Users\\amy.smith\\x",
         "b": "C:/Users/bob.jones/y",
-        "c": "d:\\Users\\cy.lee\\z",
-        "d": "C:\\Users\\dan.kim. C:\\Users\\All Users\\Microsoft and C:\\Users\\%USERNAME%\\x",
-        "e": "C:\\Users\\Default User\\q and C:\\Users\\Default\\q and C:\\Users\\Public",
+        "c": r"d:\Users\cy.lee\z",
+        "d": r"C:\Users\dan.kim. C:\Users\All Users\Microsoft and C:\Users\%USERNAME%\x",
+        "e": r"C:\Users\Default User\q and C:\Users\Default\q and C:\Users\Public",
     }
     sanitizer = Sanitizer()
     sanitizer.learn(doc)
     assert sanitizer.apply(doc) == {
-        "a": "C:\\\\Users\\\\user1\\\\x",
+        "a": r"C:\\Users\\user1\\x",
         "b": "C:/Users/user2/y",
-        "c": "d:\\Users\\user3\\z",
-        "d": "C:\\Users\\user4. C:\\Users\\All Users\\Microsoft and C:\\Users\\%USERNAME%\\x",
-        "e": "C:\\Users\\Default User\\q and C:\\Users\\Default\\q and C:\\Users\\Public",
+        "c": r"d:\Users\user3\z",
+        "d": r"C:\Users\user4. C:\Users\All Users\Microsoft and C:\Users\%USERNAME%\x",
+        "e": r"C:\Users\Default User\q and C:\Users\Default\q and C:\Users\Public",
     }
     assert sorted(sanitizer.mapping) == ["amy.smith", "bob.jones", "cy.lee", "dan.kim"]
 
 
 def test_a_profile_folder_with_a_space_or_an_apostrophe_is_replaced_whole() -> None:
     doc = {
-        "a": "C:\\Users\\Jane Doe\\AppData\\x.exe",
-        "b": "c:\\users\\jane doe\\desktop\\notes.txt",
-        "c": "C:\\Users\\O'Brien\\AppData\\x",
-        "d": "C:\\Users\\Doe,Jane\\x",
+        "a": r"C:\Users\Jane Doe\AppData\x.exe",
+        "b": r"c:\users\jane doe\desktop\notes.txt",
+        "c": r"C:\Users\O'Brien\AppData\x",
+        "d": r"C:\Users\Doe,Jane\x",
     }
     sanitizer = Sanitizer()
     sanitizer.learn(doc)
     clean = sanitizer.apply(doc)
     assert clean == {
-        "a": "C:\\Users\\user4\\AppData\\x.exe",
-        "b": "c:\\users\\user4\\desktop\\notes.txt",
-        "c": "C:\\Users\\user5\\AppData\\x",
-        "d": "C:\\Users\\user2\\x",
+        "a": r"C:\Users\user4\AppData\x.exe",
+        "b": r"c:\users\user4\desktop\notes.txt",
+        "c": r"C:\Users\user5\AppData\x",
+        "d": r"C:\Users\user2\x",
     }
     assert sorted(sanitizer.mapping) == ["doe", "doe,jane", "jane", "jane doe", "o'brien"]
     assert leftovers(clean, ["jane", "doe", "brien"]) == []
 
 
 def test_a_profile_path_followed_by_more_text_learns_only_the_folder() -> None:
-    doc = {"cmd": "dir C:\\Users\\amy.smith then more /s /b", "note": "amy.smith"}
+    doc = {"cmd": r"dir C:\Users\amy.smith then more /s /b", "note": "amy.smith"}
     sanitizer = Sanitizer()
     sanitizer.learn(doc)
-    assert sanitizer.apply(doc) == {"cmd": "dir C:\\Users\\user1 then more /s /b", "note": "user1"}
+    assert sanitizer.apply(doc) == {"cmd": r"dir C:\Users\user1 then more /s /b", "note": "user1"}
     assert sorted(sanitizer.mapping) == ["amy.smith"]
 
 
@@ -234,21 +234,21 @@ def test_percent_encoded_profile_folders_are_replaced() -> None:
 
 def test_profile_paths_in_other_forms_are_learned() -> None:
     doc = {
-        "device": "\\Device\\HarddiskVolume3\\Users\\amy.smith\\x.exe",
+        "device": r"\Device\HarddiskVolume3\Users\amy.smith\x.exe",
         "wsl": "/mnt/c/Users/bob.jones/x",
         "msys": "/c/Users/cy.lee/x",
-        "env": "%SystemDrive%\\Users\\dan.kim\\x",
+        "env": r"%SystemDrive%\Users\dan.kim\x",
         "doubled": "C://Users//eve.ross//x",
-        "old": "C:\\Documents and Settings\\fay.wong\\x",
+        "old": r"C:\Documents and Settings\fay.wong\x",
         "encoded": "C%3A%5CUsers%5Cgus.hill%5Cx",
     }
     assert _run(doc) == {
-        "device": "\\Device\\HarddiskVolume3\\Users\\user1\\x.exe",
+        "device": r"\Device\HarddiskVolume3\Users\user1\x.exe",
         "wsl": "/mnt/c/Users/user2/x",
         "msys": "/c/Users/user3/x",
-        "env": "%SystemDrive%\\Users\\user4\\x",
+        "env": r"%SystemDrive%\Users\user4\x",
         "doubled": "C://Users//user5//x",
-        "old": "C:\\Documents and Settings\\user6\\x",
+        "old": r"C:\Documents and Settings\user6\x",
         "encoded": "C%3A%5CUsers%5Cuser7%5Cx",
     }
 
@@ -256,38 +256,38 @@ def test_profile_paths_in_other_forms_are_learned() -> None:
 def test_domain_qualified_accounts_are_split() -> None:
     doc = [
         {"host": "DESKTOP-9QXZ7"},
-        {"user": "DESKTOP-9QXZ7\\\\jane.doe"},
-        {"user": "NT AUTHORITY\\SYSTEM"},
-        {"user": "Window Manager\\DWM-1"},
-        {"user": "Font Driver Host\\UMFD-0"},
+        {"user": r"DESKTOP-9QXZ7\\jane.doe"},
+        {"user": r"NT AUTHORITY\SYSTEM"},
+        {"user": r"Window Manager\DWM-1"},
+        {"user": r"Font Driver Host\UMFD-0"},
     ]
     assert _run(doc) == [
         {"host": "MY-PC"},
-        {"user": "MY-PC\\\\user1"},
-        {"user": "NT AUTHORITY\\SYSTEM"},
-        {"user": "Window Manager\\DWM-1"},
-        {"user": "Font Driver Host\\UMFD-0"},
+        {"user": r"MY-PC\\user1"},
+        {"user": r"NT AUTHORITY\SYSTEM"},
+        {"user": r"Window Manager\DWM-1"},
+        {"user": r"Font Driver Host\UMFD-0"},
     ]
 
 
 def test_the_domain_of_an_account_is_learned_as_a_host() -> None:
-    doc = {"user": "ZULU-BOX\\jane.doe", "message": "on ZULU-BOX by jane.doe"}
-    assert _run(doc) == {"user": "HOST-2\\user1", "message": "on HOST-2 by user1"}
+    doc = {"user": r"ZULU-BOX\jane.doe", "message": "on ZULU-BOX by jane.doe"}
+    assert _run(doc) == {"user": r"HOST-2\user1", "message": "on HOST-2 by user1"}
 
 
 def test_the_domain_of_a_built_in_account_is_learned_too() -> None:
-    doc = {"user": "ZULU-BOX\\Administrator", "message": "on ZULU-BOX"}
-    assert _run(doc) == {"user": "HOST-2\\Administrator", "message": "on HOST-2"}
+    doc = {"user": r"ZULU-BOX\Administrator", "message": "on ZULU-BOX"}
+    assert _run(doc) == {"user": r"HOST-2\Administrator", "message": "on HOST-2"}
 
 
 def test_built_in_pseudo_domains_are_kept() -> None:
     doc = {
-        "a": {"user": "NT SERVICE\\TrustedInstaller"},
-        "b": {"user": "IIS APPPOOL\\DefaultAppPool"},
+        "a": {"user": r"NT SERVICE\TrustedInstaller"},
+        "b": {"user": r"IIS APPPOOL\DefaultAppPool"},
         "c": {
             "subjectDomainName": "WORKGROUP",
             "targetDomainName": "MicrosoftAccount",
-            "user": "AzureAD\\amy.smith",
+            "user": r"AzureAD\amy.smith",
         },
         "d": {
             "subjectDomainName": "Window Manager",
@@ -298,7 +298,7 @@ def test_built_in_pseudo_domains_are_kept() -> None:
         "text": "TrustedInstaller; MicrosoftAccount; NT SERVICE; AzureAD; BUILTIN; amy.smith",
     }
     expected = copy.deepcopy(doc)
-    expected["c"]["user"] = "AzureAD\\user1"
+    expected["c"]["user"] = r"AzureAD\user1"
     expected["text"] = "TrustedInstaller; MicrosoftAccount; NT SERVICE; AzureAD; BUILTIN; user1"
     assert _run(doc) == expected
 
@@ -404,47 +404,53 @@ def test_a_netbios_truncated_name_maps_to_the_full_host() -> None:
     doc = {
         "computer": "ZULU-GAMING-LAPTOP",
         "eventdata": {"subjectDomainName": "ZULU-GAMING-LAP", "subjectUserName": "amy.smith"},
-        "user": "ZULU-GAMING-LAP\\amy.smith",
+        "user": r"ZULU-GAMING-LAP\amy.smith",
     }
     assert _run(doc) == {
         "computer": "MY-PC",
         "eventdata": {"subjectDomainName": "MY-PC", "subjectUserName": "user1"},
-        "user": "MY-PC\\user1",
+        "user": r"MY-PC\user1",
     }
 
 
 def test_a_host_field_with_leading_backslashes_is_learned() -> None:
-    doc = {"workstation": "\\\\ZULU-BOX", "note": "from zulu-box"}
-    assert _run(doc) == {"workstation": "\\\\HOST-2", "note": "from HOST-2"}
+    doc = {"workstation": r"\\ZULU-BOX", "note": "from zulu-box"}
+    assert _run(doc) == {"workstation": r"\\HOST-2", "note": "from HOST-2"}
 
 
 def test_unc_hosts_are_learned_but_escaped_root_paths_are_not() -> None:
     doc = {
-        "a": "\\\\ZULU-NAS\\photos\\x and \\\\zulu-nas\\ipc$",
+        "a": r"\\ZULU-NAS\photos\x and \\zulu-nas\ipc$",
         "full_log": json.dumps(
             {
-                "share": "\\\\ALPHA-BOX\\c$",
-                "image": "\\Device\\HarddiskVolume3\\x.exe",
-                "path": "C:\\Windows\\System32\\x.exe",
+                "share": r"\\ALPHA-BOX\c$",
+                "image": r"\Device\HarddiskVolume3\x.exe",
+                "path": r"C:\Windows\System32\x.exe",
             }
         ),
     }
     sanitizer = Sanitizer()
     sanitizer.learn(doc)
     clean = sanitizer.apply(doc)
-    assert clean["a"] == "\\\\HOST-3\\photos\\x and \\\\HOST-3\\ipc$"
+    assert clean["a"] == r"\\HOST-3\photos\x and \\HOST-3\ipc$"
     assert json.loads(clean["full_log"]) == {
-        "share": "\\\\HOST-2\\c$",
-        "image": "\\Device\\HarddiskVolume3\\x.exe",
-        "path": "C:\\Windows\\System32\\x.exe",
+        "share": r"\\HOST-2\c$",
+        "image": r"\Device\HarddiskVolume3\x.exe",
+        "path": r"C:\Windows\System32\x.exe",
     }
     assert sorted(sanitizer.mapping) == ["ALPHA-BOX", "ZULU-NAS"]
 
 
 def test_the_last_segment_of_an_escaped_path_is_not_a_unc_host() -> None:
     message = (
-        "Process Name:\tC:\\Windows\\System32\\svchost.exe\r\n"
-        "File:\tC:\\hiberfil.sys\r\nShare Name:\t\\\\ZULU-NAS\\photos\r\n"
+        "Process Name:\t"
+        r"C:\Windows\System32\svchost.exe"
+        "\r\n"
+        "File:\t"
+        r"C:\hiberfil.sys"
+        "\r\nShare Name:\t"
+        r"\\ZULU-NAS\photos"
+        "\r\n"
     )
     doc = {"full_log": json.dumps({"message": message}), "message": message}
     sanitizer = Sanitizer()
@@ -505,9 +511,9 @@ def test_more_user_keys_are_learned() -> None:
 def test_sysmon_and_account_management_user_fields_are_learned() -> None:
     doc = {
         "eventdata": {
-            "sourceUser": "ZULU-BOX\\amy.smith",
-            "targetUser": "NT AUTHORITY\\SYSTEM",
-            "parentUser": "ZULU-BOX\\bob.jones",
+            "sourceUser": r"ZULU-BOX\amy.smith",
+            "targetUser": r"NT AUTHORITY\SYSTEM",
+            "parentUser": r"ZULU-BOX\bob.jones",
             "userPrincipalName": "cy.lee@example.org",
             "displayName": "%%1793",
         },
@@ -515,9 +521,9 @@ def test_sysmon_and_account_management_user_fields_are_learned() -> None:
     }
     assert _run(doc) == {
         "eventdata": {
-            "sourceUser": "HOST-2\\user1",
-            "targetUser": "NT AUTHORITY\\SYSTEM",
-            "parentUser": "HOST-2\\user2",
+            "sourceUser": r"HOST-2\user1",
+            "targetUser": r"NT AUTHORITY\SYSTEM",
+            "parentUser": r"HOST-2\user2",
             "userPrincipalName": "user3",
             "displayName": "%%1793",
         },
@@ -571,14 +577,14 @@ def test_labels_in_a_whitespace_collapsed_message_are_learned() -> None:
 def test_the_local_part_of_an_email_account_is_learned() -> None:
     doc = {
         "targetUserName": "jane.doe@example.org",
-        "user": "MicrosoftAccount\\amy.smith@example.net",
+        "user": r"MicrosoftAccount\amy.smith@example.net",
         "note": (
             "jane.doe signed in as JANE.DOE@EXAMPLE.ORG; amy.smith; mail zed.quinn@example.com."
         ),
     }
     assert _run(doc) == {
         "targetUserName": "user2",
-        "user": "MicrosoftAccount\\user1",
+        "user": r"MicrosoftAccount\user1",
         "note": "user2 signed in as user2; user1; mail user3.",
     }
 
@@ -595,7 +601,7 @@ def test_addresses_and_names_in_dict_keys_are_learned() -> None:
             "baseline_successes": {"192.168.1.50": 3, "fe80::1": 1},
             "by_user": {"jane.doe": 2, "amy.smith": 1},
             "by_mac": {"3C:52:82:AA:BB:CC": 1},
-            "files": {"C:\\Users\\bob.jones\\x": 1},
+            "files": {r"C:\Users\bob.jones\x": 1},
             "mail": {"cy.lee@example.org": 1},
             "S-1-5-21-1234567890-987654321-1122334455-1001": "sid",
             "inventory": {"hosts": {"ZULU-NAS": {"role": "nas"}}},
@@ -606,7 +612,7 @@ def test_addresses_and_names_in_dict_keys_are_learned() -> None:
         "baseline_successes": {"203.0.113.1": 3, "2001:db8::1": 1},
         "by_user": {"user4": 2, "user1": 1},
         "by_mac": {"00:00:5e:00:53:01": 1},
-        "files": {"C:\\Users\\user2\\x": 1},
+        "files": {r"C:\Users\user2\x": 1},
         "mail": {"user3": 1},
         "S-1-5-21-1000000000-1000000000-1000000000-1001": "sid",
         "inventory": {"hosts": {"HOST-2": {"role": "nas"}}},
@@ -799,7 +805,7 @@ def test_ipv4_mapped_ipv6_is_left_to_the_ipv4_rules() -> None:
 def test_times_and_code_with_colons_are_not_ipv6() -> None:
     text = (
         "at 23:18:56 on 2026-09-29T23:18:56.123Z std::vector [Convert]::FromBase64String "
-        "a:b Class::Add( dead:beef C:\\x"
+        r"a:b Class::Add( dead:beef C:\x"
     )
     doc = {"src": "fd12:3456:789a:1::23", "m": text}
     assert _run(doc) == {"src": "2001:db8::1", "m": text}
