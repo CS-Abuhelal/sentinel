@@ -85,6 +85,26 @@ def test_sanitizing_twice_changes_nothing() -> None:
     assert second.apply(clean) == clean
 
 
+@pytest.mark.parametrize(
+    "doc",
+    [
+        {"account": "S-1-5-21-1234567890-987654321-1122334455-1001"},
+        {"user": "S-1-12-1-1234567890-1234567890-1234567890-1234567890"},
+        {"sourceHostname": "3C5282AABBCC", "m": "seen 3C5282AABBCC"},
+        {"hostname": "3C:52:82:AA:BB:CC"},
+        {"user": "3c52.82aa.bbcc"},
+        {"hostname": "192.168.1.23:445"},
+        {"workstationName": "[fe80::1]:3389"},
+        {"sourceHostname": "192.168.1.23.nip.io"},
+    ],
+    ids=["sid", "azure", "bare-mac", "colon-mac", "dotted-mac", "ip-port", "ipv6-port", "ip-dns"],
+)
+def test_an_address_or_sid_in_a_name_field_is_sanitized_once(doc: dict[str, str]) -> None:
+    first = _run(doc)
+    assert first != doc
+    assert _run(first) == first
+
+
 @pytest.mark.parametrize("path", WAZUH_FIXTURES, ids=lambda path: path.name)
 def test_the_recorded_wazuh_fixtures_are_already_clean(path: Path) -> None:
     doc = json.loads(path.read_text(encoding="utf-8"))
@@ -963,6 +983,16 @@ def test_benchmark_numbers_and_versions_are_kept_but_lookalike_keys_are_not() ->
     assert clean == {**doc, "src": "203.0.113.1", "conversion": {"ip": "203.0.113.2"}}
 
 
+def test_zero_network_addresses_and_cis_section_numbers_are_kept() -> None:
+    doc = {
+        "src_ip": "192.168.1.23",
+        "recommendation": "CIS 2.3.7.4 and cis 18.10.43.5 require this",
+        "title": "CVE-2024-31497 in PuTTY release 0.80 (64-bit) 0.80.0.0",
+        "note": "2.3.7.4 is also an address",
+    }
+    assert _run(doc) == {**doc, "src_ip": "203.0.113.2", "note": "203.0.113.1 is also an address"}
+
+
 def test_neighbouring_addresses_are_told_apart() -> None:
     doc = {"m": "192.168.1.23 then 192.168.1.230 and 192.168.1.23:445, ::ffff:192.168.1.23"}
     assert _run(doc) == {
@@ -1021,6 +1051,12 @@ def test_times_and_code_with_colons_are_not_ipv6() -> None:
     assert _run(doc) == {"src": "2001:db8::1", "m": text}
 
 
+def test_powershell_static_members_are_not_ipv6() -> None:
+    text = "[Math]::E and [System.Convert]::FromBase64String($x) and [Math]::PI"
+    doc = {"src": "fd12:3456:789a:1::23", "m": text}
+    assert _run(doc) == {"src": "2001:db8::1", "m": text}
+
+
 def test_addresses_and_names_after_a_unicode_escape_are_replaced() -> None:
     doc = {
         "user": "jane.doe",
@@ -1059,6 +1095,38 @@ def test_mac_addresses_in_other_notations_are_replaced() -> None:
     }
 
 
+def test_a_mac_glued_to_a_word_is_replaced_but_a_longer_hex_run_is_not() -> None:
+    glued = {
+        "a": "mac:3c:52:82:aa:bb:cc",
+        "b": "BSSID:3C:52:82:AA:BB:CC",
+        "c": "eth0:3c:52:82:aa:bb:cc",
+        "d": "Device-3C-52-82-AA-BB-CC",
+    }
+    placeholder = "00:00:5e:00:53:01"
+    expected = {
+        "a": f"mac:{placeholder}",
+        "b": f"BSSID:{placeholder}",
+        "c": f"eth0:{placeholder}",
+        "d": f"Device-{placeholder}",
+    }
+    assert _run(glued) == expected
+    sanitizer = Sanitizer()
+    sanitizer.learn({"m": "MAC 3C:52:82:AA:BB:CC"})
+    assert sanitizer.apply(glued) == expected
+    runs = {
+        "eui": "3C-52-82-FF-FE-AA-BB-CC",
+        "run": "id de:ad:be:ef:00:11:22 and a-3c-52-82-aa-bb-cd",
+        "start": "de:ad:be:ef:00:11:22",
+        "start1": "a-3c-52-82-aa-bb-cd",
+        "v6": "fe80:0:12:34:56:78:9a:bc",
+        "v6b": "fe80:1234:12:34:56:78:9a:bc",
+    }
+    sanitizer = Sanitizer()
+    sanitizer.learn(runs)
+    assert sanitizer.apply(runs) == {**runs, "v6": "2001:db8::1", "v6b": "2001:db8::2"}
+    assert sorted(sanitizer.mapping) == ["fe80:0:12:34:56:78:9a:bc", "fe80:1234:12:34:56:78:9a:bc"]
+
+
 def test_hex_that_is_not_a_mac_is_kept() -> None:
     doc = {
         "mac": "3C:52:82:AA:BB:CC",
@@ -1088,9 +1156,30 @@ def test_azure_ad_sids_are_generalised() -> None:
         "S-1-12-1-111-222-333-444": "as a key",
     }
     clean = _run(doc)
-    placeholder = "S-1-12-1-1000000000-1000000000-1000000000-1000000000"
-    assert clean == {"sid": placeholder, placeholder: "as a key"}
+    placeholder = "S-1-12-1-1000000000-1000000000-1000000000-"
+    assert clean == {"sid": f"{placeholder}1000000001", f"{placeholder}1000000000": "as a key"}
     assert _run(clean) == clean
+
+
+def test_distinct_sids_get_distinct_placeholders() -> None:
+    doc = {
+        "perm": {"S-1-12-1-5-6-7-8": {"x": "b"}, "S-1-12-1-1-2-3-4": {"x": "a"}},
+        "sids": {"S-1-5-21-10-5-6-1001": 2, "S-1-5-21-9-2-3-1001": 1},
+        "note": "s-1-5-21-10-5-6-500 and S-1-12-1-5-6-7-8",
+    }
+    azure = "S-1-12-1-1000000000-1000000000-1000000000-"
+    machine = "S-1-5-21-1000000000-1000000000-"
+    clean = _run(doc)
+    assert clean == {
+        "perm": {f"{azure}1000000001": {"x": "b"}, f"{azure}1000000000": {"x": "a"}},
+        "sids": {f"{machine}1000000001-1001": 2, f"{machine}1000000000-1001": 1},
+        "note": f"{machine}1000000001-500 and {azure}1000000001",
+    }
+    assert _run(clean) == clean
+    unlearned = Sanitizer().apply({"sid": "S-1-5-21-7-8-9-1001"})
+    assert unlearned == {"sid": f"{machine}1000000000-1001"}
+    mixed = {f"{machine}1000000000-500": 1, "S-1-5-21-5-2-3-500": 2}
+    assert _run(mixed) == {f"{machine}1000000000-500": 1, f"{machine}1000000001-500": 2}
 
 
 def test_unicode_case_variants_are_replaced_without_crashing() -> None:

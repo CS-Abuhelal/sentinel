@@ -4,6 +4,7 @@ import ipaddress
 import os
 import re
 from collections.abc import Iterable, Iterator
+from itertools import count
 from typing import Any
 from urllib.parse import quote, unquote
 
@@ -219,24 +220,31 @@ EMAIL = re.compile(
 )
 _OCTET = r"(?:25[0-5]|2[0-4]\d|1\d\d|0?[1-9]\d|0{0,2}\d)"
 IPV4 = re.compile(
-    rf"(?:(?<!\d)(?<!\d\.)|(?<=\\u[0-9A-Fa-f]{{4}}))"
+    rf"(?<!(?i:CIS) )(?:(?<!\d)(?<!\d\.)|(?<=\\u[0-9A-Fa-f]{{4}}))"
     rf"{_OCTET}(?:\.{_OCTET}){{3}}(?!\d)(?!\.\d)"
 )
 IPV6 = re.compile(
-    r"(?:(?<![\w.])|" + _ESCAPED + r")(?=[0-9A-Fa-f]|::)"
+    r"(?:(?<![\w.\]])|" + _ESCAPED + r")(?=[0-9A-Fa-f]|::)"
     r"[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7}(?:%[0-9A-Za-z_-]+)?(?![\w:])(?!\.\d)"
 )
 MAC = re.compile(
-    r"(?i)(?:(?<![0-9a-f])(?<![0-9a-f][:-])|(?<=\\u[0-9a-f]{4}))"
+    r"(?i)(?:(?<![0-9a-f])(?<!\W[0-9a-f][:-])(?<!\W[0-9a-f]{2}[:-])(?<!^[0-9a-f][:-])"
+    r"(?<!^[0-9a-f]{2}[:-])|(?<=\\u[0-9a-f]{4}))"
     r"[0-9a-f]{2}(?:[:-][0-9a-f]{2}){5}(?![0-9a-f])(?![:-][0-9a-f])"
     r"|(?:(?<![\w.-])|(?<=\\[nrt])|(?<=\\u[0-9a-f]{4}))"
     r"(?:0x[0-9a-f]{12}|(?=[\d.]*[a-f])[0-9a-f]{4}\.[0-9a-f]{4}\.[0-9a-f]{4}"
     r"|(?=\d*[a-f])[0-9a-f]{12})(?![\w-])(?!\.[0-9a-f])"
 )
 SID = re.compile(r"(?i)S-1-5-21-\d+-\d+-\d+")
-SID_PLACEHOLDER = "S-1-5-21-1000000000-1000000000-1000000000"
+SID_PREFIX = "S-1-5-21-"
+SID_BASE = "1000000000-1000000000-"
+PLACEHOLDER_SID = re.compile(r"1000000000-1000000000-1000000\d{3}")
 AZURE_SID = re.compile(r"(?i)S-1-12-1-\d+-\d+-\d+-\d+")
-AZURE_SID_PLACEHOLDER = "S-1-12-1-1000000000-1000000000-1000000000-1000000000"
+AZURE_SID_PREFIX = "S-1-12-1-"
+AZURE_SID_BASE = "1000000000-1000000000-1000000000-"
+PLACEHOLDER_AZURE_SID = re.compile(r"1000000000-1000000000-1000000000-1000000\d{3}")
+ANY_SID = re.compile(r"(?i)S-1-\d+(?:-\d+)+")
+FIRST_SID_NUMBER = 1000000000
 DOMAIN_SEPARATOR = re.compile(r"\\+")
 NAME_PARTS = re.compile(r"[\s,]+")
 FORBIDDEN_SEPARATOR = re.compile(r"[,;\r\n]+")
@@ -252,6 +260,7 @@ PLACEHOLDER_IP_PREFIX = "203.0.113."
 PLACEHOLDER_IPV6_NETWORK = ipaddress.IPv6Network("2001:db8::/32")
 MAX_IPS = 254
 MAX_MACS = 255
+MAX_SIDS = 1000
 
 
 def _numbers_only_key(key: str | None) -> bool:
@@ -278,10 +287,7 @@ def _canonical_ipv4(text: str) -> str:
 def _keep_ipv4(address: str) -> bool:
     first = int(address.split(".")[0])
     return (
-        address == "0.0.0.0"
-        or first in {127, 255}
-        or 224 <= first <= 239
-        or address.startswith(PLACEHOLDER_IP_PREFIX)
+        first in {0, 127, 255} or 224 <= first <= 239 or address.startswith(PLACEHOLDER_IP_PREFIX)
     )
 
 
@@ -300,13 +306,35 @@ def _keep_ipv6(address: ipaddress.IPv6Address) -> bool:
     return address.is_loopback or address.is_unspecified or address in PLACEHOLDER_IPV6_NETWORK
 
 
-def _is_address(text: str) -> bool:
-    return bool(IPV4.fullmatch(text)) or _ipv6(text.strip("[]")) is not None
+def _holds_identifier(text: str) -> bool:
+    return bool(IPV4.search(text) or MAC.search(text) or ANY_SID.search(text)) or any(
+        _ipv6(match.group(0)) is not None for match in IPV6.finditer(text)
+    )
 
 
 def _canonical_mac(text: str) -> str:
     digits = re.sub(r"[^0-9A-Fa-f]", "", text[2:] if text[:2].lower() == "0x" else text).upper()
     return ":".join(digits[index : index + 2] for index in range(0, 12, 2))
+
+
+def _sid_parts(text: str) -> str:
+    return "-".join(str(int(part)) for part in text.split("-")[4:])
+
+
+def _sid_order(parts: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in parts.split("-"))
+
+
+def _number_sids(sids: set[str], taken: set[str], base: str) -> dict[str, str]:
+    numbers = (number for number in count(FIRST_SID_NUMBER) if f"{base}{number}" not in taken)
+    return {parts: f"{base}{next(numbers)}" for parts in sorted(sids, key=_sid_order)}
+
+
+def _renumber_sid(text: str, known: dict[str, str], placeholder: re.Pattern[str], base: str) -> str:
+    parts = _sid_parts(text)
+    if placeholder.fullmatch(parts):
+        return parts
+    return known.get(parts, f"{base}{FIRST_SID_NUMBER}")
 
 
 def _learnable(name: str) -> bool:
@@ -319,7 +347,7 @@ def _learnable(name: str) -> bool:
         and not PLACEHOLDER.match(name)
         and not BUILTIN_ACCOUNT.match(name)
         and not INSERTION_STRING.match(name)
-        and not _is_address(name)
+        and not _holds_identifier(name)
     )
 
 
@@ -348,11 +376,17 @@ class Sanitizer:
         self._ips: set[str] = set()
         self._ipv6s: set[str] = set()
         self._macs: set[str] = set()
+        self._sids: set[str] = set()
+        self._sid_taken: set[str] = set()
+        self._azure_sids: set[str] = set()
+        self._azure_sid_taken: set[str] = set()
         self._domain_accounts: set[tuple[str, str]] = set()
         self.mapping: dict[str, str] = {}
         self._ip_map: dict[str, str] = {}
         self._ipv6_map: dict[str, str] = {}
         self._mac_map: dict[str, str] = {}
+        self._sid_map: dict[str, str] = {}
+        self._azure_sid_map: dict[str, str] = {}
         self._agent_map: dict[str, str] = {}
         self._group_placeholders: dict[str, str] = {}
         self._pattern: re.Pattern[str] | None = None
@@ -437,19 +471,35 @@ class Sanitizer:
                 self._add_email(match.group(0))
             for match in DOMAIN_ACCOUNT.finditer(text):
                 self._domain_accounts.add((match.group(1), match.group(2)))
-            for match in IPV6.finditer(text):
-                address = _ipv6(match.group(0))
-                if address is not None and not _keep_ipv6(address):
-                    self._ipv6s.add(address.compressed)
-            for match in MAC.finditer(text):
-                mac = _canonical_mac(match.group(0))
-                if mac not in KEEP_MACS and not mac.startswith(PLACEHOLDER_MAC_PREFIX):
-                    self._macs.add(mac)
-            if not numbers_only:
-                for match in IPV4.finditer(text):
-                    address = _canonical_ipv4(match.group(0))
-                    if not _keep_ipv4(address):
-                        self._ips.add(address)
+            self._learn_addresses(text, numbers_only)
+
+    def _learn_addresses(self, text: str, numbers_only: bool) -> None:
+        for regex, placeholder, found, taken in (
+            (SID, PLACEHOLDER_SID, self._sids, self._sid_taken),
+            (AZURE_SID, PLACEHOLDER_AZURE_SID, self._azure_sids, self._azure_sid_taken),
+        ):
+            for match in regex.finditer(text):
+                parts = _sid_parts(match.group(0))
+                (taken if placeholder.fullmatch(parts) else found).add(parts)
+        spans: list[tuple[int, int]] = []
+        for match in IPV6.finditer(text):
+            address = _ipv6(match.group(0))
+            if address is None:
+                continue
+            spans.append(match.span())
+            if not _keep_ipv6(address):
+                self._ipv6s.add(address.compressed)
+        for match in MAC.finditer(text):
+            if any(start <= match.start() < end for start, end in spans):
+                continue
+            mac = _canonical_mac(match.group(0))
+            if mac not in KEEP_MACS and not mac.startswith(PLACEHOLDER_MAC_PREFIX):
+                self._macs.add(mac)
+        if not numbers_only:
+            for match in IPV4.finditer(text):
+                address = _canonical_ipv4(match.group(0))
+                if not _keep_ipv4(address):
+                    self._ips.add(address)
 
     def _learn_paths(self, text: str) -> None:
         for match in PROFILE_FOLDER.finditer(text):
@@ -545,7 +595,12 @@ class Sanitizer:
             self._emails.add(address)
 
     def _build(self) -> None:
-        if len(self._ips) > MAX_IPS or len(self._macs) > MAX_MACS:
+        if (
+            len(self._ips) > MAX_IPS
+            or len(self._macs) > MAX_MACS
+            or len(self._sids) + len(self._sid_taken) > MAX_SIDS
+            or len(self._azure_sids) + len(self._azure_sid_taken) > MAX_SIDS
+        ):
             raise ValueError("Too many distinct addresses to give each a placeholder.")
         own = _groups(self._own_hosts)
         other = {key: names for key, names in _groups(self._other_hosts).items() if key not in own}
@@ -593,10 +648,14 @@ class Sanitizer:
         self._agent_map = {
             agent: f"{index + 1:03d}" for index, agent in enumerate(sorted(self._agents))
         }
+        self._sid_map = _number_sids(self._sids, self._sid_taken, SID_BASE)
+        self._azure_sid_map = _number_sids(self._azure_sids, self._azure_sid_taken, AZURE_SID_BASE)
         mapping.update(self._ip_map)
         mapping.update(self._ipv6_map)
         mapping.update(self._mac_map)
         mapping.update(self._agent_map)
+        for prefix, sids in ((SID_PREFIX, self._sid_map), (AZURE_SID_PREFIX, self._azure_sid_map)):
+            mapping.update({prefix + parts: prefix + new for parts, new in sids.items()})
         self.mapping = mapping
         ordered = [(key, group[key]) for group in (hosts, users, emails) for key in sorted(group)]
         alternatives: dict[str, str] = {}
@@ -646,9 +705,18 @@ class Sanitizer:
             return match.group(0)
         return self._ipv6_map.get(address.compressed, match.group(0))
 
+    def _sid_placeholder(self, match: re.Match[str]) -> str:
+        parts = _renumber_sid(match.group(0), self._sid_map, PLACEHOLDER_SID, SID_BASE)
+        return SID_PREFIX + parts
+
+    def _azure_sid_placeholder(self, match: re.Match[str]) -> str:
+        known = self._azure_sid_map
+        parts = _renumber_sid(match.group(0), known, PLACEHOLDER_AZURE_SID, AZURE_SID_BASE)
+        return AZURE_SID_PREFIX + parts
+
     def _replace(self, text: str, addresses: bool) -> str:
-        text = SID.sub(SID_PLACEHOLDER, text)
-        text = AZURE_SID.sub(AZURE_SID_PLACEHOLDER, text)
+        text = SID.sub(self._sid_placeholder, text)
+        text = AZURE_SID.sub(self._azure_sid_placeholder, text)
         if self._ipv6_map:
             text = IPV6.sub(self._ipv6_placeholder, text)
         if self._mac_map:
