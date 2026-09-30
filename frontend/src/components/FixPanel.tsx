@@ -60,7 +60,7 @@ export function FixPanel({
   sample?: HostAssessment | null;
 }) {
   const sampled = sample !== undefined;
-  const [fetched, setLoad] = useState<Load>({ state: "loading" });
+  const [fetched, setFetched] = useState<Load>({ state: "loading" });
   const load: Load = sampled ? toLoad(sample) : fetched;
   const [rescanState, setRescanState] = useState<RescanState>({ state: "idle" });
   const [expanded, setExpanded] = useState<string | null>(initialFinding);
@@ -81,10 +81,10 @@ export function FixPanel({
     const poll = () => {
       fetchAssessment()
         .then((assessment) => {
-          if (!cancelled) setLoad(toLoad(assessment));
+          if (!cancelled) setFetched(toLoad(assessment));
         })
         .catch((error: Error) => {
-          if (!cancelled) setLoad({ state: "failed", message: error.message });
+          if (!cancelled) setFetched({ state: "failed", message: error.message });
         });
     };
     poll();
@@ -103,10 +103,10 @@ export function FixPanel({
         window.setTimeout(() => {
           fetchAssessment()
             .then((assessment) => {
-              if (mountedRef.current) setLoad(toLoad(assessment));
+              if (mountedRef.current) setFetched(toLoad(assessment));
             })
             .catch((error: Error) => {
-              if (mountedRef.current) setLoad({ state: "failed", message: error.message });
+              if (mountedRef.current) setFetched({ state: "failed", message: error.message });
             });
         }, RESCAN_REFRESH_MS);
       })
@@ -159,6 +159,7 @@ export function FixPanel({
       {load.state === "ready" && (
         <FixTable
           assessment={load.assessment}
+          recorded={sampled}
           expanded={expanded}
           onToggle={setExpanded}
           showAll={showAll}
@@ -171,12 +172,14 @@ export function FixPanel({
 
 function FixTable({
   assessment,
+  recorded,
   expanded,
   onToggle,
   showAll,
   onShowAll,
 }: {
   assessment: HostAssessment;
+  recorded: boolean;
   expanded: string | null;
   onToggle: (findingId: string | null) => void;
   showAll: boolean;
@@ -217,7 +220,9 @@ function FixTable({
             const fixStatus = recommendedFindingIds.has(finding.finding_id)
               ? "Ready"
               : beingWrittenUnits.has(adviceUnit(finding))
-                ? "Being written"
+                ? recorded
+                  ? "Not in this sample"
+                  : "Being written"
                 : "—";
             return (
               <FindingRow

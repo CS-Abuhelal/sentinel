@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { fetchPcFeed, fetchPcRun, fetchPcSample, retryIncident } from "../api";
 import type { PcSource } from "../api";
@@ -124,6 +124,14 @@ export function MyPc({ source }: { source: PcSource }) {
 
   const shownRunLoad = sampled ? sampleRunLoad(sample, incidentId) : runLoad;
 
+  const openableIds = useMemo(
+    () =>
+      sampled
+        ? new Set((sample?.runs ?? []).map((run) => run.incident.incident_id))
+        : null,
+    [sampled, sample],
+  );
+
   const feed = load.state === "ready" ? load.feed : load.state === "failed" ? load.last : null;
 
   const selectTab = (next: Tab) => {
@@ -160,7 +168,7 @@ export function MyPc({ source }: { source: PcSource }) {
           </p>
         </div>
       )}
-      {feed && <StatusBar feed={feed} />}
+      {feed && <StatusBar feed={feed} recorded={sampled} />}
       <nav className="pc-tabs" aria-label="My PC views">
         <button type="button" aria-pressed={tab === "alerts"} onClick={() => selectTab("alerts")}>
           Alerts
@@ -179,6 +187,7 @@ export function MyPc({ source }: { source: PcSource }) {
           incidentId={incidentId}
           runLoad={shownRunLoad}
           readOnly={sampled}
+          openableIds={openableIds}
           onSelect={setIncidentId}
           onBack={() => setIncidentId(null)}
         />
@@ -194,14 +203,14 @@ export function MyPc({ source }: { source: PcSource }) {
   );
 }
 
-function StatusBar({ feed }: { feed: PcFeed }) {
+function StatusBar({ feed, recorded }: { feed: PcFeed; recorded: boolean }) {
   const { status } = feed;
   return (
     <dl className="pc-status">
-      <Service label="Wazuh API" state={status.wazuh_api} />
-      <Service label="Backfill" state={status.backfill} />
-      <Service label="AI model" state={status.model} />
-      <Service label="Weak-spot sync" state={status.sync} />
+      <Service label="Wazuh API" state={status.wazuh_api} recorded={recorded} />
+      <Service label="Backfill" state={status.backfill} recorded={recorded} />
+      <Service label="AI model" state={status.model} recorded={recorded} />
+      <Service label="Weak-spot sync" state={status.sync} recorded={recorded} />
       <div>
         <dt>Alerts stored</dt>
         <dd className="mono">{status.alert_count}</dd>
@@ -218,13 +227,25 @@ function StatusBar({ feed }: { feed: PcFeed }) {
   );
 }
 
-function Service({ label, state }: { label: string; state: ServiceState }) {
+function Service({
+  label,
+  state,
+  recorded,
+}: {
+  label: string;
+  state: ServiceState;
+  recorded: boolean;
+}) {
   return (
     <div>
       <dt>{label}</dt>
-      <dd className={state.reachable ? "pc-ok" : "pc-down"}>
-        {state.reachable ? "Online" : "Offline"}
-      </dd>
+      {recorded ? (
+        <dd className="pc-recorded">Recorded</dd>
+      ) : (
+        <dd className={state.reachable ? "pc-ok" : "pc-down"}>
+          {state.reachable ? "Online" : "Offline"}
+        </dd>
+      )}
       {state.detail && <dd className="small muted">{state.detail}</dd>}
     </div>
   );
@@ -276,6 +297,7 @@ function IncidentsPanel({
   incidentId,
   runLoad,
   readOnly,
+  openableIds,
   onSelect,
   onBack,
 }: {
@@ -283,6 +305,7 @@ function IncidentsPanel({
   incidentId: string | null;
   runLoad: RunLoad;
   readOnly: boolean;
+  openableIds: ReadonlySet<string> | null;
   onSelect: (incidentId: string) => void;
   onBack: () => void;
 }) {
@@ -317,7 +340,7 @@ function IncidentsPanel({
           </p>
         )}
         {runLoad.state === "missing" && (
-          <p className="notice">Not investigated in this sample.</p>
+          <p className="notice">This investigation is not included in the sample.</p>
         )}
         {runLoad.state === "ready" && <RunDetail key={runLoad.run.run_id} run={runLoad.run} />}
       </div>
@@ -353,6 +376,7 @@ function IncidentsPanel({
             key={item.incident.incident_id}
             item={item}
             readOnly={readOnly}
+            hasRun={openableIds === null || openableIds.has(item.incident.incident_id)}
             onSelect={onSelect}
             retryStatus={retryState[item.incident.incident_id]}
             onRetry={handleRetry}
@@ -366,18 +390,20 @@ function IncidentsPanel({
 function IncidentRow({
   item,
   readOnly,
+  hasRun,
   onSelect,
   retryStatus,
   onRetry,
 }: {
   item: PcIncidentSummary;
   readOnly: boolean;
+  hasRun: boolean;
   onSelect: (incidentId: string) => void;
   retryStatus: "busy" | "failed" | undefined;
   onRetry: (incidentId: string) => void;
 }) {
   const { incident, classification, max_level, alert_count, recommendation_count } = item;
-  const openable = classification !== null;
+  const openable = classification !== null && hasRun;
   const label =
     classification !== null && incident.status === "investigating"
       ? "Advice ready"

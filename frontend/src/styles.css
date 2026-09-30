@@ -1495,6 +1495,11 @@ a {
   font-weight: 600;
 }
 
+.pc-recorded {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
 .pc-alerts {
   width: 100%;
   border-collapse: collapse;
