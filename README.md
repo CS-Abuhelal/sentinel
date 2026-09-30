@@ -63,6 +63,10 @@ removes any advice step that would weaken the PC, such as turning off Defender. 
 [`lab/wazuh/README.md`](lab/wazuh/README.md). The screenshots below come from a real run
 on 2026-09-28, with nothing written by hand.
 
+**Browse it yourself:** https://cs-abuhelal.github.io/sentinel/?view=pc shows a recorded sample
+of this page from my PC, with names and addresses replaced. It is read-only and nothing in it is
+live.
+
 **1. Live alerts.** Every Wazuh alert of level 3 or higher arrives within about a second. These
 include the 10 failed logins I made for a user that does not exist, which Wazuh flagged as
 "Multiple Windows Logon Failures" (level 10).

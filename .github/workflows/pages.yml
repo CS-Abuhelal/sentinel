@@ -89,6 +89,10 @@ jobs:
           VITE_RUNS_URL: runs.json
         run: |
           npm ci
+          if [ -f ../lab/wazuh/sample/pc-sample.json ]; then
+            cp ../lab/wazuh/sample/pc-sample.json public/pc-sample.json
+            export VITE_PC_SAMPLE_URL=pc-sample.json
+          fi
           npm run build
 
       - uses: actions/configure-pages@v6
