@@ -160,11 +160,13 @@ def test_a_name_after_a_literal_escape_sequence_is_replaced() -> None:
     doc = {
         "user": "jane.doe",
         "full_log": "Account Name:\\t\\tjane.doe\\r\\nMAC:\\t3C-52-82-AA-BB-CC at\\t192.168.1.23.",
+        "escaped": '{"m":"\\u0022jane.doe\\u0022 and \\u0022zed@example.org\\u0022"}',
     }
     clean = _run(doc)
     assert clean["full_log"] == (
         "Account Name:\\t\\tuser1\\r\\nMAC:\\t00:00:5e:00:53:01 at\\t203.0.113.1."
     )
+    assert clean["escaped"] == '{"m":"\\u0022user1\\u0022 and \\u0022user2\\u0022"}'
 
 
 def test_profile_paths_with_any_slash_style_are_learned() -> None:
@@ -265,6 +267,51 @@ def test_the_domain_of_an_account_is_learned_as_a_host() -> None:
     assert _run(doc) == {"user": "HOST-2\\user1", "message": "on HOST-2 by user1"}
 
 
+def test_the_domain_of_a_built_in_account_is_learned_too() -> None:
+    doc = {"user": "ZULU-BOX\\Administrator", "message": "on ZULU-BOX"}
+    assert _run(doc) == {"user": "HOST-2\\Administrator", "message": "on HOST-2"}
+
+
+def test_built_in_pseudo_domains_are_kept() -> None:
+    doc = {
+        "a": {"user": "NT SERVICE\\TrustedInstaller"},
+        "b": {"user": "IIS APPPOOL\\DefaultAppPool"},
+        "c": {
+            "subjectDomainName": "WORKGROUP",
+            "targetDomainName": "MicrosoftAccount",
+            "user": "AzureAD\\amy.smith",
+        },
+        "d": {
+            "subjectDomainName": "Window Manager",
+            "targetDomainName": "Font Driver Host",
+            "hostname": "BUILTIN",
+            "userName": "TrustedInstaller",
+        },
+        "text": "TrustedInstaller; MicrosoftAccount; NT SERVICE; AzureAD; BUILTIN; amy.smith",
+    }
+    expected = copy.deepcopy(doc)
+    expected["c"]["user"] = "AzureAD\\user1"
+    expected["text"] = "TrustedInstaller; MicrosoftAccount; NT SERVICE; AzureAD; BUILTIN; user1"
+    assert _run(doc) == expected
+
+
+def test_built_in_group_names_are_kept() -> None:
+    doc = [
+        {"targetUserName": "Administrators", "targetDomainName": "Builtin"},
+        {"targetUserName": "Remote Desktop Users", "subjectUserName": "amy.smith"},
+        {"note": "amy.smith added a member to Administrators and Remote Desktop Users"},
+    ]
+    expected = copy.deepcopy(doc)
+    expected[1]["subjectUserName"] = "user1"
+    expected[2]["note"] = "user1 added a member to Administrators and Remote Desktop Users"
+    assert _run(doc) == expected
+
+
+def test_keys_of_unrelated_dicts_are_not_learned_as_names() -> None:
+    doc = {"users": {"count": 3, "active": 1}, "note": "count active"}
+    assert _run(doc) == doc
+
+
 def test_the_agent_name_is_the_pc_and_other_hosts_come_after() -> None:
     doc = {
         "agent": {"id": "002", "name": "Zulu-Laptop"},
@@ -294,6 +341,267 @@ def test_a_remote_host_never_takes_the_pc_placeholder() -> None:
 def test_a_name_that_is_both_host_and_user_gets_one_placeholder() -> None:
     doc = {"host": "Amy-Box", "user": "amy-box", "message": "AMY-BOX"}
     assert _run(doc) == {"host": "MY-PC", "user": "MY-PC", "message": "MY-PC"}
+
+
+def test_more_host_keys_are_learned() -> None:
+    doc = {
+        "eventdata": {
+            "subjectDomainName": "ZULU-BOX",
+            "targetDomainName": "YANKEE-BOX",
+            "workstation": "XRAY-TABLET",
+            "targetServerName": "WHISKEY-NAS",
+            "sourceHostname": "victor-phone",
+            "destinationHostname": "uniform-tv",
+            "clientName": "TANGO-LAPTOP",
+        },
+        "manager": {"name": "sierra-server"},
+        "note": "zulu-box yankee-box xray-tablet whiskey-nas VICTOR-PHONE UNIFORM-TV tango-laptop",
+    }
+    clean = _run(doc)
+    assert clean["note"] == "HOST-9 HOST-8 HOST-7 HOST-6 HOST-5 HOST-4 HOST-3"
+    assert clean["manager"] == {"name": "HOST-2"}
+    names = ["zulu", "yankee", "xray", "whiskey", "victor", "uniform", "tango", "sierra"]
+    assert leftovers(clean, names) == []
+
+
+def test_the_first_label_of_a_local_or_own_fqdn_is_learned() -> None:
+    doc = {
+        "computer": "DESKTOP-9QXZ7.home.lan",
+        "sourceHostname": "zulu-phone.home.lan",
+        "note": "DESKTOP-9QXZ7 and desktop-9qxz7.home.lan; zulu-phone and ZULU-PHONE.HOME.LAN",
+    }
+    assert _run(doc) == {
+        "computer": "MY-PC",
+        "sourceHostname": "HOST-2",
+        "note": "MY-PC and MY-PC; HOST-2 and HOST-2",
+    }
+
+
+def test_a_public_fqdn_is_replaced_whole_without_learning_its_first_label() -> None:
+    doc = {
+        "computer": "ZULU-PC",
+        "destinationHostname": "login.example.com",
+        "hostname": "zulu-pc.example.net",
+        "note": "login at login.example.com from zulu-pc.example.net",
+    }
+    assert _run(doc) == {
+        "computer": "MY-PC",
+        "destinationHostname": "HOST-2",
+        "hostname": "MY-PC",
+        "note": "login at HOST-2 from MY-PC",
+    }
+
+
+def test_a_netbios_truncated_name_maps_to_the_full_host() -> None:
+    doc = {
+        "computer": "ZULU-GAMING-LAPTOP",
+        "eventdata": {"subjectDomainName": "ZULU-GAMING-LAP", "subjectUserName": "amy.smith"},
+        "user": "ZULU-GAMING-LAP\\amy.smith",
+    }
+    assert _run(doc) == {
+        "computer": "MY-PC",
+        "eventdata": {"subjectDomainName": "MY-PC", "subjectUserName": "user1"},
+        "user": "MY-PC\\user1",
+    }
+
+
+def test_a_host_field_with_leading_backslashes_is_learned() -> None:
+    doc = {"workstation": "\\\\ZULU-BOX", "note": "from zulu-box"}
+    assert _run(doc) == {"workstation": "\\\\HOST-2", "note": "from HOST-2"}
+
+
+def test_unc_hosts_are_learned_but_escaped_root_paths_are_not() -> None:
+    doc = {
+        "a": "\\\\ZULU-NAS\\photos\\x and \\\\zulu-nas\\ipc$",
+        "full_log": json.dumps(
+            {
+                "share": "\\\\ALPHA-BOX\\c$",
+                "image": "\\Device\\HarddiskVolume3\\x.exe",
+                "path": "C:\\Windows\\System32\\x.exe",
+            }
+        ),
+    }
+    sanitizer = Sanitizer()
+    sanitizer.learn(doc)
+    clean = sanitizer.apply(doc)
+    assert clean["a"] == "\\\\HOST-3\\photos\\x and \\\\HOST-3\\ipc$"
+    assert json.loads(clean["full_log"]) == {
+        "share": "\\\\HOST-2\\c$",
+        "image": "\\Device\\HarddiskVolume3\\x.exe",
+        "path": "C:\\Windows\\System32\\x.exe",
+    }
+    assert sorted(sanitizer.mapping) == ["ALPHA-BOX", "ZULU-NAS"]
+
+
+def test_the_last_segment_of_an_escaped_path_is_not_a_unc_host() -> None:
+    message = (
+        "Process Name:\tC:\\Windows\\System32\\svchost.exe\r\n"
+        "File:\tC:\\hiberfil.sys\r\nShare Name:\t\\\\ZULU-NAS\\photos\r\n"
+    )
+    doc = {"full_log": json.dumps({"message": message}), "message": message}
+    sanitizer = Sanitizer()
+    sanitizer.learn(doc)
+    assert sorted(sanitizer.mapping) == ["ZULU-NAS"]
+    assert sanitizer.apply(doc)["message"] == message.replace("ZULU-NAS", "HOST-2")
+
+
+def test_dns_query_names_are_learned_only_when_local() -> None:
+    doc = {
+        "agent": {"id": "001", "name": "my-pc"},
+        "queries": [
+            {"queryName": "DESKTOP-9QXZ7.home.lan"},
+            {"queryName": "ZULU-NAS"},
+            {"queryName": "login.example.com"},
+            {"queryName": "wpad"},
+        ],
+        "note": "DESKTOP-9QXZ7 zulu-nas login.example.com wpad",
+    }
+    clean = _run(doc)
+    assert clean["queries"] == [
+        {"queryName": "HOST-2"},
+        {"queryName": "HOST-3"},
+        {"queryName": "login.example.com"},
+        {"queryName": "wpad"},
+    ]
+    assert clean["note"] == "HOST-2 HOST-3 login.example.com wpad"
+
+
+def test_more_user_keys_are_learned() -> None:
+    doc = {
+        "syscheck": {
+            "uname_after": "amy.smith",
+            "uname_before": "bob.jones",
+            "audit": {"user": {"name": "cy.lee", "id": "1001"}},
+        },
+        "eventdata": {
+            "oldTargetUserName": "dan.kim",
+            "newTargetUserName": "eve.ross",
+            "targetOutboundUserName": "fay.wong",
+            "displayName": "Gus Hill",
+        },
+        "tool": {"account": "hal.berg"},
+        "approval": {"decided_by": "ivy.cole", "approved_by": "jon.pike"},
+        "note": "amy.smith bob.jones cy.lee dan.kim eve.ross fay.wong Gus Hill hal.berg ivy.cole "
+        "jon.pike",
+    }
+    sanitizer = Sanitizer()
+    sanitizer.learn(doc)
+    clean = sanitizer.apply(doc)
+    assert clean["note"] == "user1 user2 user3 user4 user5 user6 user8 user9 user11 user12"
+    assert clean["eventdata"]["displayName"] == "user8"
+    assert sanitizer.apply({"m": "Gus went home, Hill stayed"}) == {
+        "m": "user7 went home, user10 stayed"
+    }
+
+
+def test_sysmon_and_account_management_user_fields_are_learned() -> None:
+    doc = {
+        "eventdata": {
+            "sourceUser": "ZULU-BOX\\amy.smith",
+            "targetUser": "NT AUTHORITY\\SYSTEM",
+            "parentUser": "ZULU-BOX\\bob.jones",
+            "userPrincipalName": "cy.lee@example.org",
+            "displayName": "%%1793",
+        },
+        "note": "amy.smith bob.jones cy.lee %%1793 zulu-box",
+    }
+    assert _run(doc) == {
+        "eventdata": {
+            "sourceUser": "HOST-2\\user1",
+            "targetUser": "NT AUTHORITY\\SYSTEM",
+            "parentUser": "HOST-2\\user2",
+            "userPrincipalName": "user3",
+            "displayName": "%%1793",
+        },
+        "note": "user1 user2 user3 %%1793 HOST-2",
+    }
+
+
+def test_names_after_windows_message_labels_are_learned() -> None:
+    message = (
+        "Subject:\r\n\tAccount Name:\t\tZULU-BOX$\r\n\tAccount Domain:\t\tWORKGROUP\r\n"
+        "New Logon:\r\n\tAccount Name:\t\tamy.smith@example.org\r\n"
+        "\tAccount Domain:\t\tMicrosoftAccount\r\n"
+        "\tAccount Name:\t\tSYSTEM\r\n\tAccount Domain:\t\tNT AUTHORITY\r\n"
+        "Network Information:\r\n\tWorkstation Name:\tALPHA-BOX\r\n"
+        "\tSource Workstation:\tBRAVO-BOX\r\n\tAccount Name:\t\t-\r\n\tAccount Name:\t\tal\r\n"
+    )
+    doc = {
+        "message": message,
+        "full_log": json.dumps({"message": message}),
+        "note": "amy.smith, zulu-box, alpha-box, bravo-box, al",
+    }
+    clean = _run(doc)
+    assert clean["note"] == "user1, HOST-4, HOST-2, HOST-3, al"
+    assert leftovers(clean, ["amy", "example.org", "zulu", "alpha", "bravo"]) == []
+    for kept in ("WORKGROUP", "MicrosoftAccount", "SYSTEM", "NT AUTHORITY", "Name:\t\t-\r\n"):
+        assert kept in clean["message"]
+    assert json.loads(clean["full_log"]) == {"message": clean["message"]}
+
+
+def test_labels_in_a_whitespace_collapsed_message_are_learned() -> None:
+    example = (
+        "An account failed to log on. Subject: Security ID: S-1-5-18 Account Name: ZULU-BOX$ "
+        "Account Domain: WORKGROUP Logon ID: 0x3E7 Account For Which Logon Failed: "
+        "Security ID: S-1-0-0 Account Name: amy.smith Account Domain: ZULU-BOX "
+        "Failure Information: Failure Reason: Unknown user name or bad password. "
+        "Network Information: Workstation Name: ALPHA-BOX Source Network Address: 192.168.1.23"
+    )
+    doc = {"content": {"example": example}, "note": "amy.smith on zulu-box from alpha-box"}
+    clean = _run(doc)
+    assert clean["note"] == "user1 on HOST-3 from HOST-2"
+    assert clean["content"]["example"] == (
+        example.replace("ZULU-BOX", "HOST-3")
+        .replace("amy.smith", "user1")
+        .replace("ALPHA-BOX", "HOST-2")
+        .replace("192.168.1.23", "203.0.113.1")
+    )
+
+
+def test_the_local_part_of_an_email_account_is_learned() -> None:
+    doc = {
+        "targetUserName": "jane.doe@example.org",
+        "user": "MicrosoftAccount\\amy.smith@example.net",
+        "note": (
+            "jane.doe signed in as JANE.DOE@EXAMPLE.ORG; amy.smith; mail zed.quinn@example.com."
+        ),
+    }
+    assert _run(doc) == {
+        "targetUserName": "user2",
+        "user": "MicrosoftAccount\\user1",
+        "note": "user2 signed in as user2; user1; mail user3.",
+    }
+
+
+def test_role_mailboxes_are_replaced_whole_without_learning_their_local_part() -> None:
+    doc = {"cmd": "git clone git@github.com:zulu/repo.git", "m": "mail noreply@example.org on git"}
+    assert _run(doc) == {"cmd": "git clone user1:zulu/repo.git", "m": "mail user2 on git"}
+
+
+def test_addresses_and_names_in_dict_keys_are_learned() -> None:
+    doc = {
+        "event": {"user": "jane.doe"},
+        "raw": {
+            "baseline_successes": {"192.168.1.50": 3, "fe80::1": 1},
+            "by_user": {"jane.doe": 2, "amy.smith": 1},
+            "by_mac": {"3C:52:82:AA:BB:CC": 1},
+            "files": {"C:\\Users\\bob.jones\\x": 1},
+            "mail": {"cy.lee@example.org": 1},
+            "S-1-5-21-1234567890-987654321-1122334455-1001": "sid",
+            "inventory": {"hosts": {"ZULU-NAS": {"role": "nas"}}},
+        },
+    }
+    clean = _run(doc)
+    assert clean["raw"] == {
+        "baseline_successes": {"203.0.113.1": 3, "2001:db8::1": 1},
+        "by_user": {"user4": 2, "user1": 1},
+        "by_mac": {"00:00:5e:00:53:01": 1},
+        "files": {"C:\\Users\\user2\\x": 1},
+        "mail": {"user3": 1},
+        "S-1-5-21-1000000000-1000000000-1000000000-1001": "sid",
+        "inventory": {"hosts": {"HOST-2": {"role": "nas"}}},
+    }
+    assert _run(clean) == clean
 
 
 def test_entities_are_learned_from_their_type() -> None:
@@ -469,6 +777,17 @@ def test_windows_machine_sids_are_generalised() -> None:
         "sid": "S-1-5-21-1000000000-1000000000-1000000000-1001",
         "note": "S-1-5-21-1000000000-1000000000-1000000000-500 and S-1-5-18",
     }
+
+
+def test_unicode_case_variants_are_replaced_without_crashing() -> None:
+    doc = {
+        "user": "sam.smith",
+        "targetUserName": "straße",
+        "subjectUserName": "kim.lee",
+        "hostname": "KELVIN-PC",
+        "m": "ſam.ſmith, STRASSE, Straße, STRAẞE, KİM.LEE, kım.lee on \u212aELVIN-PC",
+    }
+    assert _run(doc)["m"] == "user2, user3, user3, user3, user1, user1 on HOST-2"
 
 
 def test_apply_returns_a_new_value_and_keeps_the_input() -> None:
