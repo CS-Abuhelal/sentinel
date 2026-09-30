@@ -5,13 +5,13 @@ import os
 import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-from backend.app.backfill import IndexerSettings, backfill, backfill_cursor
+from backend.app.backfill import IndexerSettings, backfill_cursor, backfill_until_done
 from backend.app.db import get_engine
 from backend.app.ingest import router as ingest_router
 from backend.app.pc import router as pc_router
@@ -29,14 +29,12 @@ def allowed_hosts() -> list[str]:
 
 
 def _backfill_in_background(
-    app: FastAPI, settings: IndexerSettings, since: datetime | None
+    app: FastAPI, settings: IndexerSettings, since: datetime | None, stop: threading.Event
 ) -> None:
-    try:
-        with settings.client() as client:
-            app.state.backfill = backfill(get_engine(), client, datetime.now(UTC), since)
-    except Exception as error:
-        logger.warning("Wazuh backfill failed: %s", error)
-        app.state.backfill = ServiceState(reachable=False, detail=f"Backfill failed: {error}")
+    def report(state: ServiceState) -> None:
+        app.state.backfill = state
+
+    backfill_until_done(get_engine(), settings.client, since, report, stop)
 
 
 @asynccontextmanager
@@ -55,7 +53,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         else:
             app.state.backfill = ServiceState(reachable=False, detail="Backfill is running.")
             threading.Thread(
-                target=_backfill_in_background, args=(app, settings, since), daemon=True
+                target=_backfill_in_background, args=(app, settings, since, stop), daemon=True
             ).start()
         threading.Thread(
             target=app.state.sync.every, args=(SYNC_INTERVAL, stop), daemon=True
