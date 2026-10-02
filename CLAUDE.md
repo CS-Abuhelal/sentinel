@@ -57,7 +57,7 @@ Read this file at the start of every session.
     shows it, and `?finding=` opens a finding directly.
   - A real fix is replayed from `tests/data/fix_vulnerability.qwen3-14b.json`.
 - Live advisor, phase 4 (report, public sample, accuracy, D-16):
-  - The Report tab (`?view=pc&tab=report`, `ReportPanel.tsx`) prints a one-page summary.
+  - The Report tab (`?view=pc&tab=report`, `ReportPanel.tsx`) prints a summary.
   - `python -m pipeline.sample` exports a `PcSample` from the live database. It keeps the
     newest 10 investigated incidents and every written fix, and runs it through
     `pipeline/sanitize.py`. It refuses to write when a term in `SENTINEL_FORBIDDEN_TERMS`

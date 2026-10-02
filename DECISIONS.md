@@ -6,7 +6,7 @@ Superseded entries are removed, and numbers are never reused.
 
 ---
 
-## D-16 — Contracts 1.7.0 and a sanitized public sample (2026-09-29)
+## D-16 — Contracts 1.7.0 and a sanitized public sample (2026-09-29, updated 2026-10-02)
 
 **Decision.** Add `PcSample`, a recorded snapshot of the My PC page (feed, assessment, runs).
 `pipeline.sample` exports it from the live database, and `pipeline.sanitize` replaces every
@@ -22,6 +22,19 @@ the repo.
 
 **Consequence.** The public page is a snapshot, so it does not update. Regenerating it means
 running the export again and reviewing it again.
+
+**Updated 2026-10-02.**
+- The sanitizer now replaces host and user names, display names, `DOMAIN\user`, profile paths
+  in any form, emails (with email-shaped placeholders), IPv4, IPv6, MAC addresses, SIDs and
+  agent ids.
+- The sample keeps 30 incidents, which include the newest 10 that were investigated, with
+  their runs. It keeps the top 25 findings plus the top finding of each of the `FIX_TOP`
+  programs that get a fix (10), with their fixes. It keeps the 50 newest alerts.
+- The export fails closed. It needs `SENTINEL_FORBIDDEN_TERMS`, checks the cleaned data for
+  each term again (also percent-decoded, with `\uXXXX` escapes decoded and with `.`, `_` and
+  `+` read as spaces), and writes nothing if one survives.
+- Counts in the sample describe the sample, not the PC. The report and the weak-spot list say
+  so.
 
 ---
 

@@ -116,23 +116,24 @@ personal PC.
 
 ![Fix steps for the top weak spot](docs/screenshots/14-my-pc-fix-detail.png)
 
-**6. A report you can print, and a public sample.** The Report tab sums up the PC on one page:
-status, the top fixes with their steps, recent incidents and totals. "Print or save as PDF"
-gives a clean black-on-white copy. The public demo shows a recorded sample of this page from my
-PC. A sanitizer replaced every name, address, account id and profile path before it left the
-machine. The export refuses to write the file if any of my real names survive, and I reviewed
-the file before committing it.
+**6. A report you can print, and a public sample.** The Report tab sums up the PC: status,
+the top fixes with their steps, recent incidents and totals. "Print or save as PDF" gives a
+clean black-on-white copy. The public demo shows a recorded sample of this page from my PC. A
+sanitizer replaced the names, addresses, account ids and profile paths it found before the
+data left the machine. The export refuses to write the file if any of the names I give it
+survive, and I reviewed the file before committing it.
 
 ![The printable report](docs/screenshots/15-my-pc-report.png)
 
 ![The recorded sample on the public demo](docs/screenshots/16-my-pc-sample.png)
 
 **7. How often the AI was right.** I labelled the 10 investigated incidents in the sample
-myself, since I knew what had happened on the PC. All 10 were harmless. The model matched
-**1 of 10**: it called my failed-login test benign, and answered "inconclusive" for the other
-9, which were single-alert Windows noise. It raised no false alarm. For fixes, 6 of the 8
-fixes that have a version bound name a version at least that new in their steps. With 10
-cases this is anecdotal, not a benchmark. Details:
+myself, since I knew what had happened on the PC. I labelled all 10 as harmless. For two of
+them (account changes made by SYSTEM at sign-in), that is my likely explanation, not a
+confirmed one. The model matched **1 of 10**: it called my failed-login test benign and
+answered "inconclusive" for the other 9, all Windows background events. It raised no false
+alarm. For fixes, 6 of the 8 fixes that have a version bound name a version at least that new
+in their steps. With 10 cases this is anecdotal, not a benchmark. Details:
 [`docs/pc-accuracy.md`](docs/pc-accuracy.md).
 
 ---
