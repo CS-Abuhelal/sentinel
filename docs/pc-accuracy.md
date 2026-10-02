@@ -32,7 +32,7 @@ Model: ollama:qwen3:14b
 
 ## How this was measured
 
-The expected classification of each labelled incident was set by the owner, who knew what happened on the PC. The owner is also the author of this project, so these are one person's judgements. An incident counts as a match only when the model's classification equals the label. Incidents without a label are listed but not scored. With 10 labelled incidents this number is anecdotal: it shows how the model did on these cases, not how often it is right in general.
+The expected classification of each labelled incident was set by the owner, who knew what happened on the PC. The owner is also the author of this project, so these are one person's judgements. The incidents are the newest 10 the AI investigated, not a hand-picked selection. An incident counts as a match only when the model's classification equals the label. Incidents without a label are listed but not scored. With 10 labelled incidents this number is anecdotal: it shows how the model did on these cases, not how often it is right in general.
 
 ## Fix steps
 

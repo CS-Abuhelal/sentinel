@@ -192,6 +192,7 @@ def test_render_explains_the_measurement_without_overstating(labels_file: Path) 
     assert "knew what happened on the PC" in text
     assert "anecdotal" in text
     assert "2 labelled incidents" in text
+    assert "are the newest 3 the AI investigated, not a hand-picked selection." in text
 
 
 def test_render_names_the_model_that_wrote_the_verdicts(labels_file: Path) -> None:

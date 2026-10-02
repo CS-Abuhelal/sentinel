@@ -226,8 +226,16 @@ def _measured(report: Report) -> list[str]:
     text = (
         "The expected classification of each labelled incident was set by the owner, who knew "
         "what happened on the PC. The owner is also the author of this project, so these are one "
-        "person's judgements. An incident counts as a match only when the model's classification "
-        "equals the label. Incidents without a label are listed but not scored."
+        "person's judgements."
+    )
+    if len(report.rows) > 1:
+        text += (
+            f" The incidents are the newest {len(report.rows)} the AI investigated, "
+            "not a hand-picked selection."
+        )
+    text += (
+        " An incident counts as a match only when the model's classification equals the label. "
+        "Incidents without a label are listed but not scored."
     )
     if report.labelled:
         text += (
