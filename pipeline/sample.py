@@ -1,19 +1,22 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
+from urllib.parse import unquote
 
 from sqlalchemy.engine import Engine
 
 from backend.app.db import get_engine
-from backend.app.findings import advice_unit, assessment, finding_hosts
+from backend.app.findings import FIX_TOP, advice_unit, assessment, finding_hosts
 from backend.app.incidents import get_run, incident_summaries
 from backend.app.store import alert_count, latest_alerts, newest_alert_time
 from contracts.models import PcFeed, PcSample, PcStatus, ServiceState
 from pipeline.sanitize import Sanitizer, forbidden_terms, leftovers
-from pipeline.worker import FIX_TOP
 
 DEFAULT_OUT = Path("lab/wazuh/sample/pc-sample.json")
 NOTE = (
@@ -22,6 +25,9 @@ NOTE = (
 )
 RECORDED = ServiceState(reachable=True, detail="Recorded sample.")
 MAX_SCANNED_INCIDENTS = 10000
+UNICODE_ESCAPE = re.compile(r"\\u([0-9a-fA-F]{4})")
+WORD_BREAKS = re.compile(r"[\s._+]+")
+MAX_DECODES = 3
 
 
 class SampleLeak(ValueError):
@@ -81,12 +87,46 @@ def build_sample(
     )
 
 
+def _texts(doc: Any) -> Iterator[str]:
+    if isinstance(doc, dict):
+        for key, value in doc.items():
+            yield str(key)
+            yield from _texts(value)
+    elif isinstance(doc, list):
+        for value in doc:
+            yield from _texts(value)
+    elif doc is not None:
+        yield str(doc)
+
+
+def _decoded(text: str) -> str:
+    for _ in range(MAX_DECODES):
+        step = unquote(UNICODE_ESCAPE.sub(lambda found: chr(int(found.group(1), 16)), text))
+        if step == text:
+            break
+        text = step
+    return text
+
+
+def _spaced(text: str) -> str:
+    return WORD_BREAKS.sub(" ", text).strip()
+
+
+def _surviving(clean: Any, terms: list[str]) -> list[str]:
+    texts = list(_texts(clean))
+    decoded = [_decoded(text) for text in texts]
+    spaced = [_spaced(text) for text in decoded]
+    found = set(leftovers(texts + decoded, terms))
+    found.update(term for term in terms if leftovers(spaced, [_spaced(term)]))
+    return [term for term in terms if term in found]
+
+
 def sanitize_sample(sample: PcSample, terms: list[str]) -> PcSample:
     data = sample.model_dump(mode="json")
     sanitizer = Sanitizer()
     sanitizer.learn(data)
     clean = sanitizer.apply(data)
-    left = leftovers(clean, terms)
+    left = _surviving(clean, terms)
     if left:
         raise SampleLeak(f"These terms survived sanitizing: {', '.join(left)}")
     return PcSample.model_validate(clean)

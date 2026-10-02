@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 from sqlalchemy.engine import Engine
@@ -26,6 +27,17 @@ BURST = {
     "description": "Multiple Windows Logon Failures",
 }
 SCRIPT = r"powershell.exe -File C:\Users\jane.doe\x.ps1"
+FIXTURE = PcSample.model_validate_json(
+    (REPO / "contracts" / "fixtures" / "pc_sample.json").read_text(encoding="utf-8")
+)
+
+
+class Untouched:
+    def learn(self, data: Any) -> None:
+        return None
+
+    def apply(self, data: Any) -> Any:
+        return data
 
 
 def _advice(finding_id: str, priority: int) -> Recommendation:
@@ -235,3 +247,42 @@ def test_sanitizing_replaces_the_real_host_in_the_weak_spots(db: Engine) -> None
     assert clean.assessment.host != host
     [kept] = clean.assessment.recommendations
     assert kept.steps == [f"Restart {clean.assessment.host} after the update."]
+
+
+@pytest.mark.parametrize(
+    ("term", "hidden"),
+    [
+        ("Jane Doe", "Jane%20Doe"),
+        ("Jane Doe", "jane_doe"),
+        ("Jane Doe", "jane.doe"),
+        ("Jane Doe", "jane+doe"),
+        ("Jane Doe", "JANE%2520DOE"),
+        ("Jane Doe", r"Jane Doe"),
+        ("Jane Doe", r"Jane Doe"),
+        ("jane.doe", "Jane Doe"),
+        ("jane", "%6Aane"),
+    ],
+)
+def test_a_term_hidden_in_another_form_still_stops_the_export(
+    monkeypatch: pytest.MonkeyPatch, term: str, hidden: str
+) -> None:
+    monkeypatch.setattr(sample_module, "Sanitizer", Untouched)
+    sample = FIXTURE.model_copy(update={"note": f"Opened {hidden} yesterday."})
+    with pytest.raises(SampleLeak, match=term):
+        sanitize_sample(sample, [term])
+
+
+def test_a_term_hidden_in_a_dictionary_key_stops_the_export(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(sample_module, "Sanitizer", Untouched)
+    data = FIXTURE.model_dump(mode="json")
+    data["feed"]["alerts"][0]["event"]["raw"] = {"Jane%20Doe": 1}
+    with pytest.raises(SampleLeak, match="Jane Doe"):
+        sanitize_sample(PcSample.model_validate(data), ["Jane Doe"])
+
+
+def test_a_sample_without_the_term_in_any_form_passes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sample_module, "Sanitizer", Untouched)
+    sample = FIXTURE.model_copy(update={"note": "Opened Jane yesterday, and Doe the day after."})
+    assert sanitize_sample(sample, ["Jane Doe"]).note == sample.note
