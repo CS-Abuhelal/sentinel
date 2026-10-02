@@ -32,14 +32,14 @@ it.
 | `s1_benign` (exists) | benign | backup job retrying a stale password from its usual host | the source is the account's usual host |
 | `s2_attack` | malicious | 15 failures for the privileged `labadmin` from a new external IP; no success | privileged target, unknown source, no change |
 | `s2_benign` | benign | `svc_deploy` failing from the CI runner during a scheduled credential rotation | a change window covers the account and host |
-| `s3_attack` | malicious | one IP tries several accounts, crosses the threshold on `msmith`, then gets into `msmith` | the IP touched many accounts |
+| `s3_attack` | malicious | failures then success for `msmith` from `kpatel`'s workstation, an internal IP `msmith` has never used (lateral movement) | the IP belongs to another user |
 | `s3_benign` | benign | a saved-credential app on `msmith`'s own workstation retries an old password after a password change, then stops | one account, the user's usual workstation |
 | `s4_attack` | malicious | night-time failures then success for `jdoe` from an unknown IP, no change on record | unknown source, no explanation |
 | `s4_benign` | benign | failures then success for `jdoe` from a new IP during a documented VPN egress change | a change window covers the new IP |
 
 Each `scenario.yml` also lists `required_evidence`: the evidence classes a correct verdict must
 cite. Examples: `auth_history` for S1, `change_window` for the S2 and S4 twins,
-`entity_context` for S2, and `auth_history` plus `network_activity` for S3.
+`entity_context` for S2, and `auth_history` plus `network_activity` for S3. (One IP trying several accounts was rejected: every failed password raises an alert for that account, so it would create several incidents.)
 
 ## Contracts 1.8.0 (D-17)
 
@@ -50,8 +50,8 @@ cite. Examples: `auth_history` for S1, `change_window` for the S2 and S4 twins,
   `scenario.yml`, so each case is self-contained. The agent never sees the expected
   classification: `Scenario` is already never shown to the agent, and only `changes` reach a
   tool.
-- `Inventory` gains the accounts and hosts the new cases use: `svc_deploy`, `msmith`,
-  `ci-runner-01` and `ws-msmith`.
+- `Inventory` gains the accounts the new cases use: `svc_deploy`, `msmith`, `kpatel`.
+
 
 Follow the usual steps: models, version bump, fixtures, `npm run gen:types`, DECISIONS entry.
 
