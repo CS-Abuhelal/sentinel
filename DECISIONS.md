@@ -36,6 +36,22 @@ running the export again and reviewing it again.
 - Counts in the sample describe the sample, not the PC. The report and the weak-spot list say
   so.
 
+**Owner decision, 2026-10-03.** The sample names the exact unpatched versions of programs on
+the owner's PC: VS Code, Steam, MongoDB, MongoDB Compass, Node.js, Python, pip, WhatsApp and
+four npm libraries. It contains no address or name that leads to the PC. Still, someone
+targeting the owner would learn which software is out of date. The owner updates those
+programs before the branch is pushed. The sample stays a dated snapshot, and the README says
+the programs have since been updated.
+
+Done on 2026-10-03:
+- **Updated:** VS Code (1.140.0), Node.js (24.19.0), Python (3.14.7), pip (26.2.1), and the npm
+  libraries (mongoose 9.10.3, path-to-regexp 8.4.2, qs 6.16.0, body-parser 2.3.0).
+- **Removed:** MongoDB Server and MongoDB Compass, which were unused.
+- **Left as is:**
+  - One client app, by the owner's choice; the owner accepts that risk.
+  - Steam. Wazuh's match compares Steam's version number with a 2021 date, which is likely a
+    false positive, and the Steam client updates itself.
+
 ---
 
 ## D-15 — Weak spots: sources, fix steps and contracts 1.6.0 (2026-09-28, updated 2026-09-29)

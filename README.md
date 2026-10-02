@@ -121,7 +121,8 @@ the top fixes with their steps, recent incidents and totals. "Print or save as P
 clean black-on-white copy. The public demo shows a recorded sample of this page from my PC. A
 sanitizer replaced the names, addresses, account ids and profile paths it found before the
 data left the machine. The export refuses to write the file if any of the names I give it
-survive, and I reviewed the file before committing it.
+survive, and I reviewed the file before committing it. The sample is a dated snapshot: since
+recording it I have updated or removed most of the out-of-date programs it lists.
 
 ![The printable report](docs/screenshots/15-my-pc-report.png)
 
