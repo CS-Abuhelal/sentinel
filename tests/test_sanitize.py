@@ -198,7 +198,9 @@ def test_a_name_after_a_literal_escape_sequence_is_replaced() -> None:
     assert clean["full_log"] == (
         "Account Name:\\t\\tuser1\\r\\nMAC:\\t00:00:5e:00:53:01 at\\t203.0.113.1."
     )
-    assert clean["escaped"] == '{"m":"\\u0022user1\\u0022 and \\u0022user2\\u0022"}'
+    assert clean["escaped"] == (
+        '{"m":"\\u0022user1\\u0022 and \\u0022contact1@example.com\\u0022"}'
+    )
 
 
 def test_profile_paths_with_any_slash_style_are_learned() -> None:
@@ -850,7 +852,7 @@ def test_sysmon_and_account_management_user_fields_are_learned() -> None:
             "sourceUser": r"HOST-2\user1",
             "targetUser": r"NT AUTHORITY\SYSTEM",
             "parentUser": r"HOST-2\user2",
-            "userPrincipalName": "user3",
+            "userPrincipalName": "user3@example.com",
             "displayName": "%%1793",
         },
         "note": "user1 user2 user3 %%1793 HOST-2",
@@ -992,15 +994,40 @@ def test_the_local_part_of_an_email_account_is_learned() -> None:
         ),
     }
     assert _run(doc) == {
-        "targetUserName": "user2",
-        "user": r"MicrosoftAccount\user1",
-        "note": "user2 signed in as user2; user1; mail user3.",
+        "targetUserName": "user2@example.com",
+        "user": r"MicrosoftAccount\user1@example.com",
+        "note": "user2 signed in as user2@example.com; user1; mail contact1@example.com.",
     }
 
 
 def test_role_mailboxes_are_replaced_whole_without_learning_their_local_part() -> None:
     doc = {"cmd": "git clone git@github.com:zulu/repo.git", "m": "mail noreply@example.org on git"}
-    assert _run(doc) == {"cmd": "git clone user1:zulu/repo.git", "m": "mail user2 on git"}
+    assert _run(doc) == {
+        "cmd": "git clone contact1@example.com:zulu/repo.git",
+        "m": "mail contact2@example.com on git",
+    }
+
+
+def test_emails_become_email_shaped_placeholders() -> None:
+    doc = {
+        "user": "jane.doe@example.org",
+        "targetUserName": "info@example.org",
+        "hostname": "zulu-box",
+        "m": "JANE.DOE@example.org, zulu-box@example.com, secure@microsoft.com and zulu-box",
+        "encoded": "mailto:jane.doe%40example.org",
+    }
+    sanitizer = Sanitizer()
+    sanitizer.learn(doc)
+    first = sanitizer.apply(doc)
+    assert first == {
+        "user": "user1@example.com",
+        "targetUserName": "contact1@example.com",
+        "hostname": "HOST-2",
+        "m": "user1@example.com, contact3@example.com, contact2@example.com and HOST-2",
+        "encoded": "mailto:user1@example.com",
+    }
+    assert sanitizer.mapping["secure@microsoft.com"] == "contact2@example.com"
+    assert _run(first) == first
 
 
 def test_emails_in_free_text_are_replaced_whole_without_learning_their_local_part() -> None:
@@ -1016,7 +1043,7 @@ def test_emails_in_free_text_are_replaced_whole_without_learning_their_local_par
     sanitizer = Sanitizer()
     sanitizer.learn(doc)
     clean = sanitizer.apply(doc)
-    description = "Reported via user1; see user2"
+    description = "Reported via contact1@example.com; see contact2@example.com"
     assert clean == {**doc, "vulnerability": {**doc["vulnerability"], "description": description}}
     assert sorted(sanitizer.mapping) == ["cve@mitre.org", "report@snyk.io"]
 
@@ -1030,8 +1057,8 @@ def test_email_local_parts_are_learned_from_account_and_mail_fields() -> None:
         "note": "jane.doe, amy.smith, bob.jones and eve.ross; cy.lee@example.org wrote, cy.lee",
     }
     clean = _run(doc)
-    assert clean["mail"] == {"user4": 2}
-    assert clean["note"] == "user5, user1, user2 and user4; user3 wrote, cy.lee"
+    assert clean["mail"] == {"user3@example.com": 2}
+    assert clean["note"] == "user4, user1, user2 and user3; contact1@example.com wrote, cy.lee"
 
 
 def test_addresses_and_names_in_dict_keys_are_learned() -> None:
@@ -1053,7 +1080,7 @@ def test_addresses_and_names_in_dict_keys_are_learned() -> None:
         "by_user": {"user4": 2, "user1": 1},
         "by_mac": {"00:00:5e:00:53:01": 1},
         "files": {r"C:\Users\user2\x": 1},
-        "mail": {"user3": 1},
+        "mail": {"user3@example.com": 1},
         "S-1-5-21-1000000000-1000000000-1000000000-1001": "sid",
         "inventory": {"hosts": {"HOST-2": {"role": "nas"}}},
     }

@@ -200,7 +200,11 @@ LOCAL_SUFFIXES = frozenset(
 )
 MIN_NAME_LENGTH = 3
 NETBIOS_LENGTH = 15
-PLACEHOLDER = re.compile(r"^(user\d+|HOST-\d+|MY-PC)\$?$", re.IGNORECASE)
+PLACEHOLDER_EMAIL_DOMAIN = "example.com"
+PLACEHOLDER = re.compile(
+    rf"^(?:(?:user|contact)\d+(?:@{re.escape(PLACEHOLDER_EMAIL_DOMAIN)})?|HOST-\d+|MY-PC)\$?$",
+    re.IGNORECASE,
+)
 BUILTIN_ACCOUNT = re.compile(r"^(DWM|UMFD)-\d+$", re.IGNORECASE)
 INSERTION_STRING = re.compile(r"^%%\d+$")
 _ESCAPED = r"(?<=\\[nrt])|(?<=\\u[0-9A-Fa-f]{4})|(?<=%[0-9A-Fa-f]{2})"
@@ -722,16 +726,14 @@ class Sanitizer:
             placeholders[key] = placeholders[target]
         mapping = {key.upper(): placeholders[key] for key in hosts}
         users = {key: names for key, names in _groups(self._users).items() if key not in hosts}
-        emails = _groups(self._emails)
-        for key in emails:
-            local = key.rpartition("@")[0]
-            if local in placeholders or local in users:
-                continue
-            users.setdefault(key, set())
         for index, key in enumerate(sorted(users)):
             placeholders[key] = f"user{index + 1}"
-        for key in emails:
-            placeholders.setdefault(key, placeholders.get(key.rpartition("@")[0], ""))
+        emails = _groups(self._emails)
+        contacts = count(1)
+        for key in sorted(emails):
+            local = key.rpartition("@")[0]
+            name = placeholders[local] if local in users else f"contact{next(contacts)}"
+            placeholders[key] = f"{name}@{PLACEHOLDER_EMAIL_DOMAIN}"
         mapping.update({key: placeholders[key] for key in {**users, **emails}})
         self._ip_map = {
             ip: f"{PLACEHOLDER_IP_PREFIX}{index + 1}"
