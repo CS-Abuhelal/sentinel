@@ -56,6 +56,16 @@ Read this file at the start of every session.
   - `GET /api/pc/assessment` returns a `HostAssessment`. The dashboard's "Fix these first" tab
     shows it, and `?finding=` opens a finding directly.
   - A real fix is replayed from `tests/data/fix_vulnerability.qwen3-14b.json`.
+- Live advisor, phase 4 (report, public sample, accuracy, D-16):
+  - The Report tab (`?view=pc&tab=report`, `ReportPanel.tsx`) prints a one-page summary.
+  - `python -m pipeline.sample` exports a `PcSample` from the live database. It keeps the
+    newest 10 investigated incidents and every written fix, and runs it through
+    `pipeline/sanitize.py`. It refuses to write when a term in `SENTINEL_FORBIDDEN_TERMS`
+    survives. The owner's real names are only ever passed at run time, never written to a file.
+  - The owner reviews `lab/wazuh/sample/pc-sample.json` before it is committed. The Pages
+    workflow serves it, and the dashboard shows it read-only when `VITE_PC_SAMPLE_URL` is set.
+  - `python -m eval.pc_accuracy` scores the sample against the owner's labels
+    (`lab/wazuh/sample/labels.yml`) into `docs/pc-accuracy.md`.
 
 Contract changes are allowed, but always: change the model in `contracts/`,
 bump the version, regenerate fixtures and schemas, keep tests green, and log it in DECISIONS.md.
