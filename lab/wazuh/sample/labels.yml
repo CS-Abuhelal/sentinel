@@ -1,0 +1,49 @@
+"Host-based anomaly detection event (rootcheck). on my-pc @ 2026-09-29T15:14:54.862000+00:00":
+  expected: benign
+  why: >-
+    Wazuh's rootcheck flags an alternate data stream on C:\WINDOWS\tracing. Windows creates it
+    itself, and this is a known rootcheck false positive. It fires on every 12-hour scan.
+"Host-based anomaly detection event (rootcheck). on my-pc @ 2026-09-29T03:14:48.346000+00:00":
+  expected: benign
+  why: >-
+    The same C:\WINDOWS\tracing alternate data stream, found again by the scheduled 12-hour
+    rootcheck scan.
+"Windows application error event. on my-pc @ 2026-09-28T23:50:49.685000+00:00":
+  expected: benign
+  why: >-
+    tail.exe from Git for Windows stopped responding. It was running as part of the coding
+    assistant's shell commands on the PC at that time.
+"User account changed on my-pc @ 2026-09-28T20:28:00.935000+00:00":
+  expected: benign
+  why: >-
+    SYSTEM, not a person, updated the owner's local account at sign-in, and nothing else happened
+    around it. The owner does not recall changing the account, so this is the likely benign
+    explanation rather than a confirmed one.
+"SessionEnv was unavailable to handle a critical notification event. on my-pc @ 2026-09-28T20:27:52.370000+00:00":
+  expected: benign
+  why: >-
+    Startup noise: the Remote Desktop configuration service was not ready when Winlogon sent a
+    notification, at the same moment as the sign-in.
+"Multiple Windows Logon Failures on my-pc @ 2026-09-28T15:34:15.084000+00:00":
+  expected: benign
+  why: >-
+    The owner's own test: failed sign-ins for sentinel-test-nobody, an account that does not
+    exist, made on purpose to check the pipeline.
+"User account changed on my-pc @ 2026-09-28T15:14:43.780000+00:00":
+  expected: benign
+  why: >-
+    SYSTEM updated the owner's local account at sign-in, with nothing else around it. The owner
+    does not recall changing the account.
+"Host-based anomaly detection event (rootcheck). on my-pc @ 2026-09-28T15:14:42.453000+00:00":
+  expected: benign
+  why: >-
+    The C:\WINDOWS\tracing alternate data stream again, a known rootcheck false positive.
+"SessionEnv was unavailable to handle a critical notification event. on my-pc @ 2026-09-28T15:14:40.079000+00:00":
+  expected: benign
+  why: >-
+    Startup noise from the Remote Desktop configuration service at sign-in.
+"Host-based anomaly detection event (rootcheck). on my-pc @ 2026-09-27T23:17:48.761000+00:00":
+  expected: benign
+  why: >-
+    The C:\WINDOWS\tracing alternate data stream, found by the first rootcheck scans after
+    Wazuh was installed.
