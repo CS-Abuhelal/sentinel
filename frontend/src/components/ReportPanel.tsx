@@ -7,6 +7,7 @@ import type { PcFeed, PcIncidentSummary, ServiceState } from "../types/pc";
 import type { PcSample } from "../types/sample";
 
 const MAX_ITEMS = 10;
+const FEED_INCIDENTS = 100;
 const LAST_RANK = Number.MAX_SAFE_INTEGER;
 const SEVERITIES: Severity[] = ["critical", "high", "medium", "low", "info"];
 const RECORDED_DETAIL = "Recorded";
@@ -82,12 +83,15 @@ function weakSpotTotals(load: AssessmentLoad): string {
   return `${open.length} (${parts.join(", ")})`;
 }
 
-function incidentTotals(incidents: PcIncidentSummary[]): string {
+function incidentTotals(incidents: PcIncidentSummary[], recorded: boolean): string {
   if (incidents.length === 0) return "none.";
   const counts = countBy(incidents, ({ incident, classification }) =>
     incidentLabel(incident.status, classification),
   );
-  return `${incidents.length} (${counts.map(([label, count]) => `${label} ${count}`).join(", ")})`;
+  const parts = counts.map(([label, count]) => `${label} ${count}`).join(", ");
+  const total = `${incidents.length} (${parts})`;
+  if (recorded || incidents.length < FEED_INCIDENTS) return total;
+  return `${total}, counting only the newest ${FEED_INCIDENTS}`;
 }
 
 export function ReportPanel({ feed, sample }: { feed: PcFeed; sample: PcSample | null }) {
@@ -238,10 +242,16 @@ export function ReportPanel({ feed, sample }: { feed: PcFeed; sample: PcSample |
       </section>
 
       <section className="report-section">
-        <h3>Totals</h3>
+        <h3>{recorded ? "Totals in this sample" : "Totals"}</h3>
+        {recorded && (
+          <p className="small muted">
+            The sample keeps only part of the PC’s data, so these counts are for the sample, not
+            for the whole PC.
+          </p>
+        )}
         <ul className="report-lines">
           <li>Open weak spots: {weakSpotTotals(assessmentLoad)}</li>
-          <li>Incidents: {incidentTotals(feed.incidents)}</li>
+          <li>Incidents: {incidentTotals(feed.incidents, recorded)}</li>
         </ul>
       </section>
     </article>
@@ -292,7 +302,7 @@ function FixSection({ load, recorded }: { load: AssessmentLoad; recorded: boolea
                 ))}
               </ol>
             )}
-            {says && <p>Wazuh says: {says}</p>}
+            {says && <p>Wazuh says (top weak spot): {says}</p>}
           </li>
         );
       })}

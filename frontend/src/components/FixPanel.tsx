@@ -118,8 +118,9 @@ export function FixPanel({
   return (
     <div>
       <p className="lede">
-        Weak spots Wazuh found on this PC, most important first. The AI writes fix steps for the
-        top 10; SENTINEL never changes anything itself.
+        {sampled
+          ? "The weak spots kept in this recorded sample: the top 25, plus the top weak spot of each program with a fix."
+          : "Weak spots Wazuh found on this PC, most important first. The AI writes fix steps for the top 10; SENTINEL never changes anything itself."}
       </p>
       {(sync.detail || !sampled) && (
         <div className="fix-head">
@@ -205,7 +206,7 @@ function FixTable({
       <table className="pc-alerts pc-fixes">
         <thead>
           <tr>
-            <th>#</th>
+            <th title={recorded ? "Order within this sample" : undefined}>#</th>
             <th>Priority</th>
             <th>Weak spot</th>
             <th>Fix steps</th>
@@ -329,7 +330,7 @@ function FixDetail({
             {recommendation.dropped_steps.length} step(s) removed by the checker.
           </p>
         )}
-        <p className="eyebrow">Wazuh says</p>
+        <p className="eyebrow">Wazuh says (this weak spot)</p>
         <p>{finding.official_remediation ?? "—"}</p>
         <p className="eyebrow">Why it matters</p>
         <p>{finding.rationale ?? "—"}</p>
