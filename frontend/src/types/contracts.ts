@@ -177,6 +177,16 @@ export type ApprovedAt = string | null;
 export type PolicyDecisions = PolicyDecision[];
 export type Title2 = string;
 export type Description2 = string;
+export type RequiredEvidence = EvidenceClass[];
+export type ChangeId = string;
+export type Title3 = string;
+export type Start = string;
+export type End = string;
+export type Accounts = string[];
+export type Hosts = string[];
+export type SourceIps = string[];
+export type Description3 = string;
+export type Changes = ChangeWindow[];
 export type ApprovalId = string;
 export type DecisionId1 = string;
 export type ActionId2 = string;
@@ -434,6 +444,21 @@ export interface Scenario {
   title: Title2;
   description: Description2;
   expected_classification: Classification;
+  required_evidence: RequiredEvidence;
+  changes: Changes;
+}
+/**
+ * A documented, approved change. Lab context that can explain otherwise odd activity.
+ */
+export interface ChangeWindow {
+  change_id: ChangeId;
+  title: Title3;
+  start: Start;
+  end: End;
+  accounts: Accounts;
+  hosts: Hosts;
+  source_ips: SourceIps;
+  description: Description3;
 }
 /**
  * A human's answer to a decision that required approval. Nothing else can unlock one.

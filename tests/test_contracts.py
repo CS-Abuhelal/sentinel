@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+import yaml
 from pydantic import ValidationError
 
 from contracts.models import (
@@ -19,6 +20,7 @@ from contracts.models import (
     Alert,
     Approval,
     AuditRecord,
+    ChangeWindow,
     Classification,
     EntityType,
     Event,
@@ -41,9 +43,11 @@ from contracts.models import (
     ProposedAction,
     Recommendation,
     RiskScore,
+    Scenario,
     ServiceState,
     Verdict,
 )
+from tests.conftest import REPO
 
 FIXTURES = Path(__file__).resolve().parents[1] / "contracts" / "fixtures"
 
@@ -268,3 +272,27 @@ def test_pc_sample_defaults() -> None:
     sample = PcSample(created_at=datetime(2026, 9, 29, tzinfo=UTC), note="n", feed=feed)
     assert sample.assessment is None
     assert sample.runs == []
+
+
+def test_scenario_defaults_to_no_required_evidence_and_no_changes() -> None:
+    scenario = Scenario(
+        title="t", description="d", expected_classification=Classification.BENIGN
+    )
+    assert scenario.required_evidence == []
+    assert scenario.changes == []
+
+
+def test_change_window_must_not_end_before_it_starts() -> None:
+    with pytest.raises(ValidationError):
+        ChangeWindow(
+            change_id="CHG-1",
+            title="t",
+            start=datetime(2026, 9, 27, 14, 0, tzinfo=UTC),
+            end=datetime(2026, 9, 27, 13, 0, tzinfo=UTC),
+        )
+
+
+def test_scenario_files_validate() -> None:
+    for path in sorted((REPO / "lab" / "scenarios").glob("*/scenario.yml")):
+        scenario = Scenario.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
+        assert scenario.required_evidence, path

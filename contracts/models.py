@@ -12,9 +12,9 @@ from enum import StrEnum
 from typing import Annotated, Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-CONTRACT_VERSION = "1.7.0"
+CONTRACT_VERSION = "1.8.0"
 
 
 def _new_id(prefix: str) -> str:
@@ -437,12 +437,33 @@ class Inventory(SentinelModel):
         return record is not None and record.privileged
 
 
+class ChangeWindow(SentinelModel):
+    """A documented, approved change. Lab context that can explain otherwise odd activity."""
+
+    change_id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    start: datetime
+    end: datetime
+    accounts: list[str] = Field(default_factory=list)
+    hosts: list[str] = Field(default_factory=list)
+    source_ips: list[str] = Field(default_factory=list)
+    description: str = ""
+
+    @model_validator(mode="after")
+    def _ends_after_start(self) -> ChangeWindow:
+        if self.end < self.start:
+            raise ValueError("a change window cannot end before it starts")
+        return self
+
+
 class Scenario(SentinelModel):
     """A prepared lab case with its hand-labelled expected outcome. Never shown to the agent."""
 
     title: str
     description: str
     expected_classification: Classification
+    required_evidence: list[EvidenceClass] = Field(default_factory=list)
+    changes: list[ChangeWindow] = Field(default_factory=list)
 
 
 class Finding(SentinelModel):
@@ -572,6 +593,7 @@ __all__ = [
     "AuditRecord",
     "AttackChainStep",
     "AutonomyLevel",
+    "ChangeWindow",
     "Classification",
     "CommandResult",
     "Entity",
