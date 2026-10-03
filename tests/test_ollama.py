@@ -112,6 +112,51 @@ def test_final_answer_reply(content: str) -> None:
     assert fake.client().complete([], [SPEC]) == FinalAnswer(payload={"classification": "benign"})
 
 
+def _usage_client(**counts: int) -> OllamaClient:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={"message": _text_reply('{"classification": "benign"}'), "done": True, **counts},
+        )
+
+    return OllamaClient("qwen3:8b", transport=httpx.MockTransport(handler))
+
+
+def test_final_answer_carries_token_counts_and_elapsed_time() -> None:
+    client = _usage_client(prompt_eval_count=321, eval_count=45)
+    answer = client.complete([], [SPEC])
+    assert isinstance(answer, FinalAnswer)
+    assert answer.payload == {"classification": "benign"}
+    assert answer.input_tokens == 321
+    assert answer.output_tokens == 45
+    assert answer.elapsed_ms >= 0
+
+
+def test_tool_call_carries_token_counts_and_elapsed_time() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "message": _tool_reply("auth_history", {"account": "jdoe"}),
+                "prompt_eval_count": 500,
+                "eval_count": 12,
+            },
+        )
+
+    client = OllamaClient("qwen3:8b", transport=httpx.MockTransport(handler))
+    call = client.complete([], [SPEC])
+    assert isinstance(call, ToolCall)
+    assert call.input_tokens == 500
+    assert call.output_tokens == 12
+    assert call.elapsed_ms >= 0
+
+
+def test_missing_token_counts_are_zero() -> None:
+    answer = _usage_client().complete([], [SPEC])
+    assert isinstance(answer, FinalAnswer)
+    assert (answer.input_tokens, answer.output_tokens) == (0, 0)
+
+
 def test_unparseable_reply_becomes_empty_answer() -> None:
     fake = FakeOllama(_text_reply("I think this is malicious."))
     assert fake.client().complete([], [SPEC]) == FinalAnswer(payload={})

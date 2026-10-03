@@ -102,9 +102,13 @@ def investigate(
     evidence: list[EvidenceItem] = []
     refs: dict[str, str] = {}
     draft: VerdictDraft | None = None
+    input_tokens = output_tokens = model_ms = 0
 
     while True:
         response = llm.complete(messages, specs)
+        input_tokens += response.input_tokens
+        output_tokens += response.output_tokens
+        model_ms += response.elapsed_ms
         if isinstance(response, FinalAnswer):
             draft = _parse_draft(response.payload, refs)
             stop = (
@@ -156,7 +160,9 @@ def investigate(
         "produced_at": now(),
         "model_name": llm.model_name,
         "tool_calls_made": len(evidence),
-        "latency_ms": int((time.perf_counter() - started) * 1000),
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "latency_ms": model_ms if model_ms > 0 else int((time.perf_counter() - started) * 1000),
         "stop_reason": stop,
     }
     if draft is None:

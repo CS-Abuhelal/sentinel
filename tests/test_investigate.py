@@ -168,6 +168,43 @@ def test_benign_verdict_without_citations_is_accepted(s1) -> None:
     assert evidence == []
 
 
+def test_usage_is_summed_into_the_verdict(s1: S1Case) -> None:
+    model = _client(
+        {**AUTH_CALL, "input_tokens": 100, "output_tokens": 10, "elapsed_ms": 1000},
+        {**_final(), "input_tokens": 200, "output_tokens": 30, "elapsed_ms": 2000},
+    )
+    verdict, _ = investigate(s1.incident, s1.alerts, s1.events, model)
+    assert verdict.stop_reason is InvestigationStopReason.VERDICT_REACHED
+    assert verdict.input_tokens == 300
+    assert verdict.output_tokens == 40
+    assert verdict.latency_ms == 3000
+
+
+def test_usage_is_summed_when_the_investigation_falls_back(s1: S1Case) -> None:
+    model = _client(
+        {**AUTH_CALL, "input_tokens": 100, "output_tokens": 10, "elapsed_ms": 1000},
+        {
+            "type": "final",
+            "payload": {},
+            "input_tokens": 50,
+            "output_tokens": 5,
+            "elapsed_ms": 400,
+        },
+    )
+    verdict, _ = investigate(s1.incident, s1.alerts, s1.events, model)
+    assert verdict.stop_reason is InvestigationStopReason.INVALID_OUTPUT
+    assert verdict.input_tokens == 150
+    assert verdict.output_tokens == 15
+    assert verdict.latency_ms == 1400
+
+
+def test_latency_is_the_wall_time_when_the_model_reports_none(s1: S1Case) -> None:
+    verdict, _ = investigate(s1.incident, s1.alerts, s1.events, _client(AUTH_CALL, _final()))
+    assert verdict.input_tokens == 0
+    assert verdict.output_tokens == 0
+    assert verdict.latency_ms >= 0
+
+
 def test_exhausted_replay_raises(s1) -> None:
     incident, alerts, events = s1.incident, s1.alerts, s1.events
     with pytest.raises(ReplayExhausted):
