@@ -1,0 +1,30 @@
+2026-09-21T08:30:38.127082+00:00 victim-web-01 sshd[2389]: Accepted password for msmith from 10.77.0.64 port 48874 ssh2
+2026-09-21T08:30:38.135439+00:00 victim-web-01 sshd[2389]: pam_unix(sshd:session): session opened for user msmith(uid=1004) by msmith(uid=0)
+2026-09-21T16:30:38.127082+00:00 victim-web-01 sshd[2389]: pam_unix(sshd:session): session closed for user msmith
+2026-09-22T08:30:40.311691+00:00 victim-web-01 sshd[2429]: Accepted password for msmith from 10.77.0.64 port 48887 ssh2
+2026-09-22T08:30:40.317351+00:00 victim-web-01 sshd[2429]: pam_unix(sshd:session): session opened for user msmith(uid=1004) by msmith(uid=0)
+2026-09-22T16:30:40.311691+00:00 victim-web-01 sshd[2429]: pam_unix(sshd:session): session closed for user msmith
+2026-09-23T08:30:07.302818+00:00 victim-web-01 sshd[2468]: Accepted password for msmith from 10.77.0.64 port 48900 ssh2
+2026-09-23T08:30:07.309763+00:00 victim-web-01 sshd[2468]: pam_unix(sshd:session): session opened for user msmith(uid=1004) by msmith(uid=0)
+2026-09-23T16:30:07.302818+00:00 victim-web-01 sshd[2468]: pam_unix(sshd:session): session closed for user msmith
+2026-09-24T08:30:09.339505+00:00 victim-web-01 sshd[2477]: Accepted password for msmith from 10.77.0.64 port 48907 ssh2
+2026-09-24T08:30:09.347684+00:00 victim-web-01 sshd[2477]: pam_unix(sshd:session): session opened for user msmith(uid=1004) by msmith(uid=0)
+2026-09-24T16:30:09.339505+00:00 victim-web-01 sshd[2477]: pam_unix(sshd:session): session closed for user msmith
+2026-09-25T08:30:13.167245+00:00 victim-web-01 sshd[2515]: Accepted password for msmith from 10.77.0.64 port 48920 ssh2
+2026-09-25T08:30:13.171578+00:00 victim-web-01 sshd[2515]: pam_unix(sshd:session): session opened for user msmith(uid=1004) by msmith(uid=0)
+2026-09-25T16:30:13.167245+00:00 victim-web-01 sshd[2515]: pam_unix(sshd:session): session closed for user msmith
+2026-09-26T08:30:37.304672+00:00 victim-web-01 sshd[2546]: Accepted password for msmith from 10.77.0.64 port 48927 ssh2
+2026-09-26T08:30:37.309006+00:00 victim-web-01 sshd[2546]: pam_unix(sshd:session): session opened for user msmith(uid=1004) by msmith(uid=0)
+2026-09-26T16:30:37.304672+00:00 victim-web-01 sshd[2546]: pam_unix(sshd:session): session closed for user msmith
+2026-09-27T08:31:00.362629+00:00 victim-web-01 sshd[2569]: Failed password for msmith from 10.77.0.64 port 48940 ssh2
+2026-09-27T08:31:40.305650+00:00 victim-web-01 sshd[2570]: Failed password for msmith from 10.77.0.64 port 48941 ssh2
+2026-09-27T08:32:20.183088+00:00 victim-web-01 sshd[2571]: Failed password for msmith from 10.77.0.64 port 48943 ssh2
+2026-09-27T08:33:00.313368+00:00 victim-web-01 sshd[2572]: Failed password for msmith from 10.77.0.64 port 48945 ssh2
+2026-09-27T08:33:40.323960+00:00 victim-web-01 sshd[2573]: Failed password for msmith from 10.77.0.64 port 48946 ssh2
+2026-09-27T08:34:20.175955+00:00 victim-web-01 sshd[2574]: Failed password for msmith from 10.77.0.64 port 48948 ssh2
+2026-09-27T08:35:00.445682+00:00 victim-web-01 sshd[2575]: Failed password for msmith from 10.77.0.64 port 48949 ssh2
+2026-09-27T08:35:40.404702+00:00 victim-web-01 sshd[2576]: Failed password for msmith from 10.77.0.64 port 48952 ssh2
+2026-09-27T08:36:20.292658+00:00 victim-web-01 sshd[2577]: Failed password for msmith from 10.77.0.64 port 48954 ssh2
+2026-09-27T08:37:00.305798+00:00 victim-web-01 sshd[2578]: Failed password for msmith from 10.77.0.64 port 48955 ssh2
+2026-09-27T08:45:00.466279+00:00 victim-web-01 sshd[2579]: Accepted password for msmith from 10.77.0.64 port 48957 ssh2
+2026-09-27T08:45:00.470997+00:00 victim-web-01 sshd[2579]: pam_unix(sshd:session): session opened for user msmith(uid=1004) by msmith(uid=0)

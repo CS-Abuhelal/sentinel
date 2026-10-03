@@ -1,0 +1,15 @@
+title: Password guessing during an unrelated maintenance window
+description: >-
+  An address that has never logged in to this host makes 13 failed SSH password attempts against
+  jdoe at 02:40, 15 seconds apart, then logs in with the guessed password at 02:44. A change
+  window (CHG-2060) covers that time, but it is for patching victim-db-01. It does not mention
+  this host, the jdoe account or the source address, so it does not explain the activity.
+expected_classification: malicious
+required_evidence: [auth_history, change_window]
+changes:
+  - change_id: CHG-2060
+    title: Patch victim-db-01
+    start: "2026-09-28T01:00:00Z"
+    end: "2026-09-28T04:00:00Z"
+    hosts: [victim-db-01]
+    description: Monthly patching.

@@ -1,0 +1,39 @@
+2026-09-21T09:00:28.349295+00:00 victim-web-01 sshd[2303]: Accepted password for jdoe from 10.77.0.50 port 46748 ssh2
+2026-09-21T09:00:28.355028+00:00 victim-web-01 sshd[2303]: pam_unix(sshd:session): session opened for user jdoe(uid=1001) by jdoe(uid=0)
+2026-09-21T17:00:28.349295+00:00 victim-web-01 sshd[2303]: pam_unix(sshd:session): session closed for user jdoe
+2026-09-22T09:00:23.398325+00:00 victim-web-01 sshd[2316]: Accepted password for jdoe from 10.77.0.50 port 46755 ssh2
+2026-09-22T09:00:23.402726+00:00 victim-web-01 sshd[2316]: pam_unix(sshd:session): session opened for user jdoe(uid=1001) by jdoe(uid=0)
+2026-09-22T10:00:14.469469+00:00 victim-web-01 sshd[2339]: Accepted password for labadmin from 10.77.0.5 port 46768 ssh2
+2026-09-22T10:00:14.472845+00:00 victim-web-01 sshd[2339]: pam_unix(sshd:session): session opened for user labadmin(uid=1000) by labadmin(uid=0)
+2026-09-22T17:00:23.398325+00:00 victim-web-01 sshd[2316]: pam_unix(sshd:session): session closed for user jdoe
+2026-09-22T18:00:14.469469+00:00 victim-web-01 sshd[2339]: pam_unix(sshd:session): session closed for user labadmin
+2026-09-23T09:00:12.252853+00:00 victim-web-01 sshd[2351]: Accepted password for jdoe from 10.77.0.50 port 46781 ssh2
+2026-09-23T09:00:12.260510+00:00 victim-web-01 sshd[2351]: pam_unix(sshd:session): session opened for user jdoe(uid=1001) by jdoe(uid=0)
+2026-09-23T17:00:12.252853+00:00 victim-web-01 sshd[2351]: pam_unix(sshd:session): session closed for user jdoe
+2026-09-24T09:00:19.328893+00:00 victim-web-01 sshd[2384]: Accepted password for jdoe from 10.77.0.50 port 46788 ssh2
+2026-09-24T09:00:19.332687+00:00 victim-web-01 sshd[2384]: pam_unix(sshd:session): session opened for user jdoe(uid=1001) by jdoe(uid=0)
+2026-09-24T10:00:14.382867+00:00 victim-web-01 sshd[2421]: Accepted password for labadmin from 10.77.0.5 port 46795 ssh2
+2026-09-24T10:00:14.389959+00:00 victim-web-01 sshd[2421]: pam_unix(sshd:session): session opened for user labadmin(uid=1000) by labadmin(uid=0)
+2026-09-24T17:00:19.328893+00:00 victim-web-01 sshd[2384]: pam_unix(sshd:session): session closed for user jdoe
+2026-09-24T18:00:14.382867+00:00 victim-web-01 sshd[2421]: pam_unix(sshd:session): session closed for user labadmin
+2026-09-25T09:00:33.335022+00:00 victim-web-01 sshd[2453]: Accepted password for jdoe from 10.77.0.50 port 46802 ssh2
+2026-09-25T09:00:33.341393+00:00 victim-web-01 sshd[2453]: pam_unix(sshd:session): session opened for user jdoe(uid=1001) by jdoe(uid=0)
+2026-09-25T17:00:33.335022+00:00 victim-web-01 sshd[2453]: pam_unix(sshd:session): session closed for user jdoe
+2026-09-26T09:00:06.231367+00:00 victim-web-01 sshd[2493]: Accepted password for jdoe from 10.77.0.50 port 46809 ssh2
+2026-09-26T09:00:06.239138+00:00 victim-web-01 sshd[2493]: pam_unix(sshd:session): session opened for user jdoe(uid=1001) by jdoe(uid=0)
+2026-09-26T17:00:06.231367+00:00 victim-web-01 sshd[2493]: pam_unix(sshd:session): session closed for user jdoe
+2026-09-27T03:40:00.313650+00:00 victim-web-01 sshd[2510]: Failed password for labadmin from 198.51.100.23 port 46822 ssh2
+2026-09-27T03:40:20.136456+00:00 victim-web-01 sshd[2511]: Failed password for labadmin from 198.51.100.23 port 46824 ssh2
+2026-09-27T03:40:40.180564+00:00 victim-web-01 sshd[2512]: Failed password for labadmin from 198.51.100.23 port 46826 ssh2
+2026-09-27T03:41:00.338527+00:00 victim-web-01 sshd[2513]: Failed password for labadmin from 198.51.100.23 port 46829 ssh2
+2026-09-27T03:41:20.376856+00:00 victim-web-01 sshd[2514]: Failed password for labadmin from 198.51.100.23 port 46830 ssh2
+2026-09-27T03:41:40.135019+00:00 victim-web-01 sshd[2515]: Failed password for labadmin from 198.51.100.23 port 46833 ssh2
+2026-09-27T03:42:00.476246+00:00 victim-web-01 sshd[2516]: Failed password for labadmin from 198.51.100.23 port 46834 ssh2
+2026-09-27T03:42:20.443154+00:00 victim-web-01 sshd[2517]: Failed password for labadmin from 198.51.100.23 port 46835 ssh2
+2026-09-27T03:42:40.207374+00:00 victim-web-01 sshd[2518]: Failed password for labadmin from 198.51.100.23 port 46837 ssh2
+2026-09-27T03:43:00.319471+00:00 victim-web-01 sshd[2519]: Failed password for labadmin from 198.51.100.23 port 46839 ssh2
+2026-09-27T03:43:20.465869+00:00 victim-web-01 sshd[2520]: Failed password for labadmin from 198.51.100.23 port 46840 ssh2
+2026-09-27T03:43:40.227196+00:00 victim-web-01 sshd[2521]: Failed password for labadmin from 198.51.100.23 port 46843 ssh2
+2026-09-27T03:44:00.474883+00:00 victim-web-01 sshd[2522]: Failed password for labadmin from 198.51.100.23 port 46844 ssh2
+2026-09-27T03:44:20.150682+00:00 victim-web-01 sshd[2523]: Failed password for labadmin from 198.51.100.23 port 46847 ssh2
+2026-09-27T03:44:40.408510+00:00 victim-web-01 sshd[2524]: Failed password for labadmin from 198.51.100.23 port 46849 ssh2
