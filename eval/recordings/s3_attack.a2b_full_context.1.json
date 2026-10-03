@@ -1,0 +1,51 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "final",
+      "payload": {
+        "classification": "malicious",
+        "confidence": 0.85,
+        "summary": "The incident involves a brute-force attack on the account msmith, with 11 failed login attempts followed by a successful login from an IP address (10.77.0.61) that had no prior successful logins in the 30 days before the incident. This pattern is consistent with an attacker attempting to guess the password.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "The attacker used brute-force techniques to guess the password of the account msmith, as evidenced by the 11 failed login attempts followed by a successful login from the IP address 10.77.0.61.",
+            "evidence": [
+              "E1"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1"
+        ],
+        "risk_factors": [
+          "Unusual source IP with no prior successful logins",
+          "Brute-force attack pattern"
+        ],
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "msmith",
+            "justification": "The account msmith was successfully logged into after a series of failed attempts from an unusual source IP, indicating a potential compromise.",
+            "reversible": true,
+            "evidence": [
+              "E1"
+            ]
+          }
+        ]
+      },
+      "input_tokens": 2864,
+      "output_tokens": 351,
+      "elapsed_ms": 27488
+    }
+  ]
+}

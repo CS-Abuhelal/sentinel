@@ -1,0 +1,54 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "final",
+      "payload": {
+        "classification": "malicious",
+        "confidence": 0.85,
+        "summary": "There is evidence of a brute force attack targeting the labadmin account on the host victim-web-01 from the IP address 198.51.100.23. The attack involved 15 failed login attempts within a short time window, and no documented changes explain this activity. The account is protected and privileged, making it a high-value target.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "An attacker attempted to gain access to the labadmin account on the host victim-web-01 by performing a brute force attack using the IP address 198.51.100.23.",
+            "evidence": [
+              "E1"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1",
+          "E2",
+          "E3",
+          "E4"
+        ],
+        "risk_factors": [
+          "The account is protected and privileged, making it a high-value target.",
+          "The attack involved multiple failed login attempts within a short time window, indicating a potential brute force attack."
+        ],
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "labadmin",
+            "justification": "The account is being targeted by a brute force attack, and it is a protected and privileged account. Disabling the account can prevent further unauthorized access.",
+            "reversible": true,
+            "evidence": [
+              "E1"
+            ]
+          }
+        ]
+      },
+      "input_tokens": 2692,
+      "output_tokens": 389,
+      "elapsed_ms": 28955
+    }
+  ]
+}

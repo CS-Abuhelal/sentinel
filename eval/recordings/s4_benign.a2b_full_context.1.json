@@ -1,0 +1,41 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "final",
+      "payload": {
+        "classification": "benign",
+        "confidence": 0.8,
+        "summary": "The incident involves a brute force attack on the account jdoe, but the successful login occurred after a documented change involving a password reset. This suggests that the successful login was likely due to the user updating their password following the change, rather than an attacker gaining access.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "An attacker attempted to brute force the account jdoe using the source IP 10.80.0.15.",
+            "evidence": [
+              "E1"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1",
+          "E4"
+        ],
+        "risk_factors": [
+          "Brute force attack detected",
+          "Successful login after a documented password reset"
+        ],
+        "proposed_actions": []
+      },
+      "input_tokens": 2999,
+      "output_tokens": 235,
+      "elapsed_ms": 20329
+    }
+  ]
+}

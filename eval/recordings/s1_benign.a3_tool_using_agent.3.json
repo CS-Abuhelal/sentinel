@@ -1,0 +1,86 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "tool_call",
+      "tool": "auth_history",
+      "args": {
+        "lookback_hours": 24,
+        "account": "svc_backup"
+      },
+      "input_tokens": 1897,
+      "output_tokens": 30,
+      "elapsed_ms": 53850
+    },
+    {
+      "type": "tool_call",
+      "tool": "source_ip_history",
+      "args": {
+        "ip": "10.77.0.20",
+        "lookback_hours": 24
+      },
+      "input_tokens": 2435,
+      "output_tokens": 36,
+      "elapsed_ms": 3696
+    },
+    {
+      "type": "tool_call",
+      "tool": "account_context",
+      "args": {
+        "account": "svc_backup"
+      },
+      "input_tokens": 2767,
+      "output_tokens": 20,
+      "elapsed_ms": 1805
+    },
+    {
+      "type": "tool_call",
+      "tool": "change_windows",
+      "args": {
+        "account": "svc_backup",
+        "hours_around": 2
+      },
+      "input_tokens": 2854,
+      "output_tokens": 26,
+      "elapsed_ms": 1972
+    },
+    {
+      "type": "final",
+      "payload": {
+        "classification": "benign",
+        "confidence": 0.7,
+        "summary": "The incident involves a successful login to the svc_backup account on victim-web-01 after 12 failed attempts from the source IP 10.77.0.20. The source IP is known and has been used successfully by the account in the past. There is no evidence of a documented change that could explain the activity, but the successful login after multiple failures may be due to a legitimate user attempting to log in after a password change or a temporary issue.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "The alert indicates a brute force attack with multiple failed login attempts followed by a successful login.",
+            "evidence": [
+              "E1"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1",
+          "E2",
+          "E3",
+          "E4"
+        ],
+        "risk_factors": [
+          "Multiple failed login attempts followed by a successful login",
+          "No documented change covers the time of the incident"
+        ],
+        "proposed_actions": []
+      },
+      "input_tokens": 3031,
+      "output_tokens": 283,
+      "elapsed_ms": 20740
+    }
+  ]
+}

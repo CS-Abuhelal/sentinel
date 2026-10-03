@@ -1,0 +1,100 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "tool_call",
+      "tool": "auth_history",
+      "args": {
+        "account": "jdoe",
+        "lookback_hours": 24
+      },
+      "input_tokens": 1923,
+      "output_tokens": 31,
+      "elapsed_ms": 3505
+    },
+    {
+      "type": "tool_call",
+      "tool": "source_ip_history",
+      "args": {
+        "lookback_hours": 24,
+        "ip": "198.51.100.77"
+      },
+      "input_tokens": 2473,
+      "output_tokens": 39,
+      "elapsed_ms": 3481
+    },
+    {
+      "type": "tool_call",
+      "tool": "account_context",
+      "args": {
+        "account": "jdoe"
+      },
+      "input_tokens": 2816,
+      "output_tokens": 21,
+      "elapsed_ms": 1858
+    },
+    {
+      "type": "tool_call",
+      "tool": "change_windows",
+      "args": {
+        "hours_around": 2,
+        "account": "jdoe"
+      },
+      "input_tokens": 2902,
+      "output_tokens": 27,
+      "elapsed_ms": 2029
+    },
+    {
+      "type": "final",
+      "payload": {
+        "classification": "malicious",
+        "confidence": 0.9,
+        "summary": "The account 'jdoe' experienced 13 failed login attempts followed by a successful login from the IP address '198.51.100.77', which has no prior successful login history. This pattern is consistent with a brute force attack. The account is a developer and not privileged, which increases the risk of compromise.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "The attacker used brute force to guess the password of the account 'jdoe' from the IP address '198.51.100.77'.",
+            "evidence": [
+              "E1",
+              "E2"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1",
+          "E2",
+          "E3",
+          "E4"
+        ],
+        "risk_factors": [
+          "The IP address has no prior successful login history",
+          "The account is not privileged but is a developer",
+          "No documented changes explain the activity"
+        ],
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "jdoe",
+            "justification": "The account 'jdoe' experienced a brute force attack, indicating a potential compromise. Disabling the account will prevent further unauthorized access.",
+            "reversible": true,
+            "evidence": [
+              "E1",
+              "E2"
+            ]
+          }
+        ]
+      },
+      "input_tokens": 3081,
+      "output_tokens": 376,
+      "elapsed_ms": 25775
+    }
+  ]
+}

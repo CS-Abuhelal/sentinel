@@ -1,0 +1,40 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "final",
+      "payload": {
+        "classification": "benign",
+        "confidence": 0.6,
+        "summary": "The incident involves a service account (svc_backup) on the host 'victim-web-01' with multiple failed login attempts followed by a successful login from the source IP '10.77.0.20'. The source IP is known to the account and has had successful logins in the past. No documented changes explain the activity, but the behavior could be attributed to a script or service using an outdated password or a person mistyping their password.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "Multiple failed login attempts were made from the source IP '10.77.0.20' before a successful login occurred. This is consistent with a brute force attack.",
+            "evidence": [
+              "E1"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1"
+        ],
+        "risk_factors": [
+          "Multiple failed login attempts followed by a successful login",
+          "Source IP is known to the account"
+        ],
+        "proposed_actions": []
+      },
+      "input_tokens": 2646,
+      "output_tokens": 286,
+      "elapsed_ms": 43760
+    }
+  ]
+}

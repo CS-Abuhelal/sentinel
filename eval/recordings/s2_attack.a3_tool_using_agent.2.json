@@ -1,0 +1,101 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "tool_call",
+      "tool": "auth_history",
+      "args": {
+        "account": "labadmin",
+        "lookback_hours": 1
+      },
+      "input_tokens": 1945,
+      "output_tokens": 29,
+      "elapsed_ms": 3389
+    },
+    {
+      "type": "tool_call",
+      "tool": "source_ip_history",
+      "args": {
+        "ip": "198.51.100.23",
+        "lookback_hours": 1
+      },
+      "input_tokens": 2358,
+      "output_tokens": 38,
+      "elapsed_ms": 3065
+    },
+    {
+      "type": "tool_call",
+      "tool": "account_context",
+      "args": {
+        "account": "labadmin"
+      },
+      "input_tokens": 2698,
+      "output_tokens": 20,
+      "elapsed_ms": 1767
+    },
+    {
+      "type": "tool_call",
+      "tool": "change_windows",
+      "args": {
+        "hours_around": 1,
+        "account": "labadmin"
+      },
+      "input_tokens": 2787,
+      "output_tokens": 26,
+      "elapsed_ms": 1896
+    },
+    {
+      "type": "final",
+      "payload": {
+        "classification": "malicious",
+        "confidence": 0.95,
+        "summary": "The account 'labadmin' experienced 15 failed login attempts from the IP address '198.51.100.23' within a short time frame, indicating a potential brute force attack. The account is privileged and protected, making it a high-value target. No documented changes explain this activity.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "The attacker attempted to brute force the password for the 'labadmin' account using the IP address '198.51.100.23'.",
+            "evidence": [
+              "E1",
+              "E2"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1",
+          "E2",
+          "E3",
+          "E4"
+        ],
+        "risk_factors": [
+          "Privileged account targeted",
+          "No documented changes explain the activity",
+          "High number of failed login attempts"
+        ],
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "labadmin",
+            "justification": "The account 'labadmin' is being targeted with a brute force attack, and it is a privileged and protected account. Disabling the account can prevent further unauthorized access.",
+            "reversible": true,
+            "evidence": [
+              "E1",
+              "E2",
+              "E3"
+            ]
+          }
+        ]
+      },
+      "input_tokens": 2964,
+      "output_tokens": 370,
+      "elapsed_ms": 25544
+    }
+  ]
+}

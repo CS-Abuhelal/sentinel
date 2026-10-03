@@ -1,0 +1,40 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "final",
+      "payload": {
+        "classification": "benign",
+        "confidence": 0.6,
+        "summary": "The incident involves a service account, svc_backup, which has a history of successful logins from the source IP 10.77.0.20. The account is a backup service account and is not protected. The activity does not appear to be malicious as the source IP is known and the account is used for legitimate purposes.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "The alert indicates a brute force attack on the svc_backup account, but the source IP is known and the account is used for legitimate purposes.",
+            "evidence": [
+              "E1"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1"
+        ],
+        "risk_factors": [
+          "The source IP is known and has a history of successful logins.",
+          "The account is a backup service account and is not protected."
+        ],
+        "proposed_actions": []
+      },
+      "input_tokens": 2658,
+      "output_tokens": 260,
+      "elapsed_ms": 23302
+    }
+  ]
+}

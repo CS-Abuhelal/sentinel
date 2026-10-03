@@ -1,0 +1,54 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "final",
+      "payload": {
+        "classification": "malicious",
+        "confidence": 0.85,
+        "summary": "The account 'jdoe' experienced a brute force attack from the IP address 198.51.100.77, which had no prior successful logins in the 30 days before the incident. The successful login occurred after 13 consecutive failures, indicating a potential compromise. The account is a developer with no privileged access, and there are no documented changes that explain this activity.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "An attacker used brute force techniques to guess the password of the account 'jdoe' from the IP address 198.51.100.77.",
+            "evidence": [
+              "E1"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1",
+          "E2",
+          "E3",
+          "E4"
+        ],
+        "risk_factors": [
+          "Brute force attack on a developer account",
+          "Unusual source IP with no prior successful logins"
+        ],
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "jdoe",
+            "justification": "The account 'jdoe' was the target of a brute force attack, and there is no evidence of a legitimate reason for the activity. Disabling the account will prevent further unauthorized access.",
+            "reversible": true,
+            "evidence": [
+              "E1"
+            ]
+          }
+        ]
+      },
+      "input_tokens": 2816,
+      "output_tokens": 385,
+      "elapsed_ms": 46812
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "final",
+      "payload": {
+        "classification": "benign",
+        "confidence": 0.6,
+        "summary": "The incident involves a series of failed SSH login attempts followed by a successful login for the account msmith on the host victim-web-01 from the source IP 10.77.0.64. However, the source IP is known and has been used by the account in the past, and there is no documented change that explains the activity. The successful login occurred after 10 consecutive failures, which could be due to a brute force attack, but the account is not privileged, and the activity does not appear to be malicious.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "The incident involves a brute force attack on the account msmith on the host victim-web-01 from the source IP 10.77.0.64.",
+            "evidence": [
+              "E1"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1"
+        ],
+        "risk_factors": [
+          "The source IP is known and has been used by the account in the past.",
+          "The account is not privileged.",
+          "There is no documented change that explains the activity."
+        ],
+        "proposed_actions": []
+      },
+      "input_tokens": 2623,
+      "output_tokens": 317,
+      "elapsed_ms": 25557
+    }
+  ]
+}

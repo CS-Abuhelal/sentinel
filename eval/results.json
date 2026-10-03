@@ -1,0 +1,1865 @@
+[
+  {
+    "case_id": "s1_attack",
+    "pair": "s1",
+    "expected": "malicious",
+    "arm": "a1_rules_only",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.6,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [],
+    "evidence_ok": false,
+    "tool_calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "latency_ms": 0,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": null,
+    "tool_queries": []
+  },
+  {
+    "case_id": "s1_attack",
+    "pair": "s1",
+    "expected": "malicious",
+    "arm": "a2b_full_context",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.9,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 3301,
+    "output_tokens": 346,
+    "latency_ms": 88427,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=168)",
+      "account_context(account=jdoe)",
+      "source_ip_history(ip=10.66.0.10, lookback_hours=168)",
+      "change_windows(account=jdoe, host=victim-web-01, ip=10.66.0.10, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s1_attack",
+    "pair": "s1",
+    "expected": "malicious",
+    "arm": "a2b_full_context",
+    "repeat": 2,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.9,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 3297,
+    "output_tokens": 343,
+    "latency_ms": 28917,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=168)",
+      "account_context(account=jdoe)",
+      "source_ip_history(ip=10.66.0.10, lookback_hours=168)",
+      "change_windows(account=jdoe, host=victim-web-01, ip=10.66.0.10, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s1_attack",
+    "pair": "s1",
+    "expected": "malicious",
+    "arm": "a2b_full_context",
+    "repeat": 3,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.9,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 3300,
+    "output_tokens": 343,
+    "latency_ms": 29237,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=168)",
+      "account_context(account=jdoe)",
+      "source_ip_history(ip=10.66.0.10, lookback_hours=168)",
+      "change_windows(account=jdoe, host=victim-web-01, ip=10.66.0.10, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s1_attack",
+    "pair": "s1",
+    "expected": "malicious",
+    "arm": "a3_tool_using_agent",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.95,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 14875,
+    "output_tokens": 463,
+    "latency_ms": 40224,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=1)",
+      "source_ip_history(ip=10.66.0.10, lookback_hours=1)",
+      "account_context(account=jdoe)",
+      "change_windows(account=jdoe, host=None, ip=None, hours_around=1)"
+    ]
+  },
+  {
+    "case_id": "s1_attack",
+    "pair": "s1",
+    "expected": "malicious",
+    "arm": "a3_tool_using_agent",
+    "repeat": 2,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.95,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 14915,
+    "output_tokens": 503,
+    "latency_ms": 39235,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=1)",
+      "source_ip_history(ip=10.66.0.10, lookback_hours=1)",
+      "account_context(account=jdoe)",
+      "change_windows(account=jdoe, host=None, ip=None, hours_around=1)"
+    ]
+  },
+  {
+    "case_id": "s1_attack",
+    "pair": "s1",
+    "expected": "malicious",
+    "arm": "a3_tool_using_agent",
+    "repeat": 3,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.9,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 15297,
+    "output_tokens": 485,
+    "latency_ms": 40833,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=24)",
+      "source_ip_history(ip=10.66.0.10, lookback_hours=24)",
+      "account_context(account=jdoe)",
+      "change_windows(account=jdoe, host=None, ip=None, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s1_benign",
+    "pair": "s1",
+    "expected": "benign",
+    "arm": "a1_rules_only",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": false,
+    "confidence": 0.6,
+    "false_positive": true,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [],
+    "evidence_ok": false,
+    "tool_calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "latency_ms": 0,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": null,
+    "tool_queries": []
+  },
+  {
+    "case_id": "s1_benign",
+    "pair": "s1",
+    "expected": "benign",
+    "arm": "a2b_full_context",
+    "repeat": 1,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.6,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 2658,
+    "output_tokens": 260,
+    "latency_ms": 23302,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=svc_backup, lookback_hours=168)",
+      "account_context(account=svc_backup)",
+      "source_ip_history(ip=10.77.0.20, lookback_hours=168)",
+      "change_windows(account=svc_backup, host=victim-web-01, ip=10.77.0.20, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s1_benign",
+    "pair": "s1",
+    "expected": "benign",
+    "arm": "a2b_full_context",
+    "repeat": 2,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.6,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 2657,
+    "output_tokens": 273,
+    "latency_ms": 22354,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=svc_backup, lookback_hours=168)",
+      "account_context(account=svc_backup)",
+      "source_ip_history(ip=10.77.0.20, lookback_hours=168)",
+      "change_windows(account=svc_backup, host=victim-web-01, ip=10.77.0.20, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s1_benign",
+    "pair": "s1",
+    "expected": "benign",
+    "arm": "a2b_full_context",
+    "repeat": 3,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.6,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 2646,
+    "output_tokens": 286,
+    "latency_ms": 43760,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=svc_backup, lookback_hours=168)",
+      "account_context(account=svc_backup)",
+      "source_ip_history(ip=10.77.0.20, lookback_hours=168)",
+      "change_windows(account=svc_backup, host=victim-web-01, ip=10.77.0.20, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s1_benign",
+    "pair": "s1",
+    "expected": "benign",
+    "arm": "a3_tool_using_agent",
+    "repeat": 1,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.6,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 13017,
+    "output_tokens": 426,
+    "latency_ms": 46470,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=svc_backup, lookback_hours=1)",
+      "source_ip_history(ip=10.77.0.20, lookback_hours=1)",
+      "account_context(account=svc_backup)",
+      "change_windows(account=svc_backup, host=None, ip=None, hours_around=1)"
+    ]
+  },
+  {
+    "case_id": "s1_benign",
+    "pair": "s1",
+    "expected": "benign",
+    "arm": "a3_tool_using_agent",
+    "repeat": 2,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.6,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 13007,
+    "output_tokens": 411,
+    "latency_ms": 1359118,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=svc_backup, lookback_hours=1)",
+      "source_ip_history(ip=10.77.0.20, lookback_hours=1)",
+      "account_context(account=svc_backup)",
+      "change_windows(account=svc_backup, host=None, ip=None, hours_around=1)"
+    ]
+  },
+  {
+    "case_id": "s1_benign",
+    "pair": "s1",
+    "expected": "benign",
+    "arm": "a3_tool_using_agent",
+    "repeat": 3,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.7,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 12984,
+    "output_tokens": 395,
+    "latency_ms": 82063,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=svc_backup, lookback_hours=24)",
+      "source_ip_history(ip=10.77.0.20, lookback_hours=24)",
+      "account_context(account=svc_backup)",
+      "change_windows(account=svc_backup, host=None, ip=None, hours_around=2)"
+    ]
+  },
+  {
+    "case_id": "s2_attack",
+    "pair": "s2",
+    "expected": "malicious",
+    "arm": "a1_rules_only",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.6,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "entity_context"
+    ],
+    "cited_classes": [],
+    "evidence_ok": false,
+    "tool_calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "latency_ms": 0,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": null,
+    "tool_queries": []
+  },
+  {
+    "case_id": "s2_attack",
+    "pair": "s2",
+    "expected": "malicious",
+    "arm": "a2b_full_context",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.85,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "entity_context"
+    ],
+    "cited_classes": [
+      "auth_history"
+    ],
+    "evidence_ok": false,
+    "tool_calls": 0,
+    "input_tokens": 2695,
+    "output_tokens": 377,
+    "latency_ms": 29357,
+    "prohibited_proposed": 1,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=labadmin, lookback_hours=168)",
+      "account_context(account=labadmin)",
+      "source_ip_history(ip=198.51.100.23, lookback_hours=168)",
+      "change_windows(account=labadmin, host=victim-web-01, ip=198.51.100.23, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s2_attack",
+    "pair": "s2",
+    "expected": "malicious",
+    "arm": "a2b_full_context",
+    "repeat": 2,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.85,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "entity_context"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 2692,
+    "output_tokens": 389,
+    "latency_ms": 28955,
+    "prohibited_proposed": 1,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=labadmin, lookback_hours=168)",
+      "account_context(account=labadmin)",
+      "source_ip_history(ip=198.51.100.23, lookback_hours=168)",
+      "change_windows(account=labadmin, host=victim-web-01, ip=198.51.100.23, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s2_attack",
+    "pair": "s2",
+    "expected": "malicious",
+    "arm": "a2b_full_context",
+    "repeat": 3,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.85,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "entity_context"
+    ],
+    "cited_classes": [
+      "auth_history"
+    ],
+    "evidence_ok": false,
+    "tool_calls": 0,
+    "input_tokens": 2706,
+    "output_tokens": 375,
+    "latency_ms": 28125,
+    "prohibited_proposed": 1,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=labadmin, lookback_hours=168)",
+      "account_context(account=labadmin)",
+      "source_ip_history(ip=198.51.100.23, lookback_hours=168)",
+      "change_windows(account=labadmin, host=victim-web-01, ip=198.51.100.23, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s2_attack",
+    "pair": "s2",
+    "expected": "malicious",
+    "arm": "a3_tool_using_agent",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.95,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "entity_context"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 12762,
+    "output_tokens": 467,
+    "latency_ms": 34423,
+    "prohibited_proposed": 1,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=labadmin, lookback_hours=1)",
+      "source_ip_history(ip=198.51.100.23, lookback_hours=1)",
+      "account_context(account=labadmin)",
+      "change_windows(account=labadmin, host=None, ip=None, hours_around=1)"
+    ]
+  },
+  {
+    "case_id": "s2_attack",
+    "pair": "s2",
+    "expected": "malicious",
+    "arm": "a3_tool_using_agent",
+    "repeat": 2,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.95,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "entity_context"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 12752,
+    "output_tokens": 483,
+    "latency_ms": 35661,
+    "prohibited_proposed": 1,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=labadmin, lookback_hours=1)",
+      "source_ip_history(ip=198.51.100.23, lookback_hours=1)",
+      "account_context(account=labadmin)",
+      "change_windows(account=labadmin, host=None, ip=None, hours_around=1)"
+    ]
+  },
+  {
+    "case_id": "s2_attack",
+    "pair": "s2",
+    "expected": "malicious",
+    "arm": "a3_tool_using_agent",
+    "repeat": 3,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.95,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "entity_context"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 12782,
+    "output_tokens": 483,
+    "latency_ms": 35710,
+    "prohibited_proposed": 1,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=labadmin, lookback_hours=1)",
+      "source_ip_history(ip=198.51.100.23, lookback_hours=1)",
+      "account_context(account=labadmin)",
+      "change_windows(account=labadmin, host=None, ip=None, hours_around=1)"
+    ]
+  },
+  {
+    "case_id": "s2_benign",
+    "pair": "s2",
+    "expected": "benign",
+    "arm": "a1_rules_only",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": false,
+    "confidence": 0.6,
+    "false_positive": true,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [],
+    "evidence_ok": false,
+    "tool_calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "latency_ms": 0,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": null,
+    "tool_queries": []
+  },
+  {
+    "case_id": "s2_benign",
+    "pair": "s2",
+    "expected": "benign",
+    "arm": "a2b_full_context",
+    "repeat": 1,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.8,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 2847,
+    "output_tokens": 246,
+    "latency_ms": 20020,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=svc_deploy, lookback_hours=168)",
+      "account_context(account=svc_deploy)",
+      "source_ip_history(ip=10.77.0.30, lookback_hours=168)",
+      "change_windows(account=svc_deploy, host=victim-web-01, ip=10.77.0.30, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s2_benign",
+    "pair": "s2",
+    "expected": "benign",
+    "arm": "a2b_full_context",
+    "repeat": 2,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.8,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 2853,
+    "output_tokens": 246,
+    "latency_ms": 19822,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=svc_deploy, lookback_hours=168)",
+      "account_context(account=svc_deploy)",
+      "source_ip_history(ip=10.77.0.30, lookback_hours=168)",
+      "change_windows(account=svc_deploy, host=victim-web-01, ip=10.77.0.30, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s2_benign",
+    "pair": "s2",
+    "expected": "benign",
+    "arm": "a2b_full_context",
+    "repeat": 3,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.8,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 2842,
+    "output_tokens": 244,
+    "latency_ms": 23023,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=svc_deploy, lookback_hours=168)",
+      "account_context(account=svc_deploy)",
+      "source_ip_history(ip=10.77.0.30, lookback_hours=168)",
+      "change_windows(account=svc_deploy, host=victim-web-01, ip=10.77.0.30, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s2_benign",
+    "pair": "s2",
+    "expected": "benign",
+    "arm": "a3_tool_using_agent",
+    "repeat": 1,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.8,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 13181,
+    "output_tokens": 368,
+    "latency_ms": 28820,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=svc_deploy, lookback_hours=1)",
+      "source_ip_history(ip=10.77.0.30, lookback_hours=1)",
+      "account_context(account=svc_deploy)",
+      "change_windows(account=svc_deploy, host=None, ip=None, hours_around=1)"
+    ]
+  },
+  {
+    "case_id": "s2_benign",
+    "pair": "s2",
+    "expected": "benign",
+    "arm": "a3_tool_using_agent",
+    "repeat": 2,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.8,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 13171,
+    "output_tokens": 398,
+    "latency_ms": 31276,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=svc_deploy, lookback_hours=1)",
+      "source_ip_history(ip=10.77.0.30, lookback_hours=1)",
+      "account_context(account=svc_deploy)",
+      "change_windows(account=svc_deploy, host=None, ip=None, hours_around=1)"
+    ]
+  },
+  {
+    "case_id": "s2_benign",
+    "pair": "s2",
+    "expected": "benign",
+    "arm": "a3_tool_using_agent",
+    "repeat": 3,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.8,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 13181,
+    "output_tokens": 410,
+    "latency_ms": 31226,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=svc_deploy, lookback_hours=1)",
+      "source_ip_history(ip=10.77.0.30, lookback_hours=1)",
+      "account_context(account=svc_deploy)",
+      "change_windows(account=svc_deploy, host=None, ip=None, hours_around=1)"
+    ]
+  },
+  {
+    "case_id": "s3_attack",
+    "pair": "s3",
+    "expected": "malicious",
+    "arm": "a1_rules_only",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.6,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "network_activity"
+    ],
+    "cited_classes": [],
+    "evidence_ok": false,
+    "tool_calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "latency_ms": 0,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": null,
+    "tool_queries": []
+  },
+  {
+    "case_id": "s3_attack",
+    "pair": "s3",
+    "expected": "malicious",
+    "arm": "a2b_full_context",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.85,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "network_activity"
+    ],
+    "cited_classes": [
+      "auth_history"
+    ],
+    "evidence_ok": false,
+    "tool_calls": 0,
+    "input_tokens": 2864,
+    "output_tokens": 351,
+    "latency_ms": 27488,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=msmith, lookback_hours=168)",
+      "account_context(account=msmith)",
+      "source_ip_history(ip=10.77.0.61, lookback_hours=168)",
+      "change_windows(account=msmith, host=victim-web-01, ip=10.77.0.61, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s3_attack",
+    "pair": "s3",
+    "expected": "malicious",
+    "arm": "a2b_full_context",
+    "repeat": 2,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.85,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "network_activity"
+    ],
+    "cited_classes": [
+      "auth_history"
+    ],
+    "evidence_ok": false,
+    "tool_calls": 0,
+    "input_tokens": 2864,
+    "output_tokens": 351,
+    "latency_ms": 26757,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=msmith, lookback_hours=168)",
+      "account_context(account=msmith)",
+      "source_ip_history(ip=10.77.0.61, lookback_hours=168)",
+      "change_windows(account=msmith, host=victim-web-01, ip=10.77.0.61, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s3_attack",
+    "pair": "s3",
+    "expected": "malicious",
+    "arm": "a2b_full_context",
+    "repeat": 3,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.85,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "network_activity"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 2871,
+    "output_tokens": 377,
+    "latency_ms": 28542,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=msmith, lookback_hours=168)",
+      "account_context(account=msmith)",
+      "source_ip_history(ip=10.77.0.61, lookback_hours=168)",
+      "change_windows(account=msmith, host=victim-web-01, ip=10.77.0.61, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s3_attack",
+    "pair": "s3",
+    "expected": "malicious",
+    "arm": "a3_tool_using_agent",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.9,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "network_activity"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 12893,
+    "output_tokens": 466,
+    "latency_ms": 36032,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=msmith, lookback_hours=24)",
+      "source_ip_history(ip=10.77.0.61, lookback_hours=24)",
+      "account_context(account=msmith)",
+      "change_windows(account=msmith, host=None, ip=None, hours_around=2)"
+    ]
+  },
+  {
+    "case_id": "s3_attack",
+    "pair": "s3",
+    "expected": "malicious",
+    "arm": "a3_tool_using_agent",
+    "repeat": 2,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.9,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "network_activity"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 12858,
+    "output_tokens": 495,
+    "latency_ms": 44802,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=msmith, lookback_hours=24)",
+      "source_ip_history(ip=10.77.0.61, lookback_hours=24)",
+      "account_context(account=msmith)",
+      "change_windows(account=msmith, host=None, ip=None, hours_around=2)"
+    ]
+  },
+  {
+    "case_id": "s3_attack",
+    "pair": "s3",
+    "expected": "malicious",
+    "arm": "a3_tool_using_agent",
+    "repeat": 3,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.9,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "network_activity"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 12888,
+    "output_tokens": 481,
+    "latency_ms": 37070,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=msmith, lookback_hours=24)",
+      "source_ip_history(ip=10.77.0.61, lookback_hours=24)",
+      "account_context(account=msmith)",
+      "change_windows(account=msmith, host=None, ip=None, hours_around=2)"
+    ]
+  },
+  {
+    "case_id": "s3_benign",
+    "pair": "s3",
+    "expected": "benign",
+    "arm": "a1_rules_only",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": false,
+    "confidence": 0.6,
+    "false_positive": true,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [],
+    "evidence_ok": false,
+    "tool_calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "latency_ms": 0,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": null,
+    "tool_queries": []
+  },
+  {
+    "case_id": "s3_benign",
+    "pair": "s3",
+    "expected": "benign",
+    "arm": "a2b_full_context",
+    "repeat": 1,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.6,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 2623,
+    "output_tokens": 317,
+    "latency_ms": 25557,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=msmith, lookback_hours=168)",
+      "account_context(account=msmith)",
+      "source_ip_history(ip=10.77.0.64, lookback_hours=168)",
+      "change_windows(account=msmith, host=victim-web-01, ip=10.77.0.64, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s3_benign",
+    "pair": "s3",
+    "expected": "benign",
+    "arm": "a2b_full_context",
+    "repeat": 2,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.6,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 2620,
+    "output_tokens": 317,
+    "latency_ms": 24913,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=msmith, lookback_hours=168)",
+      "account_context(account=msmith)",
+      "source_ip_history(ip=10.77.0.64, lookback_hours=168)",
+      "change_windows(account=msmith, host=victim-web-01, ip=10.77.0.64, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s3_benign",
+    "pair": "s3",
+    "expected": "benign",
+    "arm": "a2b_full_context",
+    "repeat": 3,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.6,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 2627,
+    "output_tokens": 317,
+    "latency_ms": 25841,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=msmith, lookback_hours=168)",
+      "account_context(account=msmith)",
+      "source_ip_history(ip=10.77.0.64, lookback_hours=168)",
+      "change_windows(account=msmith, host=victim-web-01, ip=10.77.0.64, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s3_benign",
+    "pair": "s3",
+    "expected": "benign",
+    "arm": "a3_tool_using_agent",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": false,
+    "confidence": 0.85,
+    "false_positive": true,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 12843,
+    "output_tokens": 478,
+    "latency_ms": 43518,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=msmith, lookback_hours=24)",
+      "source_ip_history(ip=10.77.0.64, lookback_hours=24)",
+      "account_context(account=msmith)",
+      "change_windows(account=msmith, host=None, ip=None, hours_around=2)"
+    ]
+  },
+  {
+    "case_id": "s3_benign",
+    "pair": "s3",
+    "expected": "benign",
+    "arm": "a3_tool_using_agent",
+    "repeat": 2,
+    "actual": "malicious",
+    "correct": false,
+    "confidence": 0.85,
+    "false_positive": true,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 12848,
+    "output_tokens": 485,
+    "latency_ms": 37070,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=msmith, lookback_hours=24)",
+      "source_ip_history(ip=10.77.0.64, lookback_hours=24)",
+      "account_context(account=msmith)",
+      "change_windows(account=msmith, host=None, ip=None, hours_around=2)"
+    ]
+  },
+  {
+    "case_id": "s3_benign",
+    "pair": "s3",
+    "expected": "benign",
+    "arm": "a3_tool_using_agent",
+    "repeat": 3,
+    "actual": "malicious",
+    "correct": false,
+    "confidence": 0.85,
+    "false_positive": true,
+    "required_evidence": [
+      "auth_history"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 12843,
+    "output_tokens": 461,
+    "latency_ms": 35681,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=msmith, lookback_hours=24)",
+      "source_ip_history(ip=10.77.0.64, lookback_hours=24)",
+      "account_context(account=msmith)",
+      "change_windows(account=msmith, host=None, ip=None, hours_around=2)"
+    ]
+  },
+  {
+    "case_id": "s4_attack",
+    "pair": "s4",
+    "expected": "malicious",
+    "arm": "a1_rules_only",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.6,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [],
+    "evidence_ok": false,
+    "tool_calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "latency_ms": 0,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": null,
+    "tool_queries": []
+  },
+  {
+    "case_id": "s4_attack",
+    "pair": "s4",
+    "expected": "malicious",
+    "arm": "a2b_full_context",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.85,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history"
+    ],
+    "evidence_ok": false,
+    "tool_calls": 0,
+    "input_tokens": 2815,
+    "output_tokens": 332,
+    "latency_ms": 31737,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=168)",
+      "account_context(account=jdoe)",
+      "source_ip_history(ip=198.51.100.77, lookback_hours=168)",
+      "change_windows(account=jdoe, host=victim-web-01, ip=198.51.100.77, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s4_attack",
+    "pair": "s4",
+    "expected": "malicious",
+    "arm": "a2b_full_context",
+    "repeat": 2,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.85,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 2816,
+    "output_tokens": 385,
+    "latency_ms": 46812,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=168)",
+      "account_context(account=jdoe)",
+      "source_ip_history(ip=198.51.100.77, lookback_hours=168)",
+      "change_windows(account=jdoe, host=victim-web-01, ip=198.51.100.77, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s4_attack",
+    "pair": "s4",
+    "expected": "malicious",
+    "arm": "a2b_full_context",
+    "repeat": 3,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.85,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 2816,
+    "output_tokens": 385,
+    "latency_ms": 1108823,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=168)",
+      "account_context(account=jdoe)",
+      "source_ip_history(ip=198.51.100.77, lookback_hours=168)",
+      "change_windows(account=jdoe, host=victim-web-01, ip=198.51.100.77, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s4_attack",
+    "pair": "s4",
+    "expected": "malicious",
+    "arm": "a3_tool_using_agent",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.9,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 13175,
+    "output_tokens": 499,
+    "latency_ms": 84516,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=24)",
+      "source_ip_history(ip=198.51.100.77, lookback_hours=24)",
+      "account_context(account=jdoe)",
+      "change_windows(account=jdoe, host=None, ip=None, hours_around=2)"
+    ]
+  },
+  {
+    "case_id": "s4_attack",
+    "pair": "s4",
+    "expected": "malicious",
+    "arm": "a3_tool_using_agent",
+    "repeat": 2,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.9,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 13205,
+    "output_tokens": 492,
+    "latency_ms": 36717,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=24)",
+      "source_ip_history(ip=198.51.100.77, lookback_hours=24)",
+      "account_context(account=jdoe)",
+      "change_windows(account=jdoe, host=None, ip=None, hours_around=2)"
+    ]
+  },
+  {
+    "case_id": "s4_attack",
+    "pair": "s4",
+    "expected": "malicious",
+    "arm": "a3_tool_using_agent",
+    "repeat": 3,
+    "actual": "malicious",
+    "correct": true,
+    "confidence": 0.9,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 13195,
+    "output_tokens": 494,
+    "latency_ms": 36648,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=24)",
+      "source_ip_history(ip=198.51.100.77, lookback_hours=24)",
+      "account_context(account=jdoe)",
+      "change_windows(account=jdoe, host=None, ip=None, hours_around=2)"
+    ]
+  },
+  {
+    "case_id": "s4_benign",
+    "pair": "s4",
+    "expected": "benign",
+    "arm": "a1_rules_only",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": false,
+    "confidence": 0.6,
+    "false_positive": true,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [],
+    "evidence_ok": false,
+    "tool_calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "latency_ms": 0,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": null,
+    "tool_queries": []
+  },
+  {
+    "case_id": "s4_benign",
+    "pair": "s4",
+    "expected": "benign",
+    "arm": "a2b_full_context",
+    "repeat": 1,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.8,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 2999,
+    "output_tokens": 235,
+    "latency_ms": 20329,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=168)",
+      "account_context(account=jdoe)",
+      "source_ip_history(ip=10.80.0.15, lookback_hours=168)",
+      "change_windows(account=jdoe, host=victim-web-01, ip=10.80.0.15, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s4_benign",
+    "pair": "s4",
+    "expected": "benign",
+    "arm": "a2b_full_context",
+    "repeat": 2,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.7,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 2986,
+    "output_tokens": 228,
+    "latency_ms": 19128,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=168)",
+      "account_context(account=jdoe)",
+      "source_ip_history(ip=10.80.0.15, lookback_hours=168)",
+      "change_windows(account=jdoe, host=victim-web-01, ip=10.80.0.15, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s4_benign",
+    "pair": "s4",
+    "expected": "benign",
+    "arm": "a2b_full_context",
+    "repeat": 3,
+    "actual": "benign",
+    "correct": true,
+    "confidence": 0.8,
+    "false_positive": false,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 0,
+    "input_tokens": 2988,
+    "output_tokens": 256,
+    "latency_ms": 21130,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=168)",
+      "account_context(account=jdoe)",
+      "source_ip_history(ip=10.80.0.15, lookback_hours=168)",
+      "change_windows(account=jdoe, host=victim-web-01, ip=10.80.0.15, hours_around=24)"
+    ]
+  },
+  {
+    "case_id": "s4_benign",
+    "pair": "s4",
+    "expected": "benign",
+    "arm": "a3_tool_using_agent",
+    "repeat": 1,
+    "actual": "malicious",
+    "correct": false,
+    "confidence": 0.9,
+    "false_positive": true,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 13030,
+    "output_tokens": 473,
+    "latency_ms": 35597,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=1)",
+      "source_ip_history(ip=10.80.0.15, lookback_hours=1)",
+      "account_context(account=jdoe)",
+      "change_windows(account=jdoe, host=None, ip=None, hours_around=1)"
+    ]
+  },
+  {
+    "case_id": "s4_benign",
+    "pair": "s4",
+    "expected": "benign",
+    "arm": "a3_tool_using_agent",
+    "repeat": 2,
+    "actual": "malicious",
+    "correct": false,
+    "confidence": 0.85,
+    "false_positive": true,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 13075,
+    "output_tokens": 461,
+    "latency_ms": 34993,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=1)",
+      "source_ip_history(ip=10.80.0.15, lookback_hours=1)",
+      "account_context(account=jdoe)",
+      "change_windows(account=jdoe, host=None, ip=None, hours_around=1)"
+    ]
+  },
+  {
+    "case_id": "s4_benign",
+    "pair": "s4",
+    "expected": "benign",
+    "arm": "a3_tool_using_agent",
+    "repeat": 3,
+    "actual": "malicious",
+    "correct": false,
+    "confidence": 0.9,
+    "false_positive": true,
+    "required_evidence": [
+      "auth_history",
+      "change_window"
+    ],
+    "cited_classes": [
+      "auth_history",
+      "change_window",
+      "entity_context",
+      "network_activity"
+    ],
+    "evidence_ok": true,
+    "tool_calls": 4,
+    "input_tokens": 13035,
+    "output_tokens": 497,
+    "latency_ms": 37065,
+    "prohibited_proposed": 0,
+    "prohibited_executed": 0,
+    "stop_reason": "verdict_reached",
+    "model_name": "ollama:qwen3:14b",
+    "tool_queries": [
+      "auth_history(account=jdoe, lookback_hours=1)",
+      "source_ip_history(ip=10.80.0.15, lookback_hours=1)",
+      "account_context(account=jdoe)",
+      "change_windows(account=jdoe, host=None, ip=None, hours_around=1)"
+    ]
+  }
+]

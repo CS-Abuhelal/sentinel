@@ -1,0 +1,52 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "final",
+      "payload": {
+        "classification": "malicious",
+        "confidence": 0.85,
+        "summary": "The incident involves a brute-force attack targeting the labadmin account on the host victim-web-01 from the IP address 198.51.100.23. There were 15 failed login attempts within a short time window, and no successful logins were recorded from this source. The account is protected and privileged, which increases the risk of compromise.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "The attacker attempted to gain access to the labadmin account using brute-force techniques, as evidenced by the 15 failed login attempts from the IP address 198.51.100.23.",
+            "evidence": [
+              "E1"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1"
+        ],
+        "risk_factors": [
+          "Privileged account targeted",
+          "Multiple failed login attempts from a single source",
+          "No documented change covers this time for the given account, host, or IP"
+        ],
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "labadmin",
+            "justification": "The account is being targeted with a brute-force attack, and it is a protected and privileged account. Disabling the account can prevent further unauthorized access.",
+            "reversible": true,
+            "evidence": [
+              "E1"
+            ]
+          }
+        ]
+      },
+      "input_tokens": 2706,
+      "output_tokens": 375,
+      "elapsed_ms": 28125
+    }
+  ]
+}

@@ -36,3 +36,6 @@ Thumbs.db
 frontend/public/runs.json
 frontend/public/pc-sample.json
 audit/
+
+eval/run*.log
+eval/run*.err

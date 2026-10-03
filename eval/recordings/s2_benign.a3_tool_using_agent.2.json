@@ -1,0 +1,87 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "tool_call",
+      "tool": "auth_history",
+      "args": {
+        "account": "svc_deploy",
+        "lookback_hours": 1
+      },
+      "input_tokens": 1902,
+      "output_tokens": 29,
+      "elapsed_ms": 3249
+    },
+    {
+      "type": "tool_call",
+      "tool": "source_ip_history",
+      "args": {
+        "ip": "10.77.0.30",
+        "lookback_hours": 1
+      },
+      "input_tokens": 2439,
+      "output_tokens": 35,
+      "elapsed_ms": 3346
+    },
+    {
+      "type": "tool_call",
+      "tool": "account_context",
+      "args": {
+        "account": "svc_deploy"
+      },
+      "input_tokens": 2770,
+      "output_tokens": 20,
+      "elapsed_ms": 1749
+    },
+    {
+      "type": "tool_call",
+      "tool": "change_windows",
+      "args": {
+        "hours_around": 1,
+        "account": "svc_deploy"
+      },
+      "input_tokens": 2859,
+      "output_tokens": 26,
+      "elapsed_ms": 1978
+    },
+    {
+      "type": "final",
+      "payload": {
+        "classification": "benign",
+        "confidence": 0.8,
+        "summary": "The incident involves a brute force attack on the svc_deploy account, but the successful login occurred after 12 failed attempts from a known source IP. A documented change (CHG-2041) for rotating svc_deploy credentials overlaps with the incident window, which may explain the activity. The account is a CI deploy service account and not privileged, reducing the risk.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "The brute force attack was detected with multiple failed login attempts from the source IP 10.77.0.30.",
+            "evidence": [
+              "E1",
+              "E2"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1",
+          "E2",
+          "E3",
+          "E4"
+        ],
+        "risk_factors": [
+          "The brute force attack could indicate an attempt to compromise the account.",
+          "The successful login after multiple failures may be due to the old password being used by the CI runner."
+        ],
+        "proposed_actions": []
+      },
+      "input_tokens": 3201,
+      "output_tokens": 288,
+      "elapsed_ms": 20954
+    }
+  ]
+}

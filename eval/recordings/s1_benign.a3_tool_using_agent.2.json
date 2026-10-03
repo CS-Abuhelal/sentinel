@@ -1,0 +1,86 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "tool_call",
+      "tool": "auth_history",
+      "args": {
+        "account": "svc_backup",
+        "lookback_hours": 1
+      },
+      "input_tokens": 1903,
+      "output_tokens": 29,
+      "elapsed_ms": 105982
+    },
+    {
+      "type": "tool_call",
+      "tool": "source_ip_history",
+      "args": {
+        "lookback_hours": 1,
+        "ip": "10.77.0.20"
+      },
+      "input_tokens": 2440,
+      "output_tokens": 35,
+      "elapsed_ms": 121685
+    },
+    {
+      "type": "tool_call",
+      "tool": "account_context",
+      "args": {
+        "account": "svc_backup"
+      },
+      "input_tokens": 2771,
+      "output_tokens": 20,
+      "elapsed_ms": 67172
+    },
+    {
+      "type": "tool_call",
+      "tool": "change_windows",
+      "args": {
+        "account": "svc_backup",
+        "hours_around": 1
+      },
+      "input_tokens": 2858,
+      "output_tokens": 26,
+      "elapsed_ms": 83077
+    },
+    {
+      "type": "final",
+      "payload": {
+        "classification": "benign",
+        "confidence": 0.6,
+        "summary": "The incident involves a backup service account, svc_backup, on the host victim-web-01, with a brute force attack detected from the IP 10.77.0.20. However, the source IP is known and has been used successfully by the account in the past. There is no evidence of a documented change that could explain the activity, but the account is not privileged, and the activity could be due to a script or service using an outdated password.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "The alert indicates a brute force attack on the account svc_backup from the IP 10.77.0.20.",
+            "evidence": [
+              "E1"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1",
+          "E2",
+          "E3",
+          "E4"
+        ],
+        "risk_factors": [
+          "The source IP is known and has been used successfully by the account in the past.",
+          "The account is not privileged, reducing the risk impact."
+        ],
+        "proposed_actions": []
+      },
+      "input_tokens": 3035,
+      "output_tokens": 301,
+      "elapsed_ms": 981202
+    }
+  ]
+}
