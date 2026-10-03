@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import json
+from datetime import timedelta
 from typing import Any
 
 import pytest
@@ -18,11 +19,15 @@ from agent.llm import (
 )
 from contracts.models import (
     ActionType,
+    ChangeWindow,
     Classification,
     EvaluationArm,
+    EvidenceClass,
     InvestigationStopReason,
+    Scenario,
 )
 from pipeline.grouping import new_incident
+from pipeline.run import run_incident
 from tests.conftest import REPO, S1_RECORDING, S1Case, make_wazuh_alert
 
 AUTH_CALL = {"type": "tool_call", "tool": "auth_history", "args": {"account": "jdoe"}}
@@ -203,6 +208,40 @@ def test_latency_is_the_wall_time_when_the_model_reports_none(s1: S1Case) -> Non
     assert verdict.input_tokens == 0
     assert verdict.output_tokens == 0
     assert verdict.latency_ms >= 0
+
+
+def test_run_incident_gives_the_agent_the_scenario_changes(s1: S1Case) -> None:
+    window = ChangeWindow(
+        change_id="CHG-7",
+        title="Rotate jdoe credentials",
+        start=s1.incident.window_start - timedelta(hours=2),
+        end=s1.incident.window_end + timedelta(hours=2),
+        accounts=["jdoe"],
+    )
+    scenario = Scenario(
+        title="t",
+        description="d",
+        expected_classification=Classification.BENIGN,
+        changes=[window],
+    )
+    model = _client(
+        {"type": "tool_call", "tool": "change_windows", "args": {"account": "jdoe"}},
+        _final(classification="benign", cited_evidence=["E1"]),
+    )
+    run = run_incident(
+        "s1_attack",
+        s1.events,
+        s1.alerts,
+        s1.incident.model_copy(deep=True),
+        s1.inventory,
+        model,
+        scenario=scenario,
+    )
+    [item] = run.evidence
+    assert item.tool_name == "change_windows"
+    assert item.evidence_class is EvidenceClass.CHANGE_WINDOW
+    assert [c["change_id"] for c in item.content["changes"]] == ["CHG-7"]
+    assert run.verdict.classification is Classification.BENIGN
 
 
 def test_exhausted_replay_raises(s1) -> None:

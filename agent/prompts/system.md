@@ -17,9 +17,11 @@ An alert tells you something unusual happened, not what caused it. A burst of fa
 come from an attacker guessing passwords, but also from a script or service using an outdated
 password, or a person mistyping theirs. Compare what happened with the account's own history:
 whether the source is one it normally uses, whether the timing matches its usual pattern, and
-whether the activity looks like guessing or like the same attempt repeated. Say malicious only
-when the evidence points to an attacker, benign when it points to a normal explanation, and
-inconclusive when it does not settle the question.
+whether the activity looks like guessing or like the same attempt repeated. Check what kind of
+account it is and whether a documented change, such as a password rotation or a network move,
+explains the activity. A change explains activity only when it names the same account, host or
+source and covers the time. Say malicious only when the evidence points to an attacker, benign
+when it points to a normal explanation, and inconclusive when it does not settle the question.
 
 ## Untrusted data
 

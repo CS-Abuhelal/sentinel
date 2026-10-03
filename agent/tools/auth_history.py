@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from agent.tools.base import Tool, ToolContext, ToolResult
+from agent.tools.base import Tool, ToolContext, ToolResult, source_ip
 from contracts.models import Event, EventCategory, EvidenceClass
 
 BASELINE_DAYS = 30
@@ -35,7 +35,7 @@ def auth_history(params: AuthHistoryParams, context: ToolContext) -> ToolResult:
     )
     baseline_start = incident.window_start - timedelta(days=BASELINE_DAYS)
     baseline = Counter(
-        _src_ip(e)
+        source_ip(e)
         for e in context.events
         if e.category is EventCategory.AUTHENTICATION
         and e.user == params.account
@@ -64,7 +64,7 @@ def auth_history(params: AuthHistoryParams, context: ToolContext) -> ToolResult:
 def _by_source(events: list[Event]) -> list[dict[str, Any]]:
     entries: dict[str, dict[str, Any]] = {}
     for event in events:
-        src_ip = _src_ip(event)
+        src_ip = source_ip(event)
         entry = entries.setdefault(
             src_ip,
             {
@@ -85,9 +85,9 @@ def _by_source(events: list[Event]) -> list[dict[str, Any]]:
 
 def _success_after_failures(events: list[Event], window_start: datetime) -> list[dict[str, Any]]:
     found = []
-    for src_ip in dict.fromkeys(_src_ip(e) for e in events):
+    for src_ip in dict.fromkeys(source_ip(e) for e in events):
         failures = 0
-        for event in (e for e in events if _src_ip(e) == src_ip):
+        for event in (e for e in events if source_ip(e) == src_ip):
             if event.outcome == "failure":
                 failures += 1
             elif event.outcome == "success":
@@ -136,12 +136,6 @@ def _summary(content: dict[str, Any], range_start: datetime, range_end: datetime
 
 def _short(moment: datetime) -> str:
     return moment.strftime("%Y-%m-%d %H:%M:%S UTC")
-
-
-def _src_ip(event: Event) -> str:
-    if event.network is None or event.network.src_ip is None:
-        return "unknown"
-    return event.network.src_ip
 
 
 AUTH_HISTORY = Tool(

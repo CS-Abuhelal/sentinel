@@ -16,12 +16,14 @@ from contracts.models import (
     ActionType,
     Alert,
     AttackChainStep,
+    ChangeWindow,
     Classification,
     EntityType,
     EvaluationArm,
     Event,
     EvidenceItem,
     Incident,
+    Inventory,
     InvestigationStopReason,
     ProposedAction,
     Recommendation,
@@ -91,9 +93,17 @@ def investigate(
     max_tool_calls: int = MAX_TOOL_CALLS,
     system_prompt: str = SYSTEM_PROMPT,
     history: HostHistory | None = None,
+    inventory: Inventory | None = None,
+    changes: list[ChangeWindow] | None = None,
 ) -> tuple[Verdict, list[EvidenceItem]]:
     started = time.perf_counter()
-    context = ToolContext(incident=incident, events=events, history=history)
+    context = ToolContext(
+        incident=incident,
+        events=events,
+        history=history,
+        inventory=inventory,
+        changes=list(changes or []),
+    )
     specs = [tool.spec() for tool in tools.values()]
     messages = [
         Message("system", system_prompt.replace("{max_tool_calls}", str(max_tool_calls))),

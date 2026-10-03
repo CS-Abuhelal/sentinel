@@ -133,6 +133,8 @@ def run_incident(
         now=now,
         system_prompt=system_prompt,
         history=history,
+        inventory=inventory,
+        changes=scenario.changes if scenario else [],
     )
     vetted = [check_advice(advice) for advice in verdict.recommendations]
     verdict = verdict.model_copy(
