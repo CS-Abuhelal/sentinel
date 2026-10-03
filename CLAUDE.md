@@ -33,6 +33,15 @@ Read this file at the start of every session.
   backfilled from the Wazuh indexer on start, and shown live at `?view=pc`. Wazuh setup:
   `lab/wazuh/README.md`. Database tests run when `SENTINEL_TEST_DATABASE_URL` is set (CI sets
   it; locally it must use `127.0.0.1`, not `localhost`).
+- Live advisor, phase 2: `python -m pipeline.worker` (compose service `worker`) groups new Wazuh
+  alerts into incidents (`pipeline/grouping.py`, stored by `backend/app/incidents.py`), queues
+  those at level 7 or higher, and investigates them with `PC_PROMPT` and `WAZUH_TOOLS`
+  (`related_alerts`, `process_activity`, `rule_context`, `auth_history`) through
+  `pipeline.run.run_incident`. The policy rule `personal_host_advice_only` denies every action on
+  a personal host; `policy/advice.py` drops advice steps that weaken the PC. The API serves
+  `GET /api/pc/incidents/{id}` and `POST /api/pc/incidents/{id}/retry`; the dashboard shows them
+  on the Incidents tab of `?view=pc`. A real `qwen3:14b` run is replayed from
+  `tests/data/pc_incident.qwen3-14b.json`.
 
 Contract changes are allowed, but always: change the model in `contracts/`,
 bump the version, regenerate fixtures and schemas, keep tests green, and log it in DECISIONS.md.

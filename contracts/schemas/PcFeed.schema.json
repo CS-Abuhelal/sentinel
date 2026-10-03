@@ -101,6 +101,50 @@
       "title": "Alert",
       "type": "object"
     },
+    "Classification": {
+      "enum": [
+        "malicious",
+        "benign",
+        "inconclusive"
+      ],
+      "title": "Classification",
+      "type": "string"
+    },
+    "Entity": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_type": {
+          "$ref": "#/$defs/EntityType"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        },
+        "is_protected": {
+          "default": false,
+          "title": "Is Protected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "entity_type",
+        "value",
+        "is_protected"
+      ],
+      "title": "Entity",
+      "type": "object"
+    },
+    "EntityType": {
+      "enum": [
+        "host",
+        "account",
+        "ip_address",
+        "process",
+        "file"
+      ],
+      "title": "EntityType",
+      "type": "string"
+    },
     "Event": {
       "additionalProperties": false,
       "description": "One normalized telemetry record. The atomic unit of evidence.",
@@ -261,6 +305,107 @@
       "title": "EventCategory",
       "type": "string"
     },
+    "Incident": {
+      "additionalProperties": false,
+      "description": "Correlated group of alerts. The unit the agent investigates.",
+      "properties": {
+        "incident_id": {
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/IncidentStatus",
+          "default": "new"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated At"
+        },
+        "window_start": {
+          "format": "date-time",
+          "title": "Window Start",
+          "type": "string"
+        },
+        "window_end": {
+          "format": "date-time",
+          "title": "Window End",
+          "type": "string"
+        },
+        "alert_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Alert Ids",
+          "type": "array"
+        },
+        "entities": {
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "title": "Entities",
+          "type": "array"
+        },
+        "case_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Case Id"
+        }
+      },
+      "required": [
+        "incident_id",
+        "title",
+        "status",
+        "created_at",
+        "updated_at",
+        "window_start",
+        "window_end",
+        "alert_ids",
+        "entities",
+        "case_id"
+      ],
+      "title": "Incident",
+      "type": "object"
+    },
+    "IncidentStatus": {
+      "enum": [
+        "new",
+        "investigating",
+        "awaiting_approval",
+        "resolved",
+        "closed_benign",
+        "queued",
+        "low_priority",
+        "investigation_failed"
+      ],
+      "title": "IncidentStatus",
+      "type": "string"
+    },
     "LiveAlert": {
       "additionalProperties": false,
       "description": "A Wazuh alert from the live feed, with the event and alert it was converted into.",
@@ -411,6 +556,52 @@
       "title": "NetworkInfo",
       "type": "object"
     },
+    "PcIncidentSummary": {
+      "additionalProperties": false,
+      "description": "One incident on a monitored PC, as the live page lists it.",
+      "properties": {
+        "incident": {
+          "$ref": "#/$defs/Incident"
+        },
+        "alert_count": {
+          "minimum": 0,
+          "title": "Alert Count",
+          "type": "integer"
+        },
+        "max_level": {
+          "maximum": 15,
+          "minimum": 0,
+          "title": "Max Level",
+          "type": "integer"
+        },
+        "classification": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Classification"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "recommendation_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Recommendation Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "incident",
+        "alert_count",
+        "max_level",
+        "classification",
+        "recommendation_count"
+      ],
+      "title": "PcIncidentSummary",
+      "type": "object"
+    },
     "PcStatus": {
       "additionalProperties": false,
       "properties": {
@@ -442,6 +633,15 @@
           ],
           "default": null,
           "title": "Last Alert At"
+        },
+        "queue_length": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Queue Length",
+          "type": "integer"
+        },
+        "model": {
+          "$ref": "#/$defs/ServiceState"
         }
       },
       "required": [
@@ -449,7 +649,9 @@
         "wazuh_api",
         "backfill",
         "alert_count",
-        "last_alert_at"
+        "last_alert_at",
+        "queue_length",
+        "model"
       ],
       "title": "PcStatus",
       "type": "object"
@@ -620,11 +822,19 @@
       },
       "title": "Alerts",
       "type": "array"
+    },
+    "incidents": {
+      "items": {
+        "$ref": "#/$defs/PcIncidentSummary"
+      },
+      "title": "Incidents",
+      "type": "array"
     }
   },
   "required": [
     "status",
-    "alerts"
+    "alerts",
+    "incidents"
   ],
   "title": "PcFeed",
   "type": "object"

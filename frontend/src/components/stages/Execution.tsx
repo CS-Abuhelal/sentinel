@@ -4,15 +4,16 @@ import { verifyChain, type ChainCheck } from "../../audit";
 import { ACTION, utc } from "../../format";
 import type { AuditRecord, CommandResult, ExecutionResult, IncidentRun } from "../../types/contracts";
 
-export function Execution({ run }: { run: IncidentRun }) {
+export function Execution({ run, pc }: { run: IncidentRun; pc: boolean }) {
   const actions = new Map(run.verdict.proposed_actions.map((action) => [action.action_id, action]));
   const approvals = new Map(run.approvals.map((approval) => [approval.decision_id, approval]));
 
   return (
     <>
       <p className="lede">
-        Only the executor can change a system, and only for actions the policy engine allowed or a
-        person approved. It runs fixed commands from its catalog in the lab and checks the result.
+        {pc
+          ? "Only the executor can change a system. On your own PC it never does: the policy engine denies every action there, and SENTINEL only gives advice."
+          : "Only the executor can change a system, and only for actions the policy engine allowed or a person approved. It runs fixed commands from its catalog in the lab and checks the result."}
       </p>
       {run.policy_decisions.length === 0 && <p className="muted">Nothing was proposed, so nothing ran.</p>}
       {run.policy_decisions.map((decision) => {

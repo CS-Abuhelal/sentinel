@@ -42,6 +42,7 @@ from contracts.models import (
     LiveAlert,
     NetworkInfo,
     PcFeed,
+    PcIncidentSummary,
     PcStatus,
     PolicyDecision,
     PolicyOutcome,
@@ -465,6 +466,28 @@ live_alert = LiveAlert(
     alert=wazuh_alert,
 )
 
+pc_incident = Incident(
+    incident_id="inc_pc_5d1e8a2b7c40",
+    title="Multiple Windows Logon Failures on my-pc",
+    status=IncidentStatus.INVESTIGATING,
+    created_at=WZ_T0,
+    window_start=WZ_T0,
+    window_end=WZ_T0 + timedelta(minutes=2),
+    alert_ids=[wazuh_alert.alert_id],
+    entities=[
+        Entity(entity_type=EntityType.HOST, value=PC),
+        Entity(entity_type=EntityType.ACCOUNT, value="sentinel-test-nobody"),
+    ],
+)
+
+pc_incident_summary = PcIncidentSummary(
+    incident=pc_incident,
+    alert_count=11,
+    max_level=10,
+    classification=Classification.INCONCLUSIVE,
+    recommendation_count=2,
+)
+
 pc_feed = PcFeed(
     status=PcStatus(
         checked_at=WZ_T0 + timedelta(seconds=5),
@@ -472,8 +495,11 @@ pc_feed = PcFeed(
         backfill=ServiceState(reachable=True, detail="Backfilled 0 of 0 alerts at 09:29:40 UTC."),
         alert_count=1,
         last_alert_at=WZ_T0,
+        queue_length=0,
+        model=ServiceState(reachable=True, detail="Ollama answered HTTP 200."),
     ),
     alerts=[live_alert],
+    incidents=[pc_incident_summary],
 )
 
 finding_vulnerability = Finding(
@@ -553,6 +579,7 @@ FIXTURES = {
     "audit_record": audit_record,
     "live_alert": live_alert,
     "pc_feed": pc_feed,
+    "pc_incident_summary": pc_incident_summary,
     "finding_vulnerability": finding_vulnerability,
     "finding_configuration": finding_configuration,
     "recommendation": recommendation,

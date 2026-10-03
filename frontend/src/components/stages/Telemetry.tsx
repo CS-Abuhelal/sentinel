@@ -1,4 +1,4 @@
-import { utc } from "../../format";
+import { fromWazuh, utc } from "../../format";
 import { useCountUp } from "../../playback";
 import type { IncidentRun } from "../../types/contracts";
 
@@ -11,7 +11,8 @@ export function Telemetry({ run, counting }: { run: IncidentRun; counting: boole
   return (
     <>
       <p className="lede">
-        <strong className="count">{shown}</strong> sshd login events parsed from{" "}
+        <strong className="count">{shown}</strong> {fromWazuh(run) ? "Wazuh events" : "sshd login events"}{" "}
+        parsed from{" "}
         <span className="mono">{hosts}</span> ({sources}). {alerted.size} of them fed the alert and
         are marked below.
       </p>

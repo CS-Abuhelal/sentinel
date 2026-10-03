@@ -12,8 +12,10 @@ from ingest.wazuh import (
     WazuhAlertError,
     category_for_groups,
     convert,
+    is_posture,
     live_alert,
     parse_timestamp,
+    rule_groups,
     severity_for_level,
 )
 
@@ -191,6 +193,44 @@ def test_empty_id_is_rejected() -> None:
     payload["id"] = ""
     with pytest.raises(WazuhAlertError):
         convert(payload)
+
+
+@pytest.mark.parametrize("group", ["sca", "vulnerability-detector"])
+def test_is_posture_recognises_posture_groups(group: str) -> None:
+    payload = _payload("logon_failure")
+    payload["rule"]["groups"] = [group]
+    assert is_posture(payload) is True
+
+
+def test_is_posture_is_false_for_other_groups() -> None:
+    assert is_posture(_payload("logon_failure")) is False
+
+
+def test_is_posture_is_false_without_rule_groups() -> None:
+    payload = _payload("logon_failure")
+    del payload["rule"]["groups"]
+    assert is_posture(payload) is False
+
+
+def test_rule_groups_returns_the_groups() -> None:
+    payload = _payload("logon_failure")
+    assert rule_groups(payload) == payload["rule"]["groups"]
+
+
+def test_rule_groups_ignores_non_string_entries() -> None:
+    payload = _payload("logon_failure")
+    payload["rule"]["groups"] = ["windows", 1, None, "sca"]
+    assert rule_groups(payload) == ["windows", "sca"]
+
+
+def test_rule_groups_is_empty_for_malformed_input() -> None:
+    payload = _payload("logon_failure")
+    payload["rule"]["groups"] = "not-a-list"
+    assert rule_groups(payload) == []
+    del payload["rule"]["groups"]
+    assert rule_groups(payload) == []
+    payload["rule"] = "not-a-dict"
+    assert rule_groups(payload) == []
 
 
 def test_live_alert_wraps_the_conversion() -> None:

@@ -6,6 +6,40 @@ Superseded entries are removed, and numbers are never reused.
 
 ---
 
+## D-14 — The advice checker matches broad patterns and drops whole recommendations (2026-09-28)
+
+**Decision.** `policy/advice.py` matches any verb that switches a protection off (disable, turn
+off, stop, pause, uninstall, deactivate) near any Windows protection (Defender, firewall,
+antivirus, UAC, SmartScreen, real-time or tamper protection, Windows Security), a protection
+followed by "off" or "disabled", UAC "never notify", and download-and-run commands (`iex`,
+`DownloadString`, `-EncodedCommand`, `certutil -urlcache`, `bitsadmin /transfer`, piping into a
+shell). A recommendation whose title matches is removed whole, not just its steps.
+
+**Why.** The final phase-2 review found wordings the narrow list missed, such as "Turn Windows
+Defender off" and "Set the UAC slider to Never notify". Log content can steer the model, so the
+checker has to hold without trusting the model's phrasing.
+
+**Consequence.** Some harmless text is dropped too. A CIS step that names the policy "Turn off
+Microsoft Defender Antivirus" is removed, but it stays visible as a dropped step, so nothing is
+hidden from the owner.
+
+---
+
+## D-13 — Contracts 1.5.0: incidents on the live page (2026-09-28)
+
+**Decision.** Add `PcIncidentSummary`, `PcStatus.queue_length` and `PcStatus.model` (Ollama
+reachability), `PcFeed.incidents`, and `Inventory.is_personal`.
+
+**Why.** Phase 2 groups the PC's alerts into incidents that the AI investigates from a queue. The
+live page has to list them, show how many wait, and show whether the model is reachable. The policy
+engine needs to know which hosts are personal.
+
+**Consequence.** The feed carries incident summaries only; a full `IncidentRun` is fetched on demand
+from `GET /api/pc/incidents/{id}`. Security-check alerts never become incidents (phase 3 handles
+them).
+
+---
+
 ## D-11 — A live advisor mode that reads from Wazuh (2026-09-27)
 
 **Decision.** SENTINEL gets a live mode for Ahmed's own Windows PC. Wazuh 4.14 (single-node

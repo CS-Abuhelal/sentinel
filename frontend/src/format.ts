@@ -2,10 +2,15 @@ import type {
   ActionType,
   EntityType,
   EvidenceItem,
+  IncidentRun,
   IncidentStatus,
   InvestigationStopReason,
   PolicyOutcome,
 } from "./types/contracts";
+
+export function fromWazuh(run: IncidentRun): boolean {
+  return run.events.length > 0 && run.events.every((event) => event.source === "wazuh");
+}
 
 export function utc(iso: string): string {
   return new Date(iso).toISOString().slice(0, 19).replace("T", " ");

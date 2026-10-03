@@ -82,6 +82,29 @@ export function Investigation({ run, refs, phase }: Props) {
           <Cites ids={verdict.cited_evidence_ids} refs={refs} />
         </p>
         <p>{verdict.summary}</p>
+        {verdict.recommendations.length > 0 && (
+          <div className="advice">
+            <p className="eyebrow">What to do</p>
+            {verdict.recommendations.map((advice) => (
+              <div key={advice.recommendation_id} className="advice-item">
+                <p className="advice-title">
+                  {advice.title} <span className="small muted">priority {advice.priority}</span>{" "}
+                  <Cites ids={advice.evidence_ids} refs={refs} />
+                </p>
+                <ol>
+                  {advice.steps.map((step, index) => (
+                    <li key={`${index}-${step}`}>{step}</li>
+                  ))}
+                </ol>
+                {advice.dropped_steps.length > 0 && (
+                  <p className="small muted">
+                    {advice.dropped_steps.length} step(s) removed by the checker.
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         <ExpectedNote run={run} />
         {verdict.attack_chain.length > 0 && (
           <ol className="chain" aria-label="Attack chain">

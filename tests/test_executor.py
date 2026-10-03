@@ -12,6 +12,7 @@ from contracts.models import (
     CommandResult,
     EntityType,
     ExecutionStatus,
+    HostRecord,
     PolicyDecision,
     PolicyOutcome,
     ProposedAction,
@@ -212,6 +213,26 @@ def test_protected_target_is_rejected_even_with_approval(s1) -> None:
     action = _action(value="labadmin")
     decision = _decision(s1.incident, action)
     _rejected(*_run(s1, action, decision, _approval(decision)), "protected")
+
+
+@pytest.mark.parametrize(
+    "action",
+    [
+        _action(),
+        _action(ActionType.ISOLATE_HOST, EntityType.HOST, HOST),
+    ],
+    ids=["disable_account", "isolate_host"],
+)
+def test_nothing_runs_on_a_personal_host_even_with_approval(s1, action) -> None:
+    hosts = {**s1.inventory.hosts, HOST: HostRecord(role="monitored PC", personal=True)}
+    inventory = s1.inventory.model_copy(update={"hosts": hosts})
+    decision = _decision(s1.incident, action)
+    host = FakeHost()
+    results = execute(
+        decision, action, s1.incident, inventory, _approval(decision), {HOST: host}.get,
+        lambda: NOW,
+    )
+    _rejected(results, host, "personal")
 
 
 def test_target_type_mismatch_is_rejected(s1) -> None:

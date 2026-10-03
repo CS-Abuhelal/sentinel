@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from backend.app.backfill import IndexerSettings, backfill, backfill_cursor
 from backend.app.db import get_engine
@@ -17,7 +18,13 @@ from backend.app.pc import router as pc_router
 from contracts.models import CONTRACT_VERSION, IncidentRun, ServiceState
 
 REPO = Path(__file__).resolve().parents[2]
+DEFAULT_ALLOWED_HOSTS = "127.0.0.1,localhost,backend,sentinel-backend,testserver"
 logger = logging.getLogger(__name__)
+
+
+def allowed_hosts() -> list[str]:
+    value = os.environ.get("SENTINEL_ALLOWED_HOSTS") or DEFAULT_ALLOWED_HOSTS
+    return [host.strip() for host in value.split(",") if host.strip()]
 
 
 def _backfill_in_background(
@@ -51,6 +58,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="SENTINEL API", version="0.1.0", lifespan=lifespan)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts())
 app.include_router(ingest_router)
 app.include_router(pc_router)
 

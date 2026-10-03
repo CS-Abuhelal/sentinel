@@ -1,4 +1,4 @@
-import { ENTITY, clock, duration } from "../../format";
+import { ENTITY, clock, duration, fromWazuh } from "../../format";
 import type { IncidentRun } from "../../types/contracts";
 
 export function Correlation({ run }: { run: IncidentRun }) {
@@ -7,7 +7,10 @@ export function Correlation({ run }: { run: IncidentRun }) {
   return (
     <>
       <p className="lede">
-        {alerts} alert{alerts === 1 ? "" : "s"} grouped by host and account into one incident.
+        {alerts} alert{alerts === 1 ? "" : "s"}{" "}
+        {fromWazuh(run)
+          ? "with the same host and ATT&CK technique (or rule), each within an hour of the last, grouped into one incident."
+          : "grouped by host and account into one incident."}
       </p>
       <dl className="facts">
         <div>

@@ -58,6 +58,15 @@ def _evaluate(
     target = f"{action.target_type.value} {action.target_value}"
     if kind is ActionType.NO_ACTION:
         return "no_action", PolicyOutcome.ALLOW, "Nothing is executed."
+    if any(
+        e.entity_type is EntityType.HOST and inventory.is_personal(e.value)
+        for e in incident.entities
+    ):
+        return (
+            "personal_host_advice_only",
+            PolicyOutcome.DENY,
+            "Advice only: SENTINEL never acts on your own PC.",
+        )
     if kind not in EXECUTOR_CATALOG:
         return (
             "not_in_executor_catalog",

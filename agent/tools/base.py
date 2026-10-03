@@ -2,18 +2,30 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from datetime import datetime
+from typing import Any, Protocol
 
 from pydantic import BaseModel
 
 from agent.llm import ToolSpec
-from contracts.models import Event, EvidenceClass, Incident
+from contracts.models import Event, EvidenceClass, Incident, LiveAlert
+
+
+class HostHistory(Protocol):
+    def alerts(
+        self, start: datetime, end: datetime, include_posture: bool = False
+    ) -> list[LiveAlert]: ...
+
+    def rule_count(self, rule_id: str, start: datetime, end: datetime) -> int: ...
+
+    def rule_sample(self, rule_id: str, preferred_alert_ids: list[str]) -> LiveAlert | None: ...
 
 
 @dataclass(frozen=True)
 class ToolContext:
     incident: Incident
     events: list[Event]
+    history: HostHistory | None = None
 
 
 @dataclass(frozen=True)

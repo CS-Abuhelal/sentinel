@@ -24,6 +24,7 @@ services:
         required: false
     environment:
       DATABASE_URL: postgresql+psycopg://sentinel:sentinel_dev@db:5432/sentinel
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
@@ -32,8 +33,35 @@ services:
     volumes:
       - ./contracts:/app/contracts:ro
       - ./ingest:/app/ingest:ro
+      - ./agent:/app/agent:ro
+      - ./policy:/app/policy:ro
       - ./backend:/app/backend
       - ./runs:/app/runs:ro
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["python", "-m", "pipeline.worker"]
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg://sentinel:sentinel_dev@db:5432/sentinel
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+    depends_on:
+      backend:
+        condition: service_started
+    volumes:
+      - ./contracts:/app/contracts:ro
+      - ./ingest:/app/ingest:ro
+      - ./detection:/app/detection:ro
+      - ./agent:/app/agent:ro
+      - ./policy:/app/policy:ro
+      - ./executor:/app/executor:ro
+      - ./pipeline:/app/pipeline:ro
+      - ./backend:/app/backend:ro
 
   frontend:
     image: node:24-alpine

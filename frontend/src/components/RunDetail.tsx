@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { STATUS, evidenceRefs, utc } from "../format";
+import { STATUS, evidenceRefs, fromWazuh, utc } from "../format";
 import { usePlayback, type Playback } from "../playback";
 import type { IncidentRun } from "../types/contracts";
 import { ExpectedBadge } from "./Expected";
@@ -31,8 +31,9 @@ export function RunDetail({ run }: { run: IncidentRun }) {
   const { incident, verdict, risk_score: risk } = run;
   const refs = evidenceRefs(run.evidence);
   const agent = `Agent · ${verdict.model_name ?? "unknown model"}`;
+  const pc = fromWazuh(run);
   const [anchor] = useState(() => window.location.hash.slice(1));
-  const playback = usePlayback(DURATIONS, anchor !== "");
+  const playback = usePlayback(DURATIONS, anchor !== "" || pc);
 
   useEffect(() => {
     if (anchor) document.getElementById(anchor)?.scrollIntoView({ block: "start", behavior: "instant" });
@@ -63,7 +64,7 @@ export function RunDetail({ run }: { run: IncidentRun }) {
             <span className="status">In progress</span>
           </p>
         )}
-        <ReplayNote modelName={verdict.model_name} />
+        <ReplayNote modelName={verdict.model_name} pc={pc} />
         <Controls playback={playback} />
       </header>
 
@@ -94,13 +95,13 @@ export function RunDetail({ run }: { run: IncidentRun }) {
           </p>
         </li>
         <Stage n={5} title="Risk" producer="Deterministic" state={state(START.risk, START.risk)}>
-          <Risk risk={risk} />
+          <Risk risk={risk} pc={pc} />
         </Stage>
         <Stage n={6} title="Policy" producer="Deterministic" state={state(START.policy, START.policy)}>
           <Policy run={run} />
         </Stage>
         <Stage n={7} title="Execution" producer="Deterministic" state={state(START.execution, START.execution)}>
-          <Execution run={run} />
+          <Execution run={run} pc={pc} />
         </Stage>
       </ol>
     </article>
@@ -135,7 +136,17 @@ function Controls({ playback }: { playback: Playback }) {
   );
 }
 
-function ReplayNote({ modelName }: { modelName: string | null }) {
+function ReplayNote({ modelName, pc }: { modelName: string | null; pc: boolean }) {
+  if (pc && modelName?.startsWith("ollama:")) {
+    return (
+      <p className="replay replay--live">
+        Live AI: <span className="mono">{modelName.slice("ollama:".length)}</span> investigated this on
+        your own PC, running locally through Ollama, from alerts Wazuh raised. Nothing in it was
+        written by hand. SENTINEL only advises here: the policy engine denies every action on a
+        personal PC.
+      </p>
+    );
+  }
   if (modelName?.startsWith("ollama:")) {
     return (
       <p className="replay replay--live">
