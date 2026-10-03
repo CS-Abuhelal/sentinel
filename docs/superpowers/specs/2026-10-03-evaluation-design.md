@@ -39,7 +39,7 @@ it.
 
 Each `scenario.yml` also lists `required_evidence`: the evidence classes a correct verdict must
 cite. Examples: `auth_history` for S1, `change_window` for the S2 and S4 twins,
-`entity_context` for S2, and `auth_history` plus `network_activity` for S3. (One IP trying several accounts was rejected: every failed password raises an alert for that account, so it would create several incidents.)
+`entity_context` for S2, and `auth_history` plus `network_activity` for S3. (S3 is lateral movement rather than password spraying: the S1 attacker already tries a few other accounts, so a spraying case would add little.)
 
 ## Contracts 1.8.0 (D-17)
 

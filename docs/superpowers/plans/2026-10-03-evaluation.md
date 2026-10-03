@@ -39,8 +39,7 @@ Spec: `docs/superpowers/specs/2026-10-03-evaluation-design.md`.
     documentation range `198.51.100.0/24`.
   - The cases are static log files. No attack traffic is generated or run.
 - Every case must produce exactly one incident with `run_pipeline`. That means 10 or more
-  `Failed password` lines for one account from one IP within 10 minutes. No failed password
-  may appear for any other account.
+  `Failed password` lines for one account from one IP within 10 minutes.
 - The agent never sees `Scenario.expected_classification` or `required_evidence`. Only
   `Scenario.changes` reaches a tool.
 - Values:
