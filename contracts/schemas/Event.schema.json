@@ -236,7 +236,8 @@
         "linux_auditd",
         "zeek_conn",
         "zeek_dns",
-        "zeek_http"
+        "zeek_http",
+        "wazuh"
       ],
       "title": "TelemetrySource",
       "type": "string"

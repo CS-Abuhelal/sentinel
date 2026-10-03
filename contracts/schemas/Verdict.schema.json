@@ -157,6 +157,81 @@
       ],
       "title": "ProposedAction",
       "type": "object"
+    },
+    "Recommendation": {
+      "additionalProperties": false,
+      "description": "Plain-language advice for the owner of a monitored PC. SENTINEL never carries it out.",
+      "properties": {
+        "recommendation_id": {
+          "title": "Recommendation Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "priority": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Priority",
+          "type": "integer"
+        },
+        "steps": {
+          "items": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Steps",
+          "type": "array"
+        },
+        "finding_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Finding Ids",
+          "type": "array"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "official_remediation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Official Remediation"
+        },
+        "dropped_steps": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dropped Steps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "recommendation_id",
+        "title",
+        "priority",
+        "steps",
+        "finding_ids",
+        "evidence_ids",
+        "official_remediation",
+        "dropped_steps"
+      ],
+      "title": "Recommendation",
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -221,6 +296,13 @@
       "title": "Proposed Actions",
       "type": "array"
     },
+    "recommendations": {
+      "items": {
+        "$ref": "#/$defs/Recommendation"
+      },
+      "title": "Recommendations",
+      "type": "array"
+    },
     "produced_at": {
       "format": "date-time",
       "title": "Produced At",
@@ -274,6 +356,7 @@
     "cited_evidence_ids",
     "risk_factors",
     "proposed_actions",
+    "recommendations",
     "produced_at",
     "model_name",
     "tool_calls_made",

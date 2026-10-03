@@ -6,6 +6,41 @@ Superseded entries are removed, and numbers are never reused.
 
 ---
 
+## D-11 — A live advisor mode that reads from Wazuh (2026-09-27)
+
+**Decision.** SENTINEL gets a live mode for Ahmed's own Windows PC. Wazuh 4.14 (single-node
+Docker) watches the PC and pushes every alert of level 3 or higher to SENTINEL through a custom
+integration. SENTINEL stores the alerts in PostgreSQL, backfills missed ones from the Wazuh
+indexer, and shows them on a live "My PC" page. Later phases investigate the alerts and rank weak
+spots. Wazuh is an external source: SENTINEL reads from it and never needs it to build or test.
+
+**Why.** A system that watches a real machine and explains what to do is a stronger result than
+two recorded cases, and it reuses SENTINEL's core: evidence-cited AI behind a deterministic
+boundary. D-00 keeps Wazuh out of SENTINEL's own stack, and that still holds.
+
+**Consequence.** PostgreSQL arrives, as D-05 planned, because the live feed needs durable writes.
+Everything on the PC is advice only. Real PC data stays local, and the public site only ever
+shows a sanitized sample. Design: `docs/superpowers/specs/2026-09-27-wazuh-live-advisor-design.md`.
+
+---
+
+## D-12 — Contracts 1.4.0: live alerts, findings and advice (2026-09-27)
+
+**Decision.** Add `TelemetrySource.WAZUH`; `IncidentStatus` values `queued`, `low_priority` and
+`investigation_failed`; `HostRecord.personal`; `FindingKind`, `FindingStatus`, `Finding`,
+`Recommendation` and `HostAssessment`; `LiveAlert`, `ServiceState`, `PcStatus` and `PcFeed`; and
+`Verdict.recommendations`.
+
+**Why.** The live advisor (D-11) needs shapes for stored alerts, the live page, weak spots and
+advice. Defining them all at once keeps a single version bump for the feature, and lets the
+dashboard generate its types from them.
+
+**Consequence.** `Recommendation` caps its steps at 10, each at most 300 characters, in the
+contract itself. The dashboard gets a second generated type file, `src/types/pc.ts`, from
+`PcFeed.schema.json`.
+
+---
+
 ## D-10 — The policy engine denies targets outside the lab inventory (2026-09-26)
 
 **Decision.** A new policy rule, `target_not_in_inventory`, denies any action whose account or

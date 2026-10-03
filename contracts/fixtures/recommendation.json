@@ -1,0 +1,16 @@
+{
+  "recommendation_id": "rec_5b7d2e9a0c13",
+  "title": "Update Node.js",
+  "priority": 91,
+  "steps": [
+    "Download the current Node.js LTS installer from nodejs.org.",
+    "Run it to replace version 22.11.0.",
+    "Run node --version to confirm the new version."
+  ],
+  "finding_ids": [
+    "fnd_3c9a1e7b2d40"
+  ],
+  "evidence_ids": [],
+  "official_remediation": null,
+  "dropped_steps": []
+}

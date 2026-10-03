@@ -1,15 +1,58 @@
 from __future__ import annotations
 
+import logging
 import os
+import threading
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 
-from contracts.models import CONTRACT_VERSION, IncidentRun
+from backend.app.backfill import IndexerSettings, backfill, backfill_cursor
+from backend.app.db import get_engine
+from backend.app.ingest import router as ingest_router
+from backend.app.pc import router as pc_router
+from contracts.models import CONTRACT_VERSION, IncidentRun, ServiceState
 
 REPO = Path(__file__).resolve().parents[2]
+logger = logging.getLogger(__name__)
 
-app = FastAPI(title="SENTINEL API", version="0.1.0")
+
+def _backfill_in_background(
+    app: FastAPI, settings: IndexerSettings, since: datetime | None
+) -> None:
+    try:
+        with settings.client() as client:
+            app.state.backfill = backfill(get_engine(), client, datetime.now(UTC), since)
+    except Exception as error:
+        logger.warning("Wazuh backfill failed: %s", error)
+        app.state.backfill = ServiceState(reachable=False, detail=f"Backfill failed: {error}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    settings = IndexerSettings.from_env()
+    if settings is None:
+        app.state.backfill = ServiceState(reachable=False, detail="WAZUH_INDEXER_URL is not set.")
+    else:
+        try:
+            since = backfill_cursor(get_engine())
+        except Exception as error:
+            logger.warning("Wazuh backfill failed: %s", error)
+            app.state.backfill = ServiceState(reachable=False, detail=f"Backfill failed: {error}")
+        else:
+            app.state.backfill = ServiceState(reachable=False, detail="Backfill is running.")
+            threading.Thread(
+                target=_backfill_in_background, args=(app, settings, since), daemon=True
+            ).start()
+    yield
+
+
+app = FastAPI(title="SENTINEL API", version="0.1.0", lifespan=lifespan)
+app.include_router(ingest_router)
+app.include_router(pc_router)
 
 
 def runs_dir() -> Path:

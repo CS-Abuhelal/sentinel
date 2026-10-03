@@ -32,6 +32,9 @@ export const STATUS: Record<IncidentStatus, string> = {
   awaiting_approval: "Awaiting approval",
   resolved: "Resolved",
   closed_benign: "Closed as benign",
+  queued: "Queued for the AI",
+  low_priority: "Low priority",
+  investigation_failed: "Investigation failed",
 };
 
 export const STOP_REASON: Record<InvestigationStopReason, string> = {

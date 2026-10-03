@@ -41,7 +41,10 @@
         "investigating",
         "awaiting_approval",
         "resolved",
-        "closed_benign"
+        "closed_benign",
+        "queued",
+        "low_priority",
+        "investigation_failed"
       ],
       "title": "IncidentStatus",
       "type": "string"
