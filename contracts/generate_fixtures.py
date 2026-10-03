@@ -43,6 +43,7 @@ from contracts.models import (
     NetworkInfo,
     PcFeed,
     PcIncidentSummary,
+    PcSample,
     PcStatus,
     PolicyDecision,
     PolicyOutcome,
@@ -558,6 +559,14 @@ host_assessment = HostAssessment(
     model_name="qwen3:14b",
 )
 
+pc_sample = PcSample(
+    created_at=WZ_T0,
+    note="Recorded sample.",
+    feed=pc_feed,
+    assessment=host_assessment,
+    runs=[incident_run],
+)
+
 FIXTURES = {
     "event_failed_login": failed_login,
     "event_successful_login": successful_login,
@@ -581,6 +590,7 @@ FIXTURES = {
     "live_alert": live_alert,
     "pc_feed": pc_feed,
     "pc_incident_summary": pc_incident_summary,
+    "pc_sample": pc_sample,
     "finding_vulnerability": finding_vulnerability,
     "finding_configuration": finding_configuration,
     "recommendation": recommendation,
@@ -598,6 +608,7 @@ SCHEMA_MODELS = [
     RiskScore,
     IncidentRun,
     PcFeed,
+    PcSample,
     HostAssessment,
 ]
 

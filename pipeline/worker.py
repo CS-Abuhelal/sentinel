@@ -19,7 +19,7 @@ from agent.ollama import DEFAULT_MODEL, OllamaClient
 from agent.ollama import model_state as model_state
 from agent.tools import WAZUH_TOOLS
 from backend.app.db import get_engine
-from backend.app.findings import next_finding_to_advise, set_advice, unit_findings
+from backend.app.findings import FIX_TOP, next_finding_to_advise, set_advice, unit_findings
 from backend.app.incidents import (
     StoreHistory,
     host_auth_events,
@@ -49,7 +49,6 @@ logger = logging.getLogger(__name__)
 INTERVAL_SECONDS = 10
 WORKER_LOCK = 0x53454E54
 LOOKBACK = timedelta(days=30)
-FIX_TOP = 10
 
 
 def utcnow() -> datetime:

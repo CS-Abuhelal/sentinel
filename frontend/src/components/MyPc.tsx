@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { fetchPcFeed, fetchPcRun, retryIncident } from "../api";
-import { STATUS, utc } from "../format";
+import { fetchPcFeed, fetchPcRun, fetchPcSample, retryIncident } from "../api";
+import type { PcSource } from "../api";
+import { incidentLabel, utc } from "../format";
 import type { IncidentRun } from "../types/contracts";
 import type { PcFeed, PcIncidentSummary, ServiceState } from "../types/pc";
+import type { PcSample } from "../types/sample";
 import { FixPanel } from "./FixPanel";
+import { ReportPanel } from "./ReportPanel";
 import { RunDetail } from "./RunDetail";
 
 const POLL_MS = 5000;
@@ -14,13 +17,21 @@ type Load =
   | { state: "failed"; message: string; last: PcFeed | null }
   | { state: "ready"; feed: PcFeed };
 
-type Tab = "alerts" | "incidents" | "fixes";
+type Tab = "alerts" | "incidents" | "fixes" | "report";
 
 type RunLoad =
   | { state: "idle" }
   | { state: "loading" }
   | { state: "failed"; message: string }
+  | { state: "missing" }
   | { state: "ready"; run: IncidentRun };
+
+function sampleRunLoad(sample: PcSample | null, incidentId: string | null): RunLoad {
+  if (!incidentId) return { state: "idle" };
+  if (!sample) return { state: "loading" };
+  const run = sample.runs.find((candidate) => candidate.incident.incident_id === incidentId);
+  return run ? { state: "ready", run } : { state: "missing" };
+}
 
 function initialTab(): Tab {
   const params = new URLSearchParams(window.location.search);
@@ -29,6 +40,7 @@ function initialTab(): Tab {
   const tab = params.get("tab");
   if (tab === "incidents") return "incidents";
   if (tab === "fixes") return "fixes";
+  if (tab === "report") return "report";
   return "alerts";
 }
 
@@ -36,8 +48,11 @@ function initialIncidentId(): string | null {
   return new URLSearchParams(window.location.search).get("incident");
 }
 
-export function MyPc({ url }: { url: string }) {
+export function MyPc({ source }: { source: PcSource }) {
+  const { kind, url } = source;
+  const sampled = kind === "sample";
   const [load, setLoad] = useState<Load>({ state: "loading" });
+  const [sample, setSample] = useState<PcSample | null>(null);
   const [tab, setTab] = useState<Tab>(initialTab);
   const [incidentId, setIncidentId] = useState<string | null>(initialIncidentId);
   const [linkedFinding] = useState<string | null>(() =>
@@ -47,6 +62,20 @@ export function MyPc({ url }: { url: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    if (sampled) {
+      fetchPcSample(url)
+        .then((loaded) => {
+          if (cancelled) return;
+          setSample(loaded);
+          setLoad({ state: "ready", feed: loaded.feed });
+        })
+        .catch((error: Error) => {
+          if (!cancelled) setLoad({ state: "failed", message: error.message, last: null });
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
     let last: PcFeed | null = null;
     const poll = () => {
       fetchPcFeed(url)
@@ -64,18 +93,20 @@ export function MyPc({ url }: { url: string }) {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [url]);
+  }, [sampled, url]);
 
   useEffect(() => {
     const params = new URLSearchParams();
     params.set("view", "pc");
     if (tab === "incidents") params.set("tab", "incidents");
     if (tab === "fixes") params.set("tab", "fixes");
+    if (tab === "report") params.set("tab", "report");
     if (incidentId) params.set("incident", incidentId);
     window.history.replaceState(null, "", `?${params.toString()}`);
   }, [tab, incidentId]);
 
   useEffect(() => {
+    if (sampled) return;
     if (!incidentId) {
       setRunLoad({ state: "idle" });
       return;
@@ -92,7 +123,17 @@ export function MyPc({ url }: { url: string }) {
     return () => {
       cancelled = true;
     };
-  }, [incidentId]);
+  }, [sampled, incidentId]);
+
+  const shownRunLoad = sampled ? sampleRunLoad(sample, incidentId) : runLoad;
+
+  const openableIds = useMemo(
+    () =>
+      sampled
+        ? new Set((sample?.runs ?? []).map((run) => run.incident.incident_id))
+        : null,
+    [sampled, sample],
+  );
 
   const feed = load.state === "ready" ? load.feed : load.state === "failed" ? load.last : null;
 
@@ -104,11 +145,23 @@ export function MyPc({ url }: { url: string }) {
   return (
     <section className="pc">
       <header className="pc-head">
-        <p className="eyebrow">Live · refreshes every 5 seconds</p>
+        <p className="eyebrow">
+          {sampled ? "Recorded sample" : "Live · refreshes every 5 seconds"}
+        </p>
         <h1>My PC</h1>
+        {sample && <p className="notice">{sample.note}</p>}
       </header>
-      {load.state === "loading" && <p className="notice">Connecting to the SENTINEL service…</p>}
-      {load.state === "failed" && (
+      {load.state === "loading" && (
+        <p className="notice">
+          {sampled ? "Loading the recorded sample…" : "Connecting to the SENTINEL service…"}
+        </p>
+      )}
+      {load.state === "failed" && sampled && (
+        <p className="notice">
+          <strong>Can’t load the recorded sample.</strong> {load.message}
+        </p>
+      )}
+      {load.state === "failed" && !sampled && (
         <div className="notice">
           <p>
             <strong>Can’t reach the SENTINEL service.</strong> {load.message}
@@ -118,7 +171,7 @@ export function MyPc({ url }: { url: string }) {
           </p>
         </div>
       )}
-      {feed && <StatusBar feed={feed} />}
+      {feed && <StatusBar feed={feed} recorded={sampled} />}
       <nav className="pc-tabs" aria-label="My PC views">
         <button type="button" aria-pressed={tab === "alerts"} onClick={() => selectTab("alerts")}>
           Alerts
@@ -129,32 +182,44 @@ export function MyPc({ url }: { url: string }) {
         <button type="button" aria-pressed={tab === "fixes"} onClick={() => selectTab("fixes")}>
           Fix these first
         </button>
+        <button type="button" aria-pressed={tab === "report"} onClick={() => selectTab("report")}>
+          Report
+        </button>
       </nav>
-      {feed && tab === "alerts" && <AlertTable feed={feed} />}
+      {feed && tab === "alerts" && <AlertTable feed={feed} readOnly={sampled} />}
       {feed && tab === "incidents" && (
         <IncidentsPanel
           feed={feed}
           incidentId={incidentId}
-          runLoad={runLoad}
+          runLoad={shownRunLoad}
+          readOnly={sampled}
+          openableIds={openableIds}
           onSelect={setIncidentId}
           onBack={() => setIncidentId(null)}
         />
       )}
       {feed && tab === "fixes" && (
-        <FixPanel sync={feed.status.sync} initialFinding={linkedFinding} />
+        <FixPanel
+          sync={feed.status.sync}
+          initialFinding={linkedFinding}
+          sample={sampled ? (sample?.assessment ?? null) : undefined}
+        />
+      )}
+      {feed && tab === "report" && (!sampled || sample) && (
+        <ReportPanel feed={feed} sample={sample} />
       )}
     </section>
   );
 }
 
-function StatusBar({ feed }: { feed: PcFeed }) {
+function StatusBar({ feed, recorded }: { feed: PcFeed; recorded: boolean }) {
   const { status } = feed;
   return (
     <dl className="pc-status">
-      <Service label="Wazuh API" state={status.wazuh_api} />
-      <Service label="Backfill" state={status.backfill} />
-      <Service label="AI model" state={status.model} />
-      <Service label="Weak-spot sync" state={status.sync} />
+      <Service label="Wazuh API" state={status.wazuh_api} recorded={recorded} />
+      <Service label="Backfill" state={status.backfill} recorded={recorded} />
+      <Service label="AI model" state={status.model} recorded={recorded} />
+      <Service label="Weak-spot sync" state={status.sync} recorded={recorded} />
       <div>
         <dt>Alerts stored</dt>
         <dd className="mono">{status.alert_count}</dd>
@@ -171,20 +236,33 @@ function StatusBar({ feed }: { feed: PcFeed }) {
   );
 }
 
-function Service({ label, state }: { label: string; state: ServiceState }) {
+function Service({
+  label,
+  state,
+  recorded,
+}: {
+  label: string;
+  state: ServiceState;
+  recorded: boolean;
+}) {
   return (
     <div>
       <dt>{label}</dt>
-      <dd className={state.reachable ? "pc-ok" : "pc-down"}>
-        {state.reachable ? "Online" : "Offline"}
-      </dd>
+      {recorded ? (
+        <dd className="pc-recorded">Recorded</dd>
+      ) : (
+        <dd className={state.reachable ? "pc-ok" : "pc-down"}>
+          {state.reachable ? "Online" : "Offline"}
+        </dd>
+      )}
       {state.detail && <dd className="small muted">{state.detail}</dd>}
     </div>
   );
 }
 
-function AlertTable({ feed }: { feed: PcFeed }) {
+function AlertTable({ feed, readOnly }: { feed: PcFeed; readOnly: boolean }) {
   if (feed.alerts.length === 0) {
+    if (readOnly) return <p className="notice">No alerts in this sample.</p>;
     return (
       <p className="notice">
         No alerts yet. Follow <code>lab/wazuh/README.md</code> to connect Wazuh, then trigger a
@@ -227,12 +305,16 @@ function IncidentsPanel({
   feed,
   incidentId,
   runLoad,
+  readOnly,
+  openableIds,
   onSelect,
   onBack,
 }: {
   feed: PcFeed;
   incidentId: string | null;
   runLoad: RunLoad;
+  readOnly: boolean;
+  openableIds: ReadonlySet<string> | null;
   onSelect: (incidentId: string) => void;
   onBack: () => void;
 }) {
@@ -266,12 +348,16 @@ function IncidentsPanel({
             <strong>Can’t load this incident.</strong> {runLoad.message}
           </p>
         )}
+        {runLoad.state === "missing" && (
+          <p className="notice">This investigation is not included in the sample.</p>
+        )}
         {runLoad.state === "ready" && <RunDetail key={runLoad.run.run_id} run={runLoad.run} />}
       </div>
     );
   }
 
   if (feed.incidents.length === 0) {
+    if (readOnly) return <p className="notice">No incidents in this sample.</p>;
     return (
       <p className="notice">
         No incidents yet. Alerts become incidents within 10 seconds; those at level 7 or higher
@@ -298,6 +384,8 @@ function IncidentsPanel({
           <IncidentRow
             key={item.incident.incident_id}
             item={item}
+            readOnly={readOnly}
+            hasRun={openableIds === null || openableIds.has(item.incident.incident_id)}
             onSelect={onSelect}
             retryStatus={retryState[item.incident.incident_id]}
             onRetry={handleRetry}
@@ -310,21 +398,22 @@ function IncidentsPanel({
 
 function IncidentRow({
   item,
+  readOnly,
+  hasRun,
   onSelect,
   retryStatus,
   onRetry,
 }: {
   item: PcIncidentSummary;
+  readOnly: boolean;
+  hasRun: boolean;
   onSelect: (incidentId: string) => void;
   retryStatus: "busy" | "failed" | undefined;
   onRetry: (incidentId: string) => void;
 }) {
   const { incident, classification, max_level, alert_count, recommendation_count } = item;
-  const openable = classification !== null;
-  const label =
-    classification !== null && incident.status === "investigating"
-      ? "Advice ready"
-      : STATUS[incident.status];
+  const openable = classification !== null && hasRun;
+  const label = incidentLabel(incident.status, classification);
 
   const openRow = () => onSelect(incident.incident_id);
 
@@ -348,7 +437,7 @@ function IncidentRow({
       <td className="mono">{utc(incident.window_end)}</td>
       <td>
         <span className={`status status--${incident.status}`}>{label}</span>
-        {incident.status === "investigation_failed" && (
+        {incident.status === "investigation_failed" && !readOnly && (
           <>
             {" "}
             <button

@@ -3,8 +3,10 @@ from __future__ import annotations
 import logging
 import os
 import ssl
+import threading
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -21,6 +23,7 @@ MIN_LEVEL = 3
 LIMIT = 5000
 LOOKBACK = timedelta(minutes=10)
 MAX_PAGES = 20
+RETRY_BACKFILL = timedelta(seconds=30)
 
 
 @dataclass(frozen=True)
@@ -119,3 +122,30 @@ def backfill(
         logger.warning("Wazuh backfill stopped at the %s-page limit.", MAX_PAGES)
         detail = f"{detail} Stopped at the {MAX_PAGES}-page limit."
     return ServiceState(reachable=True, detail=detail)
+
+
+def backfill_until_done(
+    engine: Engine,
+    client_factory: Callable[[], httpx.Client],
+    since: datetime | None,
+    report: Callable[[ServiceState], None],
+    stop: threading.Event,
+    *,
+    clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+    retry: timedelta = RETRY_BACKFILL,
+) -> ServiceState:
+    while True:
+        try:
+            with client_factory() as client:
+                state = backfill(engine, client, clock(), since)
+        except Exception as error:
+            logger.warning("Wazuh backfill failed: %s", error)
+            state = ServiceState(reachable=False, detail=f"Backfill failed: {error}")
+        if state.reachable:
+            report(state)
+            return state
+        failure = (state.detail or "Backfill failed").rstrip(".")
+        seconds = int(retry.total_seconds())
+        report(ServiceState(reachable=False, detail=f"{failure}. Retrying in {seconds} seconds."))
+        if stop.wait(retry.total_seconds()):
+            return state

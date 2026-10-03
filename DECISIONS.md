@@ -6,6 +6,54 @@ Superseded entries are removed, and numbers are never reused.
 
 ---
 
+## D-16 — Contracts 1.7.0 and a sanitized public sample (2026-09-29, updated 2026-10-02)
+
+**Decision.** Add `PcSample`, a recorded snapshot of the My PC page (feed, assessment, runs).
+`pipeline.sample` exports it from the live database, and `pipeline.sanitize` replaces every
+host name, user name, profile-path user, IPv4 and MAC address and agent id with a stable
+placeholder. The export refuses to write if any term in `SENTINEL_FORBIDDEN_TERMS` survives. The
+owner reviews the file before it is committed to `lab/wazuh/sample/`, and GitHub Pages serves it
+read-only.
+
+**Why.** Recruiters should see the live advisor working on real data without the owner's PC
+being exposed. Learning identifiers from the data catches the names that occur in free text,
+not only those in known fields. The runtime deny-list is the last check, and it never lives in
+the repo.
+
+**Consequence.** The public page is a snapshot, so it does not update. Regenerating it means
+running the export again and reviewing it again.
+
+**Updated 2026-10-02.**
+- The sanitizer now replaces host and user names, display names, `DOMAIN\user`, profile paths
+  in any form, emails (with email-shaped placeholders), IPv4, IPv6, MAC addresses, SIDs and
+  agent ids.
+- The sample keeps 30 incidents, which include the newest 10 that were investigated, with
+  their runs. It keeps the top 25 findings plus the top finding of each of the `FIX_TOP`
+  programs that get a fix (10), with their fixes. It keeps the 50 newest alerts.
+- The export fails closed. It needs `SENTINEL_FORBIDDEN_TERMS`, checks the cleaned data for
+  each term again (also percent-decoded, with `\uXXXX` escapes decoded and with `.`, `_` and
+  `+` read as spaces), and writes nothing if one survives.
+- Counts in the sample describe the sample, not the PC. The report and the weak-spot list say
+  so.
+
+**Owner decision, 2026-10-03.** The sample names the exact unpatched versions of programs on
+the owner's PC: VS Code, Steam, MongoDB, MongoDB Compass, Node.js, Python, pip, WhatsApp and
+four npm libraries. It contains no address or name that leads to the PC. Still, someone
+targeting the owner would learn which software is out of date. The owner updates those
+programs before the branch is pushed. The sample stays a dated snapshot, and the README says
+the programs have since been updated.
+
+Done on 2026-10-03:
+- **Updated:** VS Code (1.140.0), Node.js (24.19.0), Python (3.14.7), pip (26.2.1), and the npm
+  libraries (mongoose 9.10.3, path-to-regexp 8.4.2, qs 6.16.0, body-parser 2.3.0).
+- **Removed:** MongoDB Server and MongoDB Compass, which were unused.
+- **Left as is:**
+  - One client app, by the owner's choice; the owner accepts that risk.
+  - Steam. Wazuh's match compares Steam's version number with a 2021 date, which is likely a
+    false positive, and the Steam client updates itself.
+
+---
+
 ## D-15 — Weak spots: sources, fix steps and contracts 1.6.0 (2026-09-28, updated 2026-09-29)
 
 **Decision.**

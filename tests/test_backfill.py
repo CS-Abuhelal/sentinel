@@ -15,6 +15,7 @@ from backend.app.backfill import (
     IndexerSettings,
     backfill,
     backfill_cursor,
+    backfill_until_done,
     fetch_alerts,
     search_body,
 )
@@ -158,6 +159,81 @@ def test_backfill_reports_a_malformed_answer(db: Engine) -> None:
     state = backfill(db, client, NOW, since=None)
     assert state.reachable is False
     assert state.detail is not None and state.detail.startswith("Backfill failed")
+
+
+def test_backfill_retries_until_the_indexer_answers(db: Engine) -> None:
+    since = NOW - timedelta(hours=1)
+    payloads = [make_live_alert("2.1", minute=1)[1]]
+    seen: list[str] = []
+    attempts = iter([False, False, True])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        filters = json.loads(request.content)["query"]["bool"]["filter"]
+        seen.append(filters[1]["range"]["timestamp"]["gte"])
+        if not next(attempts):
+            raise httpx.ConnectError("connection refused", request=request)
+        return _hits(payloads)
+
+    reported: list[ServiceState] = []
+    state = backfill_until_done(
+        db,
+        lambda: _client(handler),
+        since,
+        reported.append,
+        threading.Event(),
+        clock=lambda: NOW,
+        retry=timedelta(0),
+    )
+    assert state.reachable is True
+    assert [s.reachable for s in reported] == [False, False, True]
+    assert reported[0].detail is not None
+    assert reported[0].detail.startswith("Backfill failed")
+    assert reported[0].detail.endswith(". Retrying in 0 seconds.")
+    assert seen == [since.isoformat()] * 3
+    assert alert_count(db) == 1
+
+
+def test_backfill_retry_stops_when_the_app_stops() -> None:
+    def refuse(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    stop = threading.Event()
+    stop.set()
+    calls: list[int] = []
+
+    def client_factory() -> httpx.Client:
+        calls.append(1)
+        return _client(refuse)
+
+    reported: list[ServiceState] = []
+    state = backfill_until_done(
+        None,
+        client_factory,
+        None,
+        reported.append,
+        stop,
+        clock=lambda: NOW,
+        retry=timedelta(seconds=30),
+    )
+    assert state.reachable is False
+    assert len(calls) == 1
+    assert reported[-1].detail is not None
+    assert reported[-1].detail.endswith(". Retrying in 30 seconds.")
+
+
+def test_backfill_retry_survives_a_client_that_cannot_be_built() -> None:
+    def broken() -> httpx.Client:
+        raise OSError("no CA file")
+
+    stop = threading.Event()
+    stop.set()
+    reported: list[ServiceState] = []
+    state = backfill_until_done(
+        None, broken, None, reported.append, stop, clock=lambda: NOW, retry=timedelta(0)
+    )
+    assert state.reachable is False
+    assert state.detail == "Backfill failed: no CA file"
+    assert reported[-1].detail == "Backfill failed: no CA file. Retrying in 0 seconds."
 
 
 def test_indexer_settings_from_env_requires_url(monkeypatch: pytest.MonkeyPatch) -> None:

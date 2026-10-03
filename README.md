@@ -63,6 +63,10 @@ removes any advice step that would weaken the PC, such as turning off Defender. 
 [`lab/wazuh/README.md`](lab/wazuh/README.md). The screenshots below come from a real run
 on 2026-09-28, with nothing written by hand.
 
+**Browse it yourself:** https://cs-abuhelal.github.io/sentinel/?view=pc shows a recorded sample
+of this page from my PC, with names and addresses replaced. It is read-only and nothing in it is
+live.
+
 **1. Live alerts.** Every Wazuh alert of level 3 or higher arrives within about a second. These
 include the 10 failed logins I made for a user that does not exist, which Wazuh flagged as
 "Multiple Windows Logon Failures" (level 10).
@@ -111,6 +115,27 @@ personal PC.
 ![Weak spots ranked on the PC](docs/screenshots/13-my-pc-fixes.png)
 
 ![Fix steps for the top weak spot](docs/screenshots/14-my-pc-fix-detail.png)
+
+**6. A report you can print, and a public sample.** The Report tab sums up the PC: status,
+the top fixes with their steps, recent incidents and totals. "Print or save as PDF" gives a
+clean black-on-white copy. The public demo shows a recorded sample of this page from my PC. A
+sanitizer replaced the names, addresses, account ids and profile paths it found before the
+data left the machine. The export refuses to write the file if any of the names I give it
+survive, and I reviewed the file before committing it. The sample is a dated snapshot: since
+recording it I have updated or removed most of the out-of-date programs it lists.
+
+![The printable report](docs/screenshots/15-my-pc-report.png)
+
+![The recorded sample on the public demo](docs/screenshots/16-my-pc-sample.png)
+
+**7. How often the AI was right.** I labelled the 10 investigated incidents in the sample
+myself, since I knew what had happened on the PC. I labelled all 10 as harmless. For two of
+them (account changes made by SYSTEM at sign-in), that is my likely explanation, not a
+confirmed one. The model matched **1 of 10**: it called my failed-login test benign and
+answered "inconclusive" for the other 9, all Windows background events. It raised no false
+alarm. For fixes, 6 of the 8 fixes that have a version bound name a version at least that new
+in their steps. With 10 cases this is anecdotal, not a benchmark. Details:
+[`docs/pc-accuracy.md`](docs/pc-accuracy.md).
 
 ---
 

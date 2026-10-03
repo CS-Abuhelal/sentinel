@@ -1,5 +1,6 @@
 import type {
   ActionType,
+  Classification,
   EntityType,
   EvidenceItem,
   IncidentRun,
@@ -41,6 +42,13 @@ export const STATUS: Record<IncidentStatus, string> = {
   low_priority: "Low priority",
   investigation_failed: "Investigation failed",
 };
+
+export function incidentLabel(
+  status: IncidentStatus,
+  classification: Classification | null,
+): string {
+  return classification !== null && status === "investigating" ? "Advice ready" : STATUS[status];
+}
 
 export const STOP_REASON: Record<InvestigationStopReason, string> = {
   verdict_reached: "Reached a verdict",

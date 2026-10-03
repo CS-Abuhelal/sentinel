@@ -172,6 +172,9 @@ def stored_advice(engine: Engine, host: str) -> dict[str, StoredAdvice]:
         }
 
 
+FIX_TOP = 10
+
+
 def advice_unit(finding: Finding) -> str:
     return _unit(finding.kind.value, finding.package, finding.finding_id)
 
