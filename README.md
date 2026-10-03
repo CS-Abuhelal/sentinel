@@ -42,6 +42,11 @@ agent sees that the source is the account's usual host, calls it benign and prop
 It is not flawless: it still listed a brute-force step in its attack chain.
 ([open this case](https://cs-abuhelal.github.io/sentinel/?case=s1_benign#stage-4))
 
+> **Correction (2026-10-03):** the prompt behind this run still contained the case name
+> (`s1_benign`), a label leak I found while building the evaluation and have since fixed.
+> Without that hint, `qwen3:14b` calls this benign twin malicious in 3 of 3 runs; see
+> [Results](#results). The screenshots below are kept as a record of that earlier run.
+
 ![Benign twin overview](docs/screenshots/05-benign-overview.png)
 
 ![Benign twin verdict](docs/screenshots/06-benign-verdict.png)
@@ -162,26 +167,36 @@ run was recorded:
 - **Single call**: one AI call, with the results of all four lookup tools pasted in up front.
 - **Agent**: the AI chooses which tools to call, one at a time.
 
-| Approach | Accuracy | False alarms on benign twins | Evidence it must cite | Median time per case | Prohibited actions proposed / executed |
-| --- | --- | --- | --- | --- | --- |
-| Rules only | 50% | 4 of 4 | n/a | 0 s | 0 / 0 |
-| Single call | **100%** | 0 of 12 | 79% | 27 s | 3 / 0 |
-| Agent | 75% | 6 of 12 | 100% | 37 s | 3 / 0 |
+| Approach | Accuracy (range over 3 runs) | False alarms on benign twins | Median time per case | Prohibited actions proposed / executed |
+| --- | --- | --- | --- | --- |
+| Rules only | 50% | 4 of 4 | 0 s | 0 / 0 |
+| Single call | 67% (63–75%) | 6 of 12 | 28 s | 3 / 0 |
+| Agent | 63% (63–63%) | 9 of 12 | 36 s | 3 / 0 |
 
-**The agent did not win.** It missed two benign twins in every run, and the recordings show why:
+**Neither AI approach is reliable on benign twins, and the agent did not beat the single
+call.**
+- Both called the S1 and S3 twins attacks in every run: a backup job and a user retrying from
+  their own usual hosts.
+- On the VPN twin, the agent searched for documented changes by account only, so it never
+  found the change, which was filed under the new IP address. The single call's code searched
+  by account, host and IP together.
+- The single call was fooled by an unrelated maintenance window on the S4 attack in 2 of 3
+  runs.
 
-- **Its own query choices hid the answer.** In the VPN case, it searched for documented
-  changes by account only. The change was filed under the new IP address, so the agent never
-  saw it. The single call's code searched by account, host and IP together, so it found it.
-- **It overrode its own evidence.** On a user's failed logins from their usual workstation,
-  the agent noted the IP was known and still called it an attack, because it gave the
-  "failures then success" pattern more weight.
+**A correction.** My first recording scored the single call at 100% and the agent at 75%. A
+final review found that every prompt contained the case name, for example `s4_benign`, which
+leaked the answer. I removed it, added a test that no prompt can contain a case name or label,
+and re-recorded all 48 runs. The numbers above are the clean ones.
 
-Both AI approaches proposed disabling the protected `labadmin` account 3 times, and the policy
-engine denied all 3 before anything ran. That is the safety boundary doing its job. These are
-8 cases I wrote and labelled myself, so the numbers are a demonstration, not a benchmark. The
-full report, with every case and run, is in [`docs/eval-results.md`](docs/eval-results.md).
-Rerun it with `python -m eval.run`: it replays the recordings, so no model is needed.
+**The safety boundary held.** Each AI approach proposed disabling the protected `labadmin`
+account in all 3 of its runs on that case, 6 proposals in all, and the policy engine denied
+every one. On their false alarms, the AIs proposed disabling legitimate accounts. The policy
+held each of those for human approval, so nothing ran.
+
+These are 8 cases I wrote and labelled myself, so the numbers are a demonstration, not a
+benchmark. The full report, with every case and run, is in
+[`docs/eval-results.md`](docs/eval-results.md). Rerun it with `python -m eval.run`: it replays
+the recordings, so no model is needed.
 
 ---
 
