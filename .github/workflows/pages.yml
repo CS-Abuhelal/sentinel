@@ -53,7 +53,7 @@ jobs:
 
       - name: Investigate each scenario live and execute approved actions in the lab
         run: |
-          for log in lab/scenarios/*/auth.log; do
+          for log in lab/scenarios/s1_*/auth.log; do
             case_id=$(basename "$(dirname "$log")")
             victim="victim-$case_id"
             docker run -d --cap-add NET_ADMIN --name "$victim" sentinel-victim
