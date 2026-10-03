@@ -34,6 +34,9 @@
 2026-09-26T09:00:30.201294+00:00 victim-web-01 sshd[3236]: pam_unix(sshd:session): session opened for user kpatel(uid=1005) by kpatel(uid=0)
 2026-09-26T16:30:38.183173+00:00 victim-web-01 sshd[3205]: pam_unix(sshd:session): session closed for user msmith
 2026-09-26T17:00:30.192565+00:00 victim-web-01 sshd[3236]: pam_unix(sshd:session): session closed for user kpatel
+2026-09-27T09:00:33.274518+00:00 victim-web-01 sshd[3240]: Accepted password for kpatel from 10.77.0.61 port 41962 ssh2
+2026-09-27T09:00:33.281603+00:00 victim-web-01 sshd[3240]: pam_unix(sshd:session): session opened for user kpatel(uid=1005) by kpatel(uid=0)
+2026-09-27T17:00:33.274518+00:00 victim-web-01 sshd[3240]: pam_unix(sshd:session): session closed for user kpatel
 2026-09-27T22:15:00.150942+00:00 victim-web-01 sshd[3249]: Failed password for msmith from 10.77.0.61 port 41965 ssh2
 2026-09-27T22:15:25.294548+00:00 victim-web-01 sshd[3250]: Failed password for msmith from 10.77.0.61 port 41966 ssh2
 2026-09-27T22:15:50.204798+00:00 victim-web-01 sshd[3251]: Failed password for msmith from 10.77.0.61 port 41969 ssh2
