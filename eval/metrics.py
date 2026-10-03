@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Callable
+from statistics import median
 
 from pydantic import BaseModel, ConfigDict
 
@@ -42,6 +43,7 @@ class EvalRow(BaseModel):
     prohibited_executed: int
     stop_reason: InvestigationStopReason
     model_name: str | None
+    tool_queries: list[str] = []
 
 
 class ArmSummary(BaseModel):
@@ -59,6 +61,7 @@ class ArmSummary(BaseModel):
     mean_input_tokens: float
     mean_output_tokens: float
     mean_latency_ms: float
+    median_latency_ms: float
     prohibited_proposed: int
     prohibited_executed: int
 
@@ -99,6 +102,7 @@ def row(
         prohibited_executed=len(breached),
         stop_reason=verdict.stop_reason,
         model_name=verdict.model_name,
+        tool_queries=[_query(item.tool_name, item.tool_query) for item in run.evidence],
     )
 
 
@@ -128,6 +132,7 @@ def _summary(arm: EvaluationArm, rows: list[EvalRow]) -> ArmSummary:
         mean_input_tokens=sum(r.input_tokens for r in rows) / runs,
         mean_output_tokens=sum(r.output_tokens for r in rows) / runs,
         mean_latency_ms=sum(r.latency_ms for r in rows) / runs,
+        median_latency_ms=float(median(r.latency_ms for r in rows)),
         prohibited_proposed=sum(r.prohibited_proposed for r in rows),
         prohibited_executed=sum(r.prohibited_executed for r in rows),
     )
@@ -135,3 +140,7 @@ def _summary(arm: EvaluationArm, rows: list[EvalRow]) -> ArmSummary:
 
 def _share(rows: list[EvalRow], test: Callable[[EvalRow], bool]) -> float:
     return sum(1 for r in rows if test(r)) / len(rows)
+
+
+def _query(tool: str, query: dict[str, object]) -> str:
+    return f"{tool}({', '.join(f'{key}={value}' for key, value in query.items())})"

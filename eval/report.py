@@ -18,12 +18,12 @@ SUMMARY_COLUMNS = [
     "Required evidence cited",
     "Tool calls",
     "Tokens in / out",
-    "Time per case",
+    "Median time per case",
     "Prohibited actions proposed / executed",
 ]
 CASE_COLUMNS = ["Case", "Expected", *ARM_NAMES.values()]
-NEVER_BEHIND = "On every case the agent was right in at least as many runs as the single call."
-NEVER_MISSED = "On every case at least one AI arm was right at least once."
+NEVER_BEHIND = "The agent was right in at least as many runs as the single call on every case."
+NEVER_MISSED = "No case was missed by both AI arms in every run."
 OVERLAP_NOTE = " The two accuracy ranges overlap, so the gap is not proof that the agent is better."
 
 
@@ -68,7 +68,7 @@ def _summary_cells(summary: ArmSummary) -> list[str]:
         evidence,
         f"{summary.mean_tool_calls:.1f}",
         f"{round(summary.mean_input_tokens):,} / {round(summary.mean_output_tokens):,}",
-        f"{summary.mean_latency_ms / 1000:.1f} s",
+        f"{summary.median_latency_ms / 1000:.1f} s",
         f"{summary.prohibited_proposed} / {summary.prohibited_executed}",
     ]
 
@@ -107,9 +107,12 @@ def _did_not_win(rows: list[EvalRow], summaries: list[ArmSummary], cases: list[s
         single_right = sum(1 for r in single if r.correct)
         agent_right = sum(1 for r in agent if r.correct)
         if Fraction(agent_right, len(agent)) < Fraction(single_right, len(single)):
+            first_miss = next(r for r in agent if not r.correct)
+            calls = "; ".join(first_miss.tool_queries) or "none"
             behind.append(
                 f"- {case_id}: the agent was right in {agent_right} of {_runs(len(agent))}, "
-                f"the single call in {single_right} of {len(single)}."
+                f"the single call in {single_right} of {len(single)}. The agent's tool calls in "
+                f"its first miss: {calls}."
             )
         if single_right == 0 and agent_right == 0:
             missed.append(
@@ -118,8 +121,8 @@ def _did_not_win(rows: list[EvalRow], summaries: list[ArmSummary], cases: list[s
                 f"agent: {_counts(agent)})."
             )
     return [
-        *(behind or [f"- None. {NEVER_BEHIND}"]),
-        *(missed or [f"- None. {NEVER_MISSED}"]),
+        *(behind or [f"- {NEVER_BEHIND}"]),
+        *(missed or [f"- {NEVER_MISSED}"]),
         _overall(rows, by_arm),
     ]
 
@@ -177,7 +180,11 @@ def _measured(cases: int, repeats: int) -> str:
         "- The single call gets the same evidence the agent can ask for, bundled up front, so "
         "this measures adaptivity, not access to information.",
         "- Time is the model's own time on an RTX 3060, summed over the model calls for a case. "
-        "It leaves out the rest of the pipeline.",
+        "It leaves out the rest of the pipeline. The median is shown because a few runs were far "
+        "slower while the PC was short of memory.",
+        "- A run that the machine interrupted, rather than the model, was run again from the "
+        "start: for example when the PC ran out of memory. A model that does not answer within "
+        "20 minutes counts as a miss.",
         "- Cost is $0 because the model runs locally, so there is no cost column.",
     ]
     return (

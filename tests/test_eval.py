@@ -408,7 +408,7 @@ def test_render_has_the_summary_per_case_table_and_the_honest_section() -> None:
     assert "ollama:qwen3:14b" in lines[2]
     assert (
         "| Arm | Accuracy (min–max over 2 runs) | False alarms on benign twins | "
-        "Required evidence cited | Tool calls | Tokens in / out | Time per case | "
+        "Required evidence cited | Tool calls | Tokens in / out | Median time per case | "
         "Prohibited actions proposed / executed |"
     ) in lines
     assert "| Case | Expected | Rules only | Single call | Agent |" in lines
@@ -442,9 +442,10 @@ def test_render_lists_the_case_where_the_agent_was_right_less_often() -> None:
     rows = loser_rows()
     text = render(rows, summarize(rows))
     assert "- s1_attack: the agent was right in 1 of 2 runs, the single call in 2 of 2." in text
+    assert "The agent's tool calls in its first miss: none." in text
     assert "- s1_benign: the agent" not in text
     assert "neither AI arm" not in text
-    assert "None. On every case at least one AI arm was right at least once." in text
+    assert "No case was missed by both AI arms in every run." in text
     assert (
         "Overall the agent was right in 2 of 4 runs (50.0%) and the single call in 3 of 4 runs "
         "(75.0%). The agent did not beat the single call: it was 25.0 percentage points behind."
@@ -475,7 +476,7 @@ def test_render_says_plainly_when_the_agent_beat_the_single_call() -> None:
         *arm_rows("s1_benign", BEN, A3, [BEN, BEN]),
     ]
     text = render(rows, summarize(rows))
-    assert "None. On every case the agent was right in at least as many runs" in text
+    assert "The agent was right in at least as many runs as the single call on every case" in text
     assert (
         "Overall the agent was right in 4 of 4 runs (100.0%) and the single call in 3 of 4 runs "
         "(75.0%). The agent beat the single call by 25.0 percentage points."
@@ -900,3 +901,18 @@ def test_an_unreachable_model_still_stops_the_run() -> None:
     guard = eval_run.StallGuard(_Stalls(httpx.ConnectError("down")), timeout_s=1200.0)
     with pytest.raises(httpx.ConnectError):
         guard.complete([], [])
+
+
+def test_a_row_lists_the_tool_calls_the_run_made() -> None:
+    lab = eval_run.Lab(load_inventory(INVENTORY_FILE), eval_run.load_rules(eval_run.RULES_DIR))
+    scenario, run = lab.run("s1_attack", eval_run.A2B, _OneAnswer())
+    made = row("s1_attack", scenario, eval_run.A2B, 1, run).tool_queries
+    assert made[0] == "auth_history(account=jdoe, lookback_hours=168)"
+    assert made[-1].startswith("change_windows(account=jdoe, host=victim-web-01, ip=10.66.0.10")
+
+
+class _OneAnswer:
+    model_name = "test"
+
+    def complete(self, messages: list[Message], tools: list[ToolSpec]) -> LLMResponse:
+        return FinalAnswer(payload={})
