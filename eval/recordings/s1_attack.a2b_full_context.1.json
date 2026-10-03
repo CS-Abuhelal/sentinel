@@ -7,7 +7,7 @@
       "payload": {
         "classification": "malicious",
         "confidence": 0.9,
-        "summary": "The incident involves a brute-force attack on the account 'jdoe' from the IP address '10.66.0.10', which resulted in a successful login after 24 failed attempts. The source IP has no prior successful login history, and the activity is not explained by any documented changes.",
+        "summary": "The incident involves a brute force attack on the account 'jdoe' from the IP address '10.66.0.10', which resulted in a successful login after 24 failed attempts. The source IP has no prior successful login history, and there is no documented change that explains this activity.",
         "techniques": [
           "T1110.001"
         ],
@@ -17,7 +17,7 @@
             "tactic": "Initial Access",
             "technique_id": "T1110.001",
             "technique_name": "Brute Force",
-            "description": "The attacker used brute-force techniques to guess the password of the account 'jdoe' from the IP address '10.66.0.10'.",
+            "description": "The attacker used brute force to guess the password of the account 'jdoe' from the IP address '10.66.0.10', resulting in a successful login after 24 failed attempts.",
             "evidence": [
               "E1",
               "E3"
@@ -29,15 +29,15 @@
           "E3"
         ],
         "risk_factors": [
-          "Brute-force attack on a non-privileged account",
-          "Unusual source IP with no prior successful login history"
+          "Brute force attack on an account",
+          "Successful login after multiple failed attempts from an unknown source IP"
         ],
         "proposed_actions": [
           {
             "action_type": "disable_account",
             "target_type": "account",
             "target_value": "jdoe",
-            "justification": "The account 'jdoe' was successfully accessed after a brute-force attack, indicating a potential compromise.",
+            "justification": "The account 'jdoe' was successfully logged into after a brute force attack, indicating a potential compromise.",
             "reversible": true,
             "evidence": [
               "E1",
@@ -46,9 +46,9 @@
           }
         ]
       },
-      "input_tokens": 3301,
-      "output_tokens": 346,
-      "elapsed_ms": 88427
+      "input_tokens": 3274,
+      "output_tokens": 355,
+      "elapsed_ms": 77538
     }
   ]
 }

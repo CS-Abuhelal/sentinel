@@ -5,9 +5,9 @@
     {
       "type": "final",
       "payload": {
-        "classification": "benign",
-        "confidence": 0.6,
-        "summary": "The incident involves a series of failed SSH login attempts followed by a successful login for the account msmith on the host victim-web-01 from the source IP 10.77.0.64. However, the source IP is known and has been used by the account in the past, and there is no documented change that explains the activity. The successful login occurred after 10 consecutive failures, which could be due to a brute force attack, but the account is not privileged, and the activity does not appear to be malicious.",
+        "classification": "malicious",
+        "confidence": 0.85,
+        "summary": "The account msmith on host victim-web-01 experienced a brute force attack from IP 10.77.0.64, with 10 failed login attempts followed by a successful login. The source IP is known to the account and has been used previously, but the pattern of failed attempts followed by a successful login suggests a potential compromise.",
         "techniques": [
           "T1110.001"
         ],
@@ -17,7 +17,7 @@
             "tactic": "Initial Access",
             "technique_id": "T1110.001",
             "technique_name": "Brute Force",
-            "description": "The incident involves a brute force attack on the account msmith on the host victim-web-01 from the source IP 10.77.0.64.",
+            "description": "An attacker used brute force techniques to guess the password for the account msmith on host victim-web-01, with 10 failed login attempts followed by a successful login from IP 10.77.0.64.",
             "evidence": [
               "E1"
             ]
@@ -27,15 +27,25 @@
           "E1"
         ],
         "risk_factors": [
-          "The source IP is known and has been used by the account in the past.",
-          "The account is not privileged.",
-          "There is no documented change that explains the activity."
+          "Brute force attack detected",
+          "Successful login after multiple failures"
         ],
-        "proposed_actions": []
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "msmith",
+            "justification": "The account msmith experienced a brute force attack, indicating a potential compromise. Disabling the account will prevent further unauthorized access.",
+            "reversible": true,
+            "evidence": [
+              "E1"
+            ]
+          }
+        ]
       },
-      "input_tokens": 2623,
-      "output_tokens": 317,
-      "elapsed_ms": 25557
+      "input_tokens": 2604,
+      "output_tokens": 350,
+      "elapsed_ms": 25851
     }
   ]
 }

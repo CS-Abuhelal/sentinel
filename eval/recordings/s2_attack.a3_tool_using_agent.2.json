@@ -6,12 +6,12 @@
       "type": "tool_call",
       "tool": "auth_history",
       "args": {
-        "account": "labadmin",
-        "lookback_hours": 1
+        "lookback_hours": 1,
+        "account": "labadmin"
       },
-      "input_tokens": 1945,
+      "input_tokens": 1926,
       "output_tokens": 29,
-      "elapsed_ms": 3389
+      "elapsed_ms": 3865
     },
     {
       "type": "tool_call",
@@ -20,9 +20,9 @@
         "ip": "198.51.100.23",
         "lookback_hours": 1
       },
-      "input_tokens": 2358,
+      "input_tokens": 2339,
       "output_tokens": 38,
-      "elapsed_ms": 3065
+      "elapsed_ms": 3170
     },
     {
       "type": "tool_call",
@@ -30,9 +30,9 @@
       "args": {
         "account": "labadmin"
       },
-      "input_tokens": 2698,
+      "input_tokens": 2679,
       "output_tokens": 20,
-      "elapsed_ms": 1767
+      "elapsed_ms": 1858
     },
     {
       "type": "tool_call",
@@ -41,16 +41,16 @@
         "hours_around": 1,
         "account": "labadmin"
       },
-      "input_tokens": 2787,
+      "input_tokens": 2768,
       "output_tokens": 26,
-      "elapsed_ms": 1896
+      "elapsed_ms": 1938
     },
     {
       "type": "final",
       "payload": {
         "classification": "malicious",
         "confidence": 0.95,
-        "summary": "The account 'labadmin' experienced 15 failed login attempts from the IP address '198.51.100.23' within a short time frame, indicating a potential brute force attack. The account is privileged and protected, making it a high-value target. No documented changes explain this activity.",
+        "summary": "The account 'labadmin' experienced 15 failed SSH login attempts from the IP address '198.51.100.23' within a short time frame, indicating a brute force attack. The account is privileged and protected, making it a high-value target. No documented changes explain this activity.",
         "techniques": [
           "T1110.001"
         ],
@@ -60,7 +60,7 @@
             "tactic": "Initial Access",
             "technique_id": "T1110.001",
             "technique_name": "Brute Force",
-            "description": "The attacker attempted to brute force the password for the 'labadmin' account using the IP address '198.51.100.23'.",
+            "description": "The attacker used brute force to attempt unauthorized access to the 'labadmin' account via SSH.",
             "evidence": [
               "E1",
               "E2"
@@ -83,7 +83,7 @@
             "action_type": "disable_account",
             "target_type": "account",
             "target_value": "labadmin",
-            "justification": "The account 'labadmin' is being targeted with a brute force attack, and it is a privileged and protected account. Disabling the account can prevent further unauthorized access.",
+            "justification": "The account 'labadmin' is being targeted with a brute force attack, and it is a privileged and protected account. Disabling it will prevent further unauthorized access attempts.",
             "reversible": true,
             "evidence": [
               "E1",
@@ -93,9 +93,9 @@
           }
         ]
       },
-      "input_tokens": 2964,
-      "output_tokens": 370,
-      "elapsed_ms": 25544
+      "input_tokens": 2945,
+      "output_tokens": 354,
+      "elapsed_ms": 24792
     }
   ]
 }

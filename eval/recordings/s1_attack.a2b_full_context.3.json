@@ -17,7 +17,7 @@
             "tactic": "Initial Access",
             "technique_id": "T1110.001",
             "technique_name": "Brute Force",
-            "description": "The attacker used brute-force techniques to guess the password of the account 'jdoe' from the IP address '10.66.0.10'.",
+            "description": "The attacker used brute-force techniques to guess the password for the account 'jdoe' from the IP address '10.66.0.10'.",
             "evidence": [
               "E1",
               "E3"
@@ -30,14 +30,14 @@
         ],
         "risk_factors": [
           "Brute-force attack on a non-privileged account",
-          "Unusual source IP with no prior successful logins"
+          "Unusual source IP for successful login"
         ],
         "proposed_actions": [
           {
             "action_type": "disable_account",
             "target_type": "account",
             "target_value": "jdoe",
-            "justification": "The account 'jdoe' was successfully compromised through a brute-force attack, indicating a potential security threat.",
+            "justification": "The account 'jdoe' was successfully logged into after a brute-force attack, indicating a potential compromise.",
             "reversible": true,
             "evidence": [
               "E1",
@@ -46,9 +46,9 @@
           }
         ]
       },
-      "input_tokens": 3300,
-      "output_tokens": 343,
-      "elapsed_ms": 29237
+      "input_tokens": 3277,
+      "output_tokens": 340,
+      "elapsed_ms": 25660
     }
   ]
 }

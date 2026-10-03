@@ -7,22 +7,22 @@
       "tool": "auth_history",
       "args": {
         "account": "svc_backup",
-        "lookback_hours": 1
+        "lookback_hours": 24
       },
-      "input_tokens": 1905,
-      "output_tokens": 29,
-      "elapsed_ms": 12281
+      "input_tokens": 1880,
+      "output_tokens": 30,
+      "elapsed_ms": 6112
     },
     {
       "type": "tool_call",
       "tool": "source_ip_history",
       "args": {
         "ip": "10.77.0.20",
-        "lookback_hours": 1
+        "lookback_hours": 24
       },
-      "input_tokens": 2442,
-      "output_tokens": 35,
-      "elapsed_ms": 4202
+      "input_tokens": 2418,
+      "output_tokens": 36,
+      "elapsed_ms": 3464
     },
     {
       "type": "tool_call",
@@ -30,27 +30,27 @@
       "args": {
         "account": "svc_backup"
       },
-      "input_tokens": 2773,
+      "input_tokens": 2750,
       "output_tokens": 20,
-      "elapsed_ms": 2874
+      "elapsed_ms": 1796
     },
     {
       "type": "tool_call",
       "tool": "change_windows",
       "args": {
         "account": "svc_backup",
-        "hours_around": 1
+        "hours_around": 2
       },
-      "input_tokens": 2860,
+      "input_tokens": 2837,
       "output_tokens": 26,
-      "elapsed_ms": 2829
+      "elapsed_ms": 1981
     },
     {
       "type": "final",
       "payload": {
-        "classification": "benign",
-        "confidence": 0.6,
-        "summary": "The incident involves a backup service account (svc_backup) on host victim-web-01, with a potential brute-force attack from IP 10.77.0.20. However, the source IP is known and has been used successfully by the account in the past. No documented changes explain the activity, but the account is not privileged, and the activity may be due to a script or service using an outdated password.",
+        "classification": "malicious",
+        "confidence": 0.85,
+        "summary": "The account svc_backup experienced a brute force attack from IP 10.77.0.20, with 12 failed login attempts followed by a successful login. The source IP is known to the account and has been used previously. No documented changes explain this activity, suggesting a potential compromise.",
         "techniques": [
           "T1110.001"
         ],
@@ -60,7 +60,7 @@
             "tactic": "Initial Access",
             "technique_id": "T1110.001",
             "technique_name": "Brute Force",
-            "description": "The alert indicates a brute-force attack on the svc_backup account from IP 10.77.0.20, with 12 failed login attempts followed by a successful login.",
+            "description": "The attacker used brute force to guess the password for the svc_backup account from IP 10.77.0.20, resulting in 12 failed attempts followed by a successful login.",
             "evidence": [
               "E1",
               "E2"
@@ -74,15 +74,27 @@
           "E4"
         ],
         "risk_factors": [
-          "The source IP is known and has been used successfully by the account in the past",
-          "The account is not privileged and is a backup service account",
+          "Brute force attack on a non-privileged account",
+          "Successful login after multiple failed attempts",
           "No documented changes explain the activity"
         ],
-        "proposed_actions": []
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "svc_backup",
+            "justification": "The account was successfully compromised through a brute force attack, indicating a potential security threat.",
+            "reversible": true,
+            "evidence": [
+              "E1",
+              "E2"
+            ]
+          }
+        ]
       },
-      "input_tokens": 3037,
-      "output_tokens": 316,
-      "elapsed_ms": 24284
+      "input_tokens": 3014,
+      "output_tokens": 357,
+      "elapsed_ms": 25153
     }
   ]
 }

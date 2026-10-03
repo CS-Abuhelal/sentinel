@@ -5,9 +5,9 @@
     {
       "type": "final",
       "payload": {
-        "classification": "benign",
-        "confidence": 0.6,
-        "summary": "The incident involves a service account, svc_backup, which has a history of successful logins from the source IP 10.77.0.20. The account is a backup service account and is not protected. The activity does not appear to be malicious as the source IP is known and the account is used for legitimate purposes.",
+        "classification": "malicious",
+        "confidence": 0.85,
+        "summary": "The account svc_backup on host victim-web-01 experienced a brute-force attack from IP 10.77.0.20, with 12 failed login attempts followed by a successful login. The source IP is known to the account and has been used previously, but the pattern of failed attempts followed by a successful login is indicative of a brute-force attack. No documented changes explain this activity.",
         "techniques": [
           "T1110.001"
         ],
@@ -17,7 +17,7 @@
             "tactic": "Initial Access",
             "technique_id": "T1110.001",
             "technique_name": "Brute Force",
-            "description": "The alert indicates a brute force attack on the svc_backup account, but the source IP is known and the account is used for legitimate purposes.",
+            "description": "The attacker used brute-force techniques to guess the password of the svc_backup account on the host victim-web-01 from the source IP 10.77.0.20.",
             "evidence": [
               "E1"
             ]
@@ -27,14 +27,25 @@
           "E1"
         ],
         "risk_factors": [
-          "The source IP is known and has a history of successful logins.",
-          "The account is a backup service account and is not protected."
+          "Brute-force attack indicates potential compromise",
+          "Successful login after multiple failures suggests attacker success"
         ],
-        "proposed_actions": []
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "svc_backup",
+            "justification": "The account svc_backup experienced a brute-force attack, indicating potential compromise. Disabling the account will prevent further unauthorized access.",
+            "reversible": true,
+            "evidence": [
+              "E1"
+            ]
+          }
+        ]
       },
-      "input_tokens": 2658,
-      "output_tokens": 260,
-      "elapsed_ms": 23302
+      "input_tokens": 2623,
+      "output_tokens": 354,
+      "elapsed_ms": 31742
     }
   ]
 }

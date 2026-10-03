@@ -6,12 +6,12 @@
       "type": "tool_call",
       "tool": "auth_history",
       "args": {
-        "lookback_hours": 24,
-        "account": "svc_backup"
+        "account": "svc_backup",
+        "lookback_hours": 24
       },
-      "input_tokens": 1897,
+      "input_tokens": 1874,
       "output_tokens": 30,
-      "elapsed_ms": 53850
+      "elapsed_ms": 5740
     },
     {
       "type": "tool_call",
@@ -20,9 +20,9 @@
         "ip": "10.77.0.20",
         "lookback_hours": 24
       },
-      "input_tokens": 2435,
+      "input_tokens": 2412,
       "output_tokens": 36,
-      "elapsed_ms": 3696
+      "elapsed_ms": 3524
     },
     {
       "type": "tool_call",
@@ -30,9 +30,9 @@
       "args": {
         "account": "svc_backup"
       },
-      "input_tokens": 2767,
+      "input_tokens": 2744,
       "output_tokens": 20,
-      "elapsed_ms": 1805
+      "elapsed_ms": 1824
     },
     {
       "type": "tool_call",
@@ -41,16 +41,16 @@
         "account": "svc_backup",
         "hours_around": 2
       },
-      "input_tokens": 2854,
+      "input_tokens": 2831,
       "output_tokens": 26,
-      "elapsed_ms": 1972
+      "elapsed_ms": 2119
     },
     {
       "type": "final",
       "payload": {
-        "classification": "benign",
-        "confidence": 0.7,
-        "summary": "The incident involves a successful login to the svc_backup account on victim-web-01 after 12 failed attempts from the source IP 10.77.0.20. The source IP is known and has been used successfully by the account in the past. There is no evidence of a documented change that could explain the activity, but the successful login after multiple failures may be due to a legitimate user attempting to log in after a password change or a temporary issue.",
+        "classification": "malicious",
+        "confidence": 0.85,
+        "summary": "The account svc_backup experienced a brute force attack from IP 10.77.0.20, with 12 failed login attempts followed by a successful login. The source IP is known to the account and has been used previously. No documented changes explain this activity, suggesting a potential compromise.",
         "techniques": [
           "T1110.001"
         ],
@@ -60,9 +60,10 @@
             "tactic": "Initial Access",
             "technique_id": "T1110.001",
             "technique_name": "Brute Force",
-            "description": "The alert indicates a brute force attack with multiple failed login attempts followed by a successful login.",
+            "description": "The attacker used brute force to guess the password for the svc_backup account from IP 10.77.0.20, with 12 failed attempts followed by a successful login.",
             "evidence": [
-              "E1"
+              "E1",
+              "E2"
             ]
           }
         ],
@@ -73,14 +74,27 @@
           "E4"
         ],
         "risk_factors": [
-          "Multiple failed login attempts followed by a successful login",
-          "No documented change covers the time of the incident"
+          "Brute force attack on a backup service account",
+          "Successful login after multiple failed attempts",
+          "No documented changes explain the activity"
         ],
-        "proposed_actions": []
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "svc_backup",
+            "justification": "The account was successfully compromised through a brute force attack, indicating a potential security breach.",
+            "reversible": true,
+            "evidence": [
+              "E1",
+              "E2"
+            ]
+          }
+        ]
       },
-      "input_tokens": 3031,
-      "output_tokens": 283,
-      "elapsed_ms": 20740
+      "input_tokens": 3008,
+      "output_tokens": 355,
+      "elapsed_ms": 24931
     }
   ]
 }

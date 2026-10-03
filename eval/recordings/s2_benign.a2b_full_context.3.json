@@ -25,19 +25,17 @@
         ],
         "cited_evidence": [
           "E1",
-          "E2",
-          "E3",
           "E4"
         ],
         "risk_factors": [
-          "Brute force attack on an account",
-          "Successful login after failed attempts"
+          "The brute force attack could indicate an attempt to compromise the account.",
+          "The successful login after the brute force attempt may be due to the CI runner using the old password."
         ],
         "proposed_actions": []
       },
-      "input_tokens": 2842,
-      "output_tokens": 244,
-      "elapsed_ms": 23023
+      "input_tokens": 2828,
+      "output_tokens": 256,
+      "elapsed_ms": 837246
     }
   ]
 }

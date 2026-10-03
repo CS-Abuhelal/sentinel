@@ -7,7 +7,7 @@
       "payload": {
         "classification": "malicious",
         "confidence": 0.85,
-        "summary": "The incident involves a brute-force attack on the account msmith, with 11 failed login attempts followed by a successful login from an IP address (10.77.0.61) that had no prior successful logins in the 30 days before the incident. This pattern is consistent with an attacker attempting to guess the password. No documented changes explain the activity, and the account is not privileged, making it a likely target for compromise.",
+        "summary": "The incident involves a brute-force attack on the account msmith, with 11 failed login attempts followed by a successful login from an IP address (10.77.0.61) that had no prior successful logins in the 30 days before the incident. This pattern is consistent with an attacker attempting to guess the password. No documented changes explain the activity.",
         "techniques": [
           "T1110.001"
         ],
@@ -17,15 +17,14 @@
             "tactic": "Initial Access",
             "technique_id": "T1110.001",
             "technique_name": "Brute Force",
-            "description": "The attacker used brute-force techniques to guess the password of the msmith account, as evidenced by the 11 failed login attempts followed by a successful login from the IP address 10.77.0.61.",
+            "description": "The attacker used brute-force techniques to guess the password of the msmith account, as evidenced by 11 failed login attempts followed by a successful login from the IP address 10.77.0.61.",
             "evidence": [
               "E1"
             ]
           }
         ],
         "cited_evidence": [
-          "E1",
-          "E3"
+          "E1"
         ],
         "risk_factors": [
           "Unusual source IP with no prior successful logins",
@@ -44,9 +43,9 @@
           }
         ]
       },
-      "input_tokens": 2871,
-      "output_tokens": 377,
-      "elapsed_ms": 28542
+      "input_tokens": 2839,
+      "output_tokens": 357,
+      "elapsed_ms": 28844
     }
   ]
 }

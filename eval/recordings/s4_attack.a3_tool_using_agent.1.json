@@ -6,12 +6,12 @@
       "type": "tool_call",
       "tool": "auth_history",
       "args": {
-        "lookback_hours": 24,
-        "account": "jdoe"
+        "account": "jdoe",
+        "lookback_hours": 24
       },
-      "input_tokens": 1919,
+      "input_tokens": 1908,
       "output_tokens": 31,
-      "elapsed_ms": 51040
+      "elapsed_ms": 4364
     },
     {
       "type": "tool_call",
@@ -20,9 +20,9 @@
         "ip": "198.51.100.77",
         "lookback_hours": 24
       },
-      "input_tokens": 2469,
+      "input_tokens": 2458,
       "output_tokens": 39,
-      "elapsed_ms": 3304
+      "elapsed_ms": 3252
     },
     {
       "type": "tool_call",
@@ -30,9 +30,9 @@
       "args": {
         "account": "jdoe"
       },
-      "input_tokens": 2812,
+      "input_tokens": 2801,
       "output_tokens": 21,
-      "elapsed_ms": 1937
+      "elapsed_ms": 1882
     },
     {
       "type": "tool_call",
@@ -41,16 +41,16 @@
         "account": "jdoe",
         "hours_around": 2
       },
-      "input_tokens": 2898,
+      "input_tokens": 2887,
       "output_tokens": 27,
-      "elapsed_ms": 1970
+      "elapsed_ms": 2010
     },
     {
       "type": "final",
       "payload": {
         "classification": "malicious",
         "confidence": 0.9,
-        "summary": "The account 'jdoe' experienced 13 failed login attempts followed by a successful login from the IP address '198.51.100.77', which has no prior successful login history. This pattern is consistent with a brute force attack. The account is a developer and not privileged, making it a potential target. No documented changes explain this activity.",
+        "summary": "The account 'jdoe' experienced 13 failed login attempts from the IP address '198.51.100.77' followed by a successful login. This IP address has no prior successful login history for this account, and the activity aligns with a brute force attack pattern. The account is a developer and not privileged, which increases the risk of compromise.",
         "techniques": [
           "T1110.001"
         ],
@@ -60,7 +60,7 @@
             "tactic": "Initial Access",
             "technique_id": "T1110.001",
             "technique_name": "Brute Force",
-            "description": "The attacker used brute force to guess the password of the account 'jdoe' from the IP address '198.51.100.77'.",
+            "description": "The attacker used brute force to guess the password for the account 'jdoe' from the IP address '198.51.100.77'.",
             "evidence": [
               "E1",
               "E2"
@@ -76,14 +76,14 @@
         "risk_factors": [
           "Brute force attack detected",
           "No prior successful login history from the source IP",
-          "No documented changes explain the activity"
+          "Account is not protected or privileged"
         ],
         "proposed_actions": [
           {
             "action_type": "disable_account",
             "target_type": "account",
             "target_value": "jdoe",
-            "justification": "The account 'jdoe' was successfully logged into after multiple failed attempts, indicating a potential compromise. Disabling the account will prevent further unauthorized access.",
+            "justification": "The account 'jdoe' was successfully compromised through a brute force attack, indicating a potential security breach.",
             "reversible": true,
             "evidence": [
               "E1",
@@ -92,9 +92,9 @@
           }
         ]
       },
-      "input_tokens": 3077,
-      "output_tokens": 381,
-      "elapsed_ms": 26265
+      "input_tokens": 3066,
+      "output_tokens": 374,
+      "elapsed_ms": 24792
     }
   ]
 }

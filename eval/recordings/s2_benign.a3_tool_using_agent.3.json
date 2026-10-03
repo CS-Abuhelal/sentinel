@@ -6,12 +6,12 @@
       "type": "tool_call",
       "tool": "auth_history",
       "args": {
-        "account": "svc_deploy",
-        "lookback_hours": 1
+        "lookback_hours": 1,
+        "account": "svc_deploy"
       },
-      "input_tokens": 1904,
+      "input_tokens": 1883,
       "output_tokens": 29,
-      "elapsed_ms": 3193
+      "elapsed_ms": 3132
     },
     {
       "type": "tool_call",
@@ -20,9 +20,9 @@
         "ip": "10.77.0.30",
         "lookback_hours": 1
       },
-      "input_tokens": 2441,
+      "input_tokens": 2420,
       "output_tokens": 35,
-      "elapsed_ms": 3308
+      "elapsed_ms": 3188
     },
     {
       "type": "tool_call",
@@ -30,9 +30,9 @@
       "args": {
         "account": "svc_deploy"
       },
-      "input_tokens": 2772,
+      "input_tokens": 2751,
       "output_tokens": 20,
-      "elapsed_ms": 1797
+      "elapsed_ms": 1722
     },
     {
       "type": "tool_call",
@@ -41,16 +41,16 @@
         "account": "svc_deploy",
         "hours_around": 1
       },
-      "input_tokens": 2861,
+      "input_tokens": 2840,
       "output_tokens": 26,
-      "elapsed_ms": 1977
+      "elapsed_ms": 1810
     },
     {
       "type": "final",
       "payload": {
         "classification": "benign",
-        "confidence": 0.8,
-        "summary": "The incident involves a brute force attack on the svc_deploy account, but the successful login occurred after 12 failed attempts from a known source IP. A documented change (CHG-2041) for rotating svc_deploy credentials overlaps with the incident window, which may explain the activity. The account is a CI deploy service account and not privileged, reducing the risk.",
+        "confidence": 0.7,
+        "summary": "The incident involves a brute force attack on the svc_deploy account, but the successful login occurred after 12 consecutive failures from a known source IP. A documented change (CHG-2041) for rotating svc_deploy credentials is in progress, which may explain the activity. The account is a CI deploy service account and not privileged, reducing the risk.",
         "techniques": [
           "T1110.001"
         ],
@@ -74,15 +74,15 @@
           "E4"
         ],
         "risk_factors": [
-          "The brute force attack could be an attempt to compromise the account",
-          "The successful login occurred after multiple failed attempts, which may indicate an attacker",
-          "The account is a CI deploy service account, which may be a target for attackers"
+          "The brute force attack may be an attempt to compromise the account.",
+          "The successful login occurred after multiple failures, which could indicate an attacker.",
+          "The account is a CI deploy service account, which is not privileged, reducing the risk."
         ],
         "proposed_actions": []
       },
-      "input_tokens": 3203,
-      "output_tokens": 300,
-      "elapsed_ms": 20951
+      "input_tokens": 3182,
+      "output_tokens": 299,
+      "elapsed_ms": 19948
     }
   ]
 }

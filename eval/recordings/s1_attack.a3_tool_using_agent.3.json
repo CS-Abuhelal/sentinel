@@ -7,22 +7,22 @@
       "tool": "auth_history",
       "args": {
         "account": "jdoe",
-        "lookback_hours": 24
+        "lookback_hours": 1
       },
-      "input_tokens": 2082,
-      "output_tokens": 31,
-      "elapsed_ms": 6532
+      "input_tokens": 2063,
+      "output_tokens": 30,
+      "elapsed_ms": 4205
     },
     {
       "type": "tool_call",
       "tool": "source_ip_history",
       "args": {
         "ip": "10.66.0.10",
-        "lookback_hours": 24
+        "lookback_hours": 1
       },
-      "input_tokens": 2729,
-      "output_tokens": 36,
-      "elapsed_ms": 3488
+      "input_tokens": 2603,
+      "output_tokens": 35,
+      "elapsed_ms": 5615
     },
     {
       "type": "tool_call",
@@ -30,27 +30,27 @@
       "args": {
         "account": "jdoe"
       },
-      "input_tokens": 3378,
+      "input_tokens": 3251,
       "output_tokens": 21,
-      "elapsed_ms": 2395
+      "elapsed_ms": 3007
     },
     {
       "type": "tool_call",
       "tool": "change_windows",
       "args": {
         "account": "jdoe",
-        "hours_around": 24
+        "hours_around": 1
       },
-      "input_tokens": 3464,
-      "output_tokens": 28,
-      "elapsed_ms": 2167
+      "input_tokens": 3337,
+      "output_tokens": 27,
+      "elapsed_ms": 2314
     },
     {
       "type": "final",
       "payload": {
         "classification": "malicious",
         "confidence": 0.9,
-        "summary": "The account 'jdoe' experienced a brute force attack from the IP address '10.66.0.10', which resulted in a successful login after 24 failed attempts. This IP address has not been associated with any successful logins in the past 30 days, indicating a potential compromise. The account is a developer and not privileged, which increases the risk of unauthorized access.",
+        "summary": "The account 'jdoe' experienced 24 failed login attempts from the IP address '10.66.0.10' followed by a successful login. This IP address has not been associated with any successful logins in the past 30 days, and the account 'jdoe' is a developer with no privileged status. There is no documented change that explains this activity.",
         "techniques": [
           "T1110.001"
         ],
@@ -69,18 +69,21 @@
         ],
         "cited_evidence": [
           "E1",
-          "E2"
+          "E2",
+          "E3",
+          "E4"
         ],
         "risk_factors": [
-          "Brute force attack succeeded",
-          "Unusual source IP with no prior successful logins"
+          "Unusual login pattern from a new source IP",
+          "No documented change explains the activity",
+          "Successful login after multiple failures"
         ],
         "proposed_actions": [
           {
             "action_type": "disable_account",
             "target_type": "account",
             "target_value": "jdoe",
-            "justification": "The account 'jdoe' was successfully accessed through a brute force attack, indicating a potential compromise. Disabling the account will prevent further unauthorized access.",
+            "justification": "The account 'jdoe' experienced a brute force attack, which indicates a potential compromise. Disabling the account will prevent further unauthorized access.",
             "reversible": true,
             "evidence": [
               "E1",
@@ -89,9 +92,9 @@
           }
         ]
       },
-      "input_tokens": 3644,
-      "output_tokens": 369,
-      "elapsed_ms": 26251
+      "input_tokens": 3516,
+      "output_tokens": 381,
+      "elapsed_ms": 31206
     }
   ]
 }

@@ -6,12 +6,22 @@
       "type": "tool_call",
       "tool": "auth_history",
       "args": {
-        "lookback_hours": 24,
+        "account": "msmith",
+        "lookback_hours": 24
+      },
+      "input_tokens": 1849,
+      "output_tokens": 30,
+      "elapsed_ms": 3254
+    },
+    {
+      "type": "tool_call",
+      "tool": "account_context",
+      "args": {
         "account": "msmith"
       },
-      "input_tokens": 1871,
-      "output_tokens": 30,
-      "elapsed_ms": 4336
+      "input_tokens": 2387,
+      "output_tokens": 20,
+      "elapsed_ms": 2286
     },
     {
       "type": "tool_call",
@@ -20,19 +30,9 @@
         "ip": "10.77.0.64",
         "lookback_hours": 24
       },
-      "input_tokens": 2409,
+      "input_tokens": 2471,
       "output_tokens": 36,
-      "elapsed_ms": 3427
-    },
-    {
-      "type": "tool_call",
-      "tool": "account_context",
-      "args": {
-        "account": "msmith"
-      },
-      "input_tokens": 2741,
-      "output_tokens": 20,
-      "elapsed_ms": 1776
+      "elapsed_ms": 2665
     },
     {
       "type": "tool_call",
@@ -41,9 +41,9 @@
         "account": "msmith",
         "hours_around": 2
       },
-      "input_tokens": 2825,
+      "input_tokens": 2803,
       "output_tokens": 26,
-      "elapsed_ms": 1919
+      "elapsed_ms": 2089
     },
     {
       "type": "final",
@@ -62,8 +62,7 @@
             "technique_name": "Brute Force",
             "description": "The attacker used brute force techniques to guess the password of the account msmith from the source IP 10.77.0.64.",
             "evidence": [
-              "E1",
-              "E2"
+              "E1"
             ]
           }
         ],
@@ -75,26 +74,24 @@
         ],
         "risk_factors": [
           "Multiple failed login attempts followed by a successful login",
-          "No documented change explains the activity",
-          "The source IP is known but has been used for brute force attempts"
+          "No documented change explains the activity"
         ],
         "proposed_actions": [
           {
             "action_type": "disable_account",
             "target_type": "account",
             "target_value": "msmith",
-            "justification": "The account msmith experienced multiple failed login attempts followed by a successful login, indicating a potential brute force attack. Disabling the account will prevent further unauthorized access.",
+            "justification": "The account msmith experienced a brute force attack, which indicates a potential compromise. Disabling the account will prevent further unauthorized access.",
             "reversible": true,
             "evidence": [
-              "E1",
-              "E2"
+              "E1"
             ]
           }
         ]
       },
-      "input_tokens": 3002,
-      "output_tokens": 373,
-      "elapsed_ms": 25612
+      "input_tokens": 2980,
+      "output_tokens": 344,
+      "elapsed_ms": 22557
     }
   ]
 }

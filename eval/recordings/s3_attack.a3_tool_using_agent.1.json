@@ -9,20 +9,20 @@
         "account": "msmith",
         "lookback_hours": 24
       },
-      "input_tokens": 1880,
+      "input_tokens": 1867,
       "output_tokens": 30,
-      "elapsed_ms": 3772
+      "elapsed_ms": 3667
     },
     {
       "type": "tool_call",
       "tool": "source_ip_history",
       "args": {
-        "lookback_hours": 24,
-        "ip": "10.77.0.61"
+        "ip": "10.77.0.61",
+        "lookback_hours": 24
       },
-      "input_tokens": 2418,
+      "input_tokens": 2405,
       "output_tokens": 36,
-      "elapsed_ms": 3492
+      "elapsed_ms": 3382
     },
     {
       "type": "tool_call",
@@ -30,9 +30,9 @@
       "args": {
         "account": "msmith"
       },
-      "input_tokens": 2750,
+      "input_tokens": 2846,
       "output_tokens": 20,
-      "elapsed_ms": 1760
+      "elapsed_ms": 1819
     },
     {
       "type": "tool_call",
@@ -41,16 +41,16 @@
         "account": "msmith",
         "hours_around": 2
       },
-      "input_tokens": 2834,
+      "input_tokens": 2930,
       "output_tokens": 26,
-      "elapsed_ms": 1919
+      "elapsed_ms": 1895
     },
     {
       "type": "final",
       "payload": {
         "classification": "malicious",
         "confidence": 0.9,
-        "summary": "The account msmith on host victim-web-01 experienced a brute force attack from IP 10.77.0.61, with 11 failed login attempts followed by a successful login. The source IP had no prior successful logins in the 30 days before the incident, and the account is not privileged, making this activity highly suspicious.",
+        "summary": "The account msmith experienced 11 failed login attempts from the IP 10.77.0.61, followed by a successful login. This IP had no prior successful logins for this account, and the activity aligns with a brute force attack. The account is not privileged, but the pattern of failed attempts followed by a successful login suggests a potential compromise.",
         "techniques": [
           "T1110.001"
         ],
@@ -60,7 +60,7 @@
             "tactic": "Initial Access",
             "technique_id": "T1110.001",
             "technique_name": "Brute Force",
-            "description": "An attacker used brute force to guess the password for the msmith account on the host victim-web-01 from the source IP 10.77.0.61.",
+            "description": "The attacker used brute force to guess the password for the account msmith from the IP 10.77.0.61.",
             "evidence": [
               "E1",
               "E2"
@@ -69,18 +69,20 @@
         ],
         "cited_evidence": [
           "E1",
-          "E2"
+          "E2",
+          "E3",
+          "E4"
         ],
         "risk_factors": [
-          "Brute force attack on a non-privileged account",
-          "Unusual source IP with no prior successful logins"
+          "Brute force attack detected",
+          "Successful login after multiple failures from an unknown source"
         ],
         "proposed_actions": [
           {
             "action_type": "disable_account",
             "target_type": "account",
             "target_value": "msmith",
-            "justification": "The account was successfully compromised through a brute force attack, indicating a potential security breach.",
+            "justification": "The account msmith experienced a brute force attack, which suggests a potential compromise. Disabling the account will prevent further unauthorized access.",
             "reversible": true,
             "evidence": [
               "E1",
@@ -89,9 +91,9 @@
           }
         ]
       },
-      "input_tokens": 3011,
-      "output_tokens": 354,
-      "elapsed_ms": 25089
+      "input_tokens": 3107,
+      "output_tokens": 358,
+      "elapsed_ms": 23619
     }
   ]
 }

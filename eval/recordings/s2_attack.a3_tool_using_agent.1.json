@@ -9,9 +9,9 @@
         "account": "labadmin",
         "lookback_hours": 1
       },
-      "input_tokens": 1947,
+      "input_tokens": 1932,
       "output_tokens": 29,
-      "elapsed_ms": 3445
+      "elapsed_ms": 6070
     },
     {
       "type": "tool_call",
@@ -20,9 +20,9 @@
         "ip": "198.51.100.23",
         "lookback_hours": 1
       },
-      "input_tokens": 2360,
+      "input_tokens": 2345,
       "output_tokens": 38,
-      "elapsed_ms": 3004
+      "elapsed_ms": 3146
     },
     {
       "type": "tool_call",
@@ -30,9 +30,9 @@
       "args": {
         "account": "labadmin"
       },
-      "input_tokens": 2700,
+      "input_tokens": 2685,
       "output_tokens": 20,
-      "elapsed_ms": 1806
+      "elapsed_ms": 1799
     },
     {
       "type": "tool_call",
@@ -41,9 +41,9 @@
         "account": "labadmin",
         "hours_around": 1
       },
-      "input_tokens": 2789,
+      "input_tokens": 2774,
       "output_tokens": 26,
-      "elapsed_ms": 1938
+      "elapsed_ms": 2080
     },
     {
       "type": "final",
@@ -93,9 +93,9 @@
           }
         ]
       },
-      "input_tokens": 2966,
+      "input_tokens": 2951,
       "output_tokens": 354,
-      "elapsed_ms": 24230
+      "elapsed_ms": 25148
     }
   ]
 }

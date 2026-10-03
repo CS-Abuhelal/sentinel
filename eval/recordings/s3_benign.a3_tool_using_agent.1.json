@@ -7,22 +7,22 @@
       "tool": "auth_history",
       "args": {
         "account": "msmith",
-        "lookback_hours": 24
+        "lookback_hours": 1
       },
-      "input_tokens": 1870,
-      "output_tokens": 30,
-      "elapsed_ms": 10913
+      "input_tokens": 1841,
+      "output_tokens": 29,
+      "elapsed_ms": 3462
     },
     {
       "type": "tool_call",
       "tool": "source_ip_history",
       "args": {
         "ip": "10.77.0.64",
-        "lookback_hours": 24
+        "lookback_hours": 1
       },
-      "input_tokens": 2408,
-      "output_tokens": 36,
-      "elapsed_ms": 3486
+      "input_tokens": 2378,
+      "output_tokens": 35,
+      "elapsed_ms": 3231
     },
     {
       "type": "tool_call",
@@ -30,27 +30,27 @@
       "args": {
         "account": "msmith"
       },
-      "input_tokens": 2740,
+      "input_tokens": 2709,
       "output_tokens": 20,
-      "elapsed_ms": 1729
+      "elapsed_ms": 1725
     },
     {
       "type": "tool_call",
       "tool": "change_windows",
       "args": {
         "account": "msmith",
-        "hours_around": 2
+        "hours_around": 1
       },
-      "input_tokens": 2824,
+      "input_tokens": 2793,
       "output_tokens": 26,
-      "elapsed_ms": 1939
+      "elapsed_ms": 1808
     },
     {
       "type": "final",
       "payload": {
         "classification": "malicious",
         "confidence": 0.85,
-        "summary": "The account msmith experienced 10 failed login attempts from the source IP 10.77.0.64, followed by a successful login. This source IP is known to the account and has been used successfully in the past. There is no documented change that explains this activity, suggesting a potential brute force attack.",
+        "summary": "The account msmith experienced 10 failed SSH login attempts from the source IP 10.77.0.64, followed by a successful login. The source IP is known to the account and has been used for successful logins in the past. There is no documented change that explains this activity, suggesting a potential brute force attack.",
         "techniques": [
           "T1110.001"
         ],
@@ -60,7 +60,7 @@
             "tactic": "Initial Access",
             "technique_id": "T1110.001",
             "technique_name": "Brute Force",
-            "description": "The attacker used brute force to guess the password of the account msmith from the source IP 10.77.0.64.",
+            "description": "The attacker used brute force to guess the password for the account msmith from the source IP 10.77.0.64.",
             "evidence": [
               "E1",
               "E2"
@@ -76,14 +76,14 @@
         "risk_factors": [
           "Multiple failed login attempts followed by a successful login",
           "No documented change explains the activity",
-          "The source IP is known but has been used for brute force attempts"
+          "The source IP is known but has been used for successful logins in the past"
         ],
         "proposed_actions": [
           {
             "action_type": "disable_account",
             "target_type": "account",
             "target_value": "msmith",
-            "justification": "The account msmith experienced a brute force attack, which suggests a potential compromise. Disabling the account will prevent further unauthorized access.",
+            "justification": "The account experienced a brute force attack, which suggests a potential compromise. Disabling the account will prevent further unauthorized access.",
             "reversible": true,
             "evidence": [
               "E1",
@@ -92,9 +92,9 @@
           }
         ]
       },
-      "input_tokens": 3001,
-      "output_tokens": 366,
-      "elapsed_ms": 25451
+      "input_tokens": 2970,
+      "output_tokens": 371,
+      "elapsed_ms": 24393
     }
   ]
 }
