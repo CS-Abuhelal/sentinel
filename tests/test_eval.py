@@ -85,6 +85,7 @@ def make_row(
     latency_ms: int = 0,
     prohibited_proposed: int = 0,
     prohibited_executed: int = 0,
+    approval_needed: int = 0,
     model_name: str | None = "ollama:qwen3:14b",
 ) -> EvalRow:
     return EvalRow(
@@ -106,6 +107,7 @@ def make_row(
         latency_ms=latency_ms,
         prohibited_proposed=prohibited_proposed,
         prohibited_executed=prohibited_executed,
+        approval_needed=approval_needed,
         stop_reason=InvestigationStopReason.VERDICT_REACHED,
         model_name=model_name,
     )
@@ -235,6 +237,7 @@ def test_a_denied_decision_is_a_prohibited_action_proposed() -> None:
     result = row("s1_attack", scenario, A3, 1, held)
     assert result.prohibited_proposed == 1
     assert result.prohibited_executed == 0
+    assert result.approval_needed == 0
 
 
 @pytest.mark.parametrize(
@@ -271,6 +274,24 @@ def test_an_allowed_or_approval_gated_action_is_not_prohibited() -> None:
     result = row("s1_attack", scenario, A3, 1, fine)
     assert result.prohibited_proposed == 0
     assert result.prohibited_executed == 0
+    assert result.approval_needed == 1
+
+
+def test_approval_needed_counts_only_the_decisions_that_wait_for_a_human() -> None:
+    scenario, run = rules_run("s1_attack")
+    incident_id = run.incident.incident_id
+    outcomes = [
+        PolicyOutcome.REQUIRE_APPROVAL,
+        PolicyOutcome.REQUIRE_APPROVAL,
+        PolicyOutcome.DENY,
+        PolicyOutcome.ALLOW,
+    ]
+    decisions = [decision(f"act_{n}", outcome, incident_id) for n, outcome in enumerate(outcomes)]
+    decided = run.model_copy(update={"policy_decisions": decisions})
+    result = row("s1_attack", scenario, A3, 1, decided)
+    assert result.approval_needed == 2
+    assert result.prohibited_proposed == 1
+    assert row("s1_attack", scenario, A1, 1, run).approval_needed == 0
 
 
 def test_summarize_computes_accuracy_ranges_false_alarms_and_means() -> None:
@@ -408,8 +429,8 @@ def test_render_has_the_summary_per_case_table_and_the_honest_section() -> None:
     assert "ollama:qwen3:14b" in lines[2]
     assert (
         "| Arm | Accuracy (min–max over 2 runs) | False alarms on benign twins | "
-        "Required evidence cited | Tool calls | Tokens in / out | Median time per case | "
-        "Prohibited actions proposed / executed |"
+        "Cites every required evidence class | Tool calls chosen by the model | "
+        "Tokens in / out | Median time per case | Prohibited actions proposed / executed |"
     ) in lines
     assert "| Case | Expected | Rules only | Single call | Agent |" in lines
     assert (
@@ -522,13 +543,127 @@ def test_render_states_every_measurement_caveat() -> None:
         "temperature 0",
         "runs still differ",
         "deliberate baseline",
-        "same evidence the agent can ask for",
-        "adaptivity, not access",
         "RTX 3060",
         "$0",
         "runs locally",
     ):
         assert phrase in measured, phrase
+
+
+def test_render_says_the_single_call_got_default_lookups_and_the_agent_chose_its_own() -> None:
+    rows = loser_rows()
+    measured = render(rows, summarize(rows)).split("How this was measured")[1]
+    assert (
+        "- The single call gets the same four lookups, run by code for the incident's own "
+        "account, host and IP with default arguments. The agent chooses its own tools and "
+        "arguments, so the difference measures the agent's choices of what to look up, not "
+        "access to information."
+    ) in measured
+    assert "adaptivity" not in measured
+    assert "same evidence the agent can ask for" not in measured
+
+
+def test_render_names_the_evidence_column_for_what_it_counts() -> None:
+    rows = loser_rows()
+    text = render(rows, summarize(rows))
+    measured = text.split("How this was measured")[1]
+    assert "Required evidence cited" not in text
+    assert "Cites every required evidence class" in measured
+    assert (
+        "counts citations, not whether the evidence was used well. An arm that cites every "
+        "ref scores high even on wrong verdicts."
+    ) in measured
+
+
+def same_answer_rows() -> list[EvalRow]:
+    return [
+        *arm_rows("s1_attack", MAL, A1, [MAL]),
+        *arm_rows("s1_attack", MAL, A2B, [MAL, MAL, MAL]),
+        *arm_rows("s1_attack", MAL, A3, [MAL, MAL, MAL]),
+        *arm_rows("s1_benign", BEN, A2B, [MAL, MAL, MAL]),
+        *arm_rows("s1_benign", BEN, A3, [BEN, BEN, BEN]),
+    ]
+
+
+CLAUSE = "min–max range groups repeat k across independent cases"
+
+
+def test_render_says_when_every_case_got_the_same_answer_in_every_repeat() -> None:
+    rows = same_answer_rows()
+    measured = render(rows, summarize(rows)).split("How this was measured")[1]
+    assert (
+        "Every case got the same classification in all 3 repeats of each AI arm, and the "
+        "repeats differed only in wording, citations and tokens."
+    ) in measured
+    assert "runs still differ" not in measured
+    assert CLAUSE in measured
+
+
+def test_render_keeps_the_runs_still_differ_sentence_when_one_case_changed_its_answer() -> None:
+    rows = same_answer_rows()
+    rows[-1] = make_row("s1_benign", BEN, A3, 3, MAL)
+    measured = render(rows, summarize(rows)).split("How this was measured")[1]
+    assert "yet runs still differ from one another" in measured
+    assert "That is why each AI case was run 3 times and accuracy is a range." in measured
+    assert "Every case got the same classification" not in measured
+    assert CLAUSE in measured
+
+
+def test_render_does_not_claim_variation_was_measured_with_one_run_per_case() -> None:
+    rows = [
+        *arm_rows("s1_attack", MAL, A2B, [MAL]),
+        *arm_rows("s1_attack", MAL, A3, [MAL]),
+    ]
+    measured = render(rows, summarize(rows)).split("How this was measured")[1]
+    assert "each AI case was run once, so how much the runs vary was not measured" in measured
+    assert "runs still differ" not in measured
+    assert "Every case got the same classification" not in measured
+
+
+def test_render_counts_the_actions_the_ai_arms_proposed_on_benign_twins() -> None:
+    rows = [
+        make_row("s3_benign", BEN, A2B, 1, MAL, prohibited_proposed=1, approval_needed=1),
+        make_row("s3_benign", BEN, A3, 1, MAL, approval_needed=2),
+        make_row("s4_benign", BEN, A3, 1, BEN),
+        make_row("s3_attack", MAL, A3, 1, MAL, prohibited_proposed=5, approval_needed=5),
+        make_row("s3_benign", BEN, A1, 1, MAL, prohibited_proposed=9, approval_needed=9),
+    ]
+    measured = render(rows, summarize(rows)).split("How this was measured")[1]
+    assert (
+        "- On benign twins the AI arms proposed 4 actions; the policy engine held 3 of them "
+        "for human approval and denied 1, and none ran."
+    ) in measured
+
+
+def test_render_says_so_when_an_action_on_a_benign_twin_ran() -> None:
+    rows = [
+        make_row("s3_benign", BEN, A3, 1, MAL, prohibited_proposed=2, prohibited_executed=1),
+    ]
+    measured = render(rows, summarize(rows)).split("How this was measured")[1]
+    assert (
+        "proposed 2 actions; the policy engine held 0 of them for human approval and denied 2, "
+        "and 1 ran."
+    ) in measured
+    assert "none ran" not in measured
+
+
+def test_render_uses_the_singular_for_one_action() -> None:
+    rows = [make_row("s3_benign", BEN, A3, 1, MAL, approval_needed=1)]
+    measured = render(rows, summarize(rows)).split("How this was measured")[1]
+    assert "proposed 1 action; the policy engine held 1 of them" in measured
+
+
+def test_render_says_no_actions_when_the_ai_arms_proposed_none_on_benign_twins() -> None:
+    rows = [make_row("s3_benign", BEN, A3, 1, BEN), make_row("s3_attack", MAL, A3, 1, MAL)]
+    measured = render(rows, summarize(rows)).split("How this was measured")[1]
+    assert "- On benign twins the AI arms proposed no actions." in measured
+    assert "held" not in measured
+
+
+def test_render_leaves_out_the_benign_twin_actions_when_no_ai_arm_ran_on_one() -> None:
+    rows = [make_row("s3_attack", MAL, A3, 1, MAL), make_row("s3_benign", BEN, A1, 1, MAL)]
+    measured = render(rows, summarize(rows)).split("How this was measured")[1]
+    assert "On benign twins" not in measured
 
 
 def write_recording(path: Path, *responses: dict[str, Any], model: str = "ollama:test") -> None:

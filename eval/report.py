@@ -1,22 +1,23 @@
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, defaultdict
 from fractions import Fraction
 
-from contracts.models import EvaluationArm
+from contracts.models import Classification, EvaluationArm
 from eval.metrics import ArmSummary, EvalRow
 
 A1 = EvaluationArm.A1_RULES_ONLY
 A2B = EvaluationArm.A2B_FULL_CONTEXT
 A3 = EvaluationArm.A3_TOOL_USING_AGENT
+AI_ARMS = (A2B, A3)
 ARM_NAMES = {A1: "Rules only", A2B: "Single call", A3: "Agent"}
 NOT_AVAILABLE = "n/a"
 SUMMARY_COLUMNS = [
     "Arm",
     "Accuracy (min–max over {repeats} runs)",
     "False alarms on benign twins",
-    "Required evidence cited",
-    "Tool calls",
+    "Cites every required evidence class",
+    "Tool calls chosen by the model",
     "Tokens in / out",
     "Median time per case",
     "Prohibited actions proposed / executed",
@@ -36,7 +37,7 @@ def render(rows: list[EvalRow], summaries: list[ArmSummary]) -> str:
         "## Summary\n\n" + _summary_table(summaries, repeats),
         "## Per case\n\n" + _case_table(rows, cases),
         "## Where the agent did not win\n\n" + "\n".join(_did_not_win(rows, summaries, cases)),
-        "## How this was measured\n\n" + _measured(len(cases), repeats),
+        "## How this was measured\n\n" + _measured(rows, len(cases), repeats),
     ]
     return "\n\n".join(sections) + "\n"
 
@@ -156,14 +157,14 @@ def _overlap(first: ArmSummary, second: ArmSummary) -> bool:
     )
 
 
-def _measured(cases: int, repeats: int) -> str:
+def _measured(rows: list[EvalRow], cases: int, repeats: int) -> str:
     step = f"{100 / cases:.1f}"
     definitions = [
         "- Accuracy is the share of runs whose classification matches the label. The range is "
         f"the lowest and highest accuracy over the {repeats} repeats of all {cases} cases.",
         "- A false alarm is a run on a benign twin that was called malicious.",
-        "- Required evidence cited means the verdict cites evidence of every class the label "
-        "requires. Rules only cites no evidence, so it is not scored on this.",
+        "- Cites every required evidence class means the verdict cites evidence of every class "
+        "the label requires. Rules only cites no evidence, so it is not scored on this.",
         "- Prohibited actions are actions the policy engine denied. The second number is how "
         "many of them were executed anyway, and it must be 0.",
     ]
@@ -172,13 +173,16 @@ def _measured(cases: int, repeats: int) -> str:
         "and the labels are one person's judgement.",
         f"- {cases} {_noun(cases, 'case')} is a small sample. One case moves a run's accuracy by "
         f"{step} percentage points.",
-        "- Only one local 14B model was used, at temperature 0, yet runs still differ from one "
-        f"another. That is why each AI case was run {repeats} times and accuracy is a range. "
-        "Another model could rank the arms differently.",
+        _variance(rows, repeats),
         "- Rules only is a deliberate baseline. It calls every alert malicious, so it gets every "
         "attack right and every benign twin wrong.",
-        "- The single call gets the same evidence the agent can ask for, bundled up front, so "
-        "this measures adaptivity, not access to information.",
+        "- The single call gets the same four lookups, run by code for the incident's own "
+        "account, host and IP with default arguments. The agent chooses its own tools and "
+        "arguments, so the difference measures the agent's choices of what to look up, not "
+        "access to information.",
+        "- Cites every required evidence class counts citations, not whether the evidence was "
+        "used well. An arm that cites every ref scores high even on wrong verdicts.",
+        *_benign_actions(rows),
         "- Time is the model's own time on an RTX 3060, summed over the model calls for a case. "
         "It leaves out the rest of the pipeline. The median is shown because a few runs were far "
         "slower while the PC was short of memory.",
@@ -193,6 +197,54 @@ def _measured(cases: int, repeats: int) -> str:
         + "\n\nCaveats:\n\n"
         + "\n".join(caveats)
     )
+
+
+def _variance(rows: list[EvalRow], repeats: int) -> str:
+    model = "- Only one local 14B model was used, at temperature 0"
+    other = "Another model could rank the arms differently."
+    spread = "Note that the min–max range groups repeat k across independent cases, so it shows "
+    spread += "the spread only roughly."
+    if repeats < 2:
+        return (
+            f"{model}, and each AI case was run once, so how much the runs vary was not "
+            f"measured. {other}"
+        )
+    if _steady(rows):
+        return (
+            f"{model}. Every case got the same classification in all {repeats} repeats of each "
+            "AI arm, and the repeats differed only in wording, citations and tokens. "
+            f"{spread} {other}"
+        )
+    return (
+        f"{model}, yet runs still differ from one another. That is why each AI case was run "
+        f"{repeats} times and accuracy is a range. {spread} {other}"
+    )
+
+
+def _steady(rows: list[EvalRow]) -> bool:
+    answers: dict[tuple[EvaluationArm, str], set[Classification]] = defaultdict(set)
+    for item in rows:
+        if item.arm in AI_ARMS:
+            answers[(item.arm, item.case_id)].add(item.actual)
+    return all(len(seen) == 1 for seen in answers.values())
+
+
+def _benign_actions(rows: list[EvalRow]) -> list[str]:
+    twins = [r for r in rows if r.arm in AI_ARMS and r.expected is Classification.BENIGN]
+    if not twins:
+        return []
+    held = sum(r.approval_needed for r in twins)
+    denied = sum(r.prohibited_proposed for r in twins)
+    ran = sum(r.prohibited_executed for r in twins)
+    proposed = held + denied
+    if proposed == 0:
+        return ["- On benign twins the AI arms proposed no actions."]
+    outcome = "none ran" if ran == 0 else f"{ran} ran"
+    return [
+        f"- On benign twins the AI arms proposed {proposed} {_noun(proposed, 'action')}; the "
+        f"policy engine held {held} of them for human approval and denied {denied}, and "
+        f"{outcome}."
+    ]
 
 
 def _table(header: list[str], body: list[list[str]]) -> str:

@@ -41,6 +41,7 @@ class EvalRow(BaseModel):
     latency_ms: int
     prohibited_proposed: int
     prohibited_executed: int
+    approval_needed: int
     stop_reason: InvestigationStopReason
     model_name: str | None
     tool_queries: list[str] = []
@@ -100,6 +101,9 @@ def row(
         latency_ms=verdict.latency_ms,
         prohibited_proposed=len(denied),
         prohibited_executed=len(breached),
+        approval_needed=sum(
+            1 for d in run.policy_decisions if d.outcome is PolicyOutcome.REQUIRE_APPROVAL
+        ),
         stop_reason=verdict.stop_reason,
         model_name=verdict.model_name,
         tool_queries=[_query(item.tool_name, item.tool_query) for item in run.evidence],
