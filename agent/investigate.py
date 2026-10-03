@@ -34,6 +34,7 @@ MAX_TOOL_CALLS = 6
 MAX_STEPS = 10
 MAX_STEP_CHARS = 300
 MAX_MESSAGE_ALERTS = 20
+HIDDEN_FIELDS = {"case_id"}
 SYSTEM_PROMPT = (Path(__file__).parent / "prompts" / "system.md").read_text(encoding="utf-8")
 PC_PROMPT = (Path(__file__).parent / "prompts" / "pc.md").read_text(encoding="utf-8")
 
@@ -191,13 +192,13 @@ def evidence_item(
 
 
 def incident_message(incident: Incident, alerts: list[Alert]) -> str:
-    data: dict[str, Any] = {"incident": incident.model_dump(mode="json")}
+    data: dict[str, Any] = {"incident": incident.model_dump(mode="json", exclude=HIDDEN_FIELDS)}
     if len(alerts) <= MAX_MESSAGE_ALERTS:
-        data["alerts"] = [alert.model_dump(mode="json") for alert in alerts]
+        data["alerts"] = [alert.model_dump(mode="json", exclude=HIDDEN_FIELDS) for alert in alerts]
     else:
         half = MAX_MESSAGE_ALERTS // 2
         shown = [*alerts[:half], *alerts[-half:]]
-        data["alerts"] = [alert.model_dump(mode="json") for alert in shown]
+        data["alerts"] = [alert.model_dump(mode="json", exclude=HIDDEN_FIELDS) for alert in shown]
         data["alert_count"] = len(alerts)
         data["alerts_by_rule"] = dict(Counter(alert.rule_id for alert in alerts).most_common())
     return (

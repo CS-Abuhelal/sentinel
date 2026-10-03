@@ -362,16 +362,31 @@ def _incident_message_sent(incident, alerts) -> str:
     return model.calls[0][1].content
 
 
-def test_the_lab_incident_message_is_unchanged(s1: S1Case) -> None:
+def test_the_lab_incident_message_is_the_incident_and_alerts_without_the_case_id(
+    s1: S1Case,
+) -> None:
     assert len(s1.alerts) <= 20
+    assert s1.incident.case_id == "s1_attack"
     expected = LAB_MESSAGE_PREFIX + json.dumps(
         {
-            "incident": s1.incident.model_dump(mode="json"),
-            "alerts": [alert.model_dump(mode="json") for alert in s1.alerts],
+            "incident": s1.incident.model_dump(mode="json", exclude={"case_id"}),
+            "alerts": [alert.model_dump(mode="json", exclude={"case_id"}) for alert in s1.alerts],
         },
         indent=2,
     )
-    assert _incident_message_sent(s1.incident, s1.alerts) == expected
+    message = _incident_message_sent(s1.incident, s1.alerts)
+    assert message == expected
+    assert "case_id" not in message
+    assert "s1_attack" not in message
+
+
+def test_a_long_incident_message_leaves_out_the_case_id_too() -> None:
+    lives = [make_wazuh_alert(f"42.{n}", n)[0] for n in range(25)]
+    alerts = [live.alert.model_copy(update={"case_id": "s9_secret"}) for live in lives]
+    incident = new_incident(lives[0]).model_copy(update={"case_id": "s9_secret"})
+    message = _incident_message_sent(incident, alerts)
+    assert "s9_secret" not in message
+    assert "case_id" not in message
 
 
 def test_twenty_alerts_are_sent_whole() -> None:
