@@ -6,6 +6,35 @@ An evidence-driven agentic investigation and controlled response system for secu
 that ends in a compromised account) and its benign twin, run through every stage by a live
 model on each build. It needs no install, no lab and no API key.
 
+## How it works
+
+The AI only proposes. Every action goes through deterministic code that scores the risk and
+decides, and disabling an account always waits for a person.
+
+```mermaid
+flowchart TB
+    subgraph DETECT["1. Detect: deterministic"]
+        direction LR
+        SRC["Lab SSH logs<br/>or my PC's Wazuh alerts"] --> DET["Sigma rules<br/>raise alerts"] --> COR["Correlation<br/>one incident"]
+    end
+
+    subgraph AI["2. The AI proposes: read-only"]
+        direction LR
+        AGENT["Agent: qwen3:14b<br/>calls read-only tools"] --> VERDICT["Verdict with cited evidence<br/>+ proposed actions"]
+    end
+
+    subgraph CODE["3. Deterministic code decides"]
+        direction LR
+        RISK["Risk score<br/>from evidence"] --> POL["Policy engine<br/>allow / needs approval / deny"] --> EXE["Executor<br/>fixed action catalog"] --> AUD["Hash-chained<br/>audit log"]
+        HUMAN(["Human approval"]) --> POL
+    end
+
+    DETECT --> AI
+    AI --> CODE
+
+    style AI stroke-dasharray: 6 4
+```
+
 ---
 
 ## See it working
@@ -37,19 +66,22 @@ breaking when a record is edited. ([open this stage](https://cs-abuhelal.github.
 
 ![Execution with before and after proof](docs/screenshots/04-execution.png)
 
-**5. The benign twin.** A backup job retrying with a stale password trips the same rule. The
-agent sees that the source is the account's usual host, calls it benign and proposes nothing.
-It is not flawless: it still listed a brute-force step in its attack chain.
-([open this case](https://cs-abuhelal.github.io/sentinel/?case=s1_benign#stage-4))
+**5. The benign twin, and why the AI never acts alone.** A backup job retrying with a stale
+password trips the same rule. The agent checked four tools and saw that the source is the
+account's usual host. It still called the case malicious (85%) and proposed disabling
+`svc_backup`. That is wrong, and the dashboard says so next to the hand-written label. Nothing
+ran: disabling an account always needs human approval, so the policy engine held it, and the
+executor touched nothing. ([open this case](https://cs-abuhelal.github.io/sentinel/?case=s1_benign#stage-4))
 
-> **Correction (2026-10-03):** the prompt behind this run still contained the case name
-> (`s1_benign`), a label leak I found while building the evaluation and have since fixed.
-> Without that hint, `qwen3:14b` calls this benign twin malicious in 3 of 3 runs; see
-> [Results](#results). The screenshots below are kept as a record of that earlier run.
+Until 2026-10-03, this run's prompt contained the case name (`s1_benign`), which leaked the
+label, and the model called it benign. I found and fixed the leak while building the
+evaluation. These screenshots show the clean run. See [Results](#results).
 
 ![Benign twin overview](docs/screenshots/05-benign-overview.png)
 
-![Benign twin verdict](docs/screenshots/06-benign-verdict.png)
+![The agent's wrong verdict and proposed action](docs/screenshots/06-benign-verdict.png)
+
+![The policy engine holds it for a human](docs/screenshots/06b-benign-policy.png)
 
 **6. The same run on a desktop PC.** `qwen3:14b` on an RTX 3060 and a local victim container,
 started from PowerShell.
