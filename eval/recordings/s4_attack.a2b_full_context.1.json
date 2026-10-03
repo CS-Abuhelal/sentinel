@@ -1,0 +1,41 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "final",
+      "payload": {
+        "classification": "benign",
+        "confidence": 0.6,
+        "summary": "The incident involves a successful login after 13 failed attempts from an IP address that had no prior successful logins in the 30 days before the incident. However, there is a documented change (CHG-2060) that occurred during the time window, which may explain the activity. The account 'jdoe' is a developer and not a privileged account, which reduces the risk of a malicious compromise.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "The incident involves a brute force attack with 13 failed login attempts followed by a successful login from an IP address that had no prior successful logins in the 30 days before the incident.",
+            "evidence": [
+              "E1"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1",
+          "E4"
+        ],
+        "risk_factors": [
+          "The IP address had no prior successful logins in the 30 days before the incident",
+          "The account 'jdoe' is a developer and not a privileged account"
+        ],
+        "proposed_actions": []
+      },
+      "input_tokens": 2973,
+      "output_tokens": 302,
+      "elapsed_ms": 23704
+    }
+  ]
+}

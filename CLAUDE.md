@@ -15,14 +15,17 @@ Read this file at the start of every session.
   `Scenario`, `Inventory`, `Approval`, `ExecutionResult` and `AuditRecord`. `extra="forbid"`
   on every model. Fixtures and JSON Schemas are generated from it.
 - Pipeline: sshd `auth.log` ingest, Sigma rules with an `event_count` correlation, alert
-  correlation, the agent (`auth_history` tool, replay and Ollama clients), deterministic risk
-  scoring, the policy engine, the executor (`disable_account`, `isolate_host`, run in a victim
-  container or as a dry run), a hash-chained audit log, and `python -m pipeline.run`.
-- Scenarios in `lab/scenarios/`: `s1_attack` and its benign twin `s1_benign`, each with a
-  hand-labelled `scenario.yml`. Human approvals live in `approvals/<case_id>.yml`.
+  correlation, the agent (tools `auth_history`, `account_context`, `source_ip_history` and
+  `change_windows`; replay and Ollama clients), deterministic risk scoring, the policy engine,
+  the executor (`disable_account`, `isolate_host`, run in a victim container or as a dry run), a
+  hash-chained audit log, and `python -m pipeline.run`.
+- Scenarios in `lab/scenarios/`: four attack and benign twin pairs, `s1_attack`/`s1_benign` to
+  `s4_attack`/`s4_benign`, each with a hand-labelled `scenario.yml`. Human approvals live in
+  `approvals/<case_id>.yml`.
 - Read-only runs API (`backend/`) and the React dashboard (`frontend/`).
-- The live demo runs `qwen3:14b` through Ollama inside GitHub Actions. The `Model trial`
-  workflow compares models on `trial/*` branches.
+- The live demo runs `qwen3:14b` through Ollama inside GitHub Actions, on the S1 cases only
+  (`lab/scenarios/s1_*`). The `Model trial` workflow compares models on `trial/*` branches, also
+  on S1 only.
 - Tests: pytest, including real-container tests when `SENTINEL_DOCKER` is set (CI sets it).
 - CI: ruff (pinned exact version), tests, stale-fixture check, dashboard typecheck and build.
 - Regenerate fixtures with `python -m contracts.generate_fixtures` (module form, not a file path),
@@ -56,6 +59,19 @@ Read this file at the start of every session.
   - `GET /api/pc/assessment` returns a `HostAssessment`. The dashboard's "Fix these first" tab
     shows it, and `?finding=` opens a finding directly.
   - A real fix is replayed from `tests/data/fix_vulnerability.qwen3-14b.json`.
+- Evaluation (D-17, `docs/superpowers/specs/2026-10-03-evaluation-design.md`):
+  - 8 hand-labelled lab cases in `lab/scenarios/` (s1 to s4, each an attack and a benign
+    twin). Each `scenario.yml` has `required_evidence` and its own change calendar
+    (`changes`).
+  - The lab agent's tools are `auth_history`, `account_context`, `source_ip_history` and
+    `change_windows`.
+  - The arms are rules only (`eval/arms.py`), a single call with the evidence bundled
+    (`agent/single_shot.py`), and the agent. They all run through `run_incident(..., investigator=...)`.
+  - The model never sees the label: `incident_message` leaves out `case_id`, and
+    `tests/test_label_isolation.py` checks all 8 cases for both AI arms.
+  - `python -m eval.run --llm ollama` records runs to `eval/recordings/`; the default replays
+    them into `eval/results.json` and `docs/eval-results.md`. A test checks the committed report
+    against a replay. A model timeout is recorded as a miss.
 - Live advisor, phase 4 (report, public sample, accuracy, D-16):
   - The Report tab (`?view=pc&tab=report`, `ReportPanel.tsx`) prints a summary.
   - `python -m pipeline.sample` exports a `PcSample` from the live database. It keeps the

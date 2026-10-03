@@ -7,6 +7,12 @@ accounts:
     role: lab administrator
     privileged: true
     protected: true
+  svc_deploy:
+    role: CI deploy service account
+  msmith:
+    role: analyst
+  kpatel:
+    role: developer
 hosts:
   victim-web-01:
     role: web server

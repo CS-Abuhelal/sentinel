@@ -1,0 +1,7 @@
+title: Failed logins from the user's own workstation, then a normal login
+description: >-
+  msmith, who logs in every morning at about 08:30 from 10.77.0.64, fails 10 password attempts
+  from that same workstation at 08:31, 40 seconds apart, then logs in successfully at 08:45. The
+  failures and the login all come from the one place msmith always logs in from.
+expected_classification: benign
+required_evidence: [auth_history]

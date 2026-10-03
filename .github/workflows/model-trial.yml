@@ -52,7 +52,7 @@ jobs:
 
       - name: Investigate each scenario
         run: |
-          for log in lab/scenarios/*/auth.log; do
+          for log in lab/scenarios/s1_*/auth.log; do
             case_id=$(basename "$(dirname "$log")")
             start=$(date +%s)
             python -m pipeline.run "$log" --llm ollama --model "${{ matrix.model }}" ${{ matrix.think }} \

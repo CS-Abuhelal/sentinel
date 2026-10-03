@@ -6,6 +6,44 @@ Superseded entries are removed, and numbers are never reused.
 
 ---
 
+## D-17 — Contracts 1.8.0 and a three-arm evaluation on eight cases (2026-10-03)
+
+**Decision.** Add `ChangeWindow`, a documented and approved change with its time span, accounts,
+hosts and source addresses. `Scenario` gains `required_evidence` (the evidence classes a correct
+investigation has to cite) and `changes` (the change calendar for that case). Contracts move to
+1.8.0. The evaluation compares three arms: rules-only, a single AI call with a full-context
+bundle, and the tool-using agent. It runs on 8 hand-labelled lab cases, which are 4 attack and
+benign pairs.
+
+**Why.** CLAUDE.md asks for an honest evaluation, and an honest one needs a baseline to beat
+and cases that can go either way. A benign twin triggers the same rule as its attack. That is
+what separates an investigation from a rule: a rule cannot tell them apart, so any difference
+in the verdicts comes from the evidence. Four pairs are enough to show that, and few enough to
+label by hand.
+
+**Consequence.** The cases are written and labelled by the author, so the results measure
+agreement with one person's judgment on a small lab set, not general accuracy. The change
+calendar lives with each case, in its `scenario.yml`, so every case is self-contained. The
+expected classification and the required evidence are never shown to an arm, and only `changes`
+reach a tool.
+
+
+**Correction, 2026-10-03.**
+- **The leak.** The first 48 recordings were made with prompts that contained `case_id` (for
+  example `s4_benign`), which leaked the label: the incident and alert JSON carried it. The
+  final review caught it.
+- **The fix.** `incident_message` now leaves `case_id` out, and
+  `tests/test_label_isolation.py` checks that no model-facing message contains a case's id,
+  label, title or description.
+- **The clean results.** All 48 runs were re-recorded. Single call 100% → 67%, agent 75% →
+  63%, rules only 50%.
+- **The live demo.** The S1 demo had the same leak since its first live run, and the README
+  now says so.
+- **Interrupted runs.** Some runs stalled while the PC was short of memory (the model needs a
+  little more than the GPU's 12 GB). Those runs were restarted, and the report's method
+  section says so.
+---
+
 ## D-16 — Contracts 1.7.0 and a sanitized public sample (2026-09-29, updated 2026-10-02)
 
 **Decision.** Add `PcSample`, a recorded snapshot of the My PC page (feed, assessment, runs).

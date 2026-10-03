@@ -1,0 +1,100 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "tool_call",
+      "tool": "auth_history",
+      "args": {
+        "account": "svc_backup",
+        "lookback_hours": 24
+      },
+      "input_tokens": 1874,
+      "output_tokens": 30,
+      "elapsed_ms": 5740
+    },
+    {
+      "type": "tool_call",
+      "tool": "source_ip_history",
+      "args": {
+        "ip": "10.77.0.20",
+        "lookback_hours": 24
+      },
+      "input_tokens": 2412,
+      "output_tokens": 36,
+      "elapsed_ms": 3524
+    },
+    {
+      "type": "tool_call",
+      "tool": "account_context",
+      "args": {
+        "account": "svc_backup"
+      },
+      "input_tokens": 2744,
+      "output_tokens": 20,
+      "elapsed_ms": 1824
+    },
+    {
+      "type": "tool_call",
+      "tool": "change_windows",
+      "args": {
+        "account": "svc_backup",
+        "hours_around": 2
+      },
+      "input_tokens": 2831,
+      "output_tokens": 26,
+      "elapsed_ms": 2119
+    },
+    {
+      "type": "final",
+      "payload": {
+        "classification": "malicious",
+        "confidence": 0.85,
+        "summary": "The account svc_backup experienced a brute force attack from IP 10.77.0.20, with 12 failed login attempts followed by a successful login. The source IP is known to the account and has been used previously. No documented changes explain this activity, suggesting a potential compromise.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "The attacker used brute force to guess the password for the svc_backup account from IP 10.77.0.20, with 12 failed attempts followed by a successful login.",
+            "evidence": [
+              "E1",
+              "E2"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1",
+          "E2",
+          "E3",
+          "E4"
+        ],
+        "risk_factors": [
+          "Brute force attack on a backup service account",
+          "Successful login after multiple failed attempts",
+          "No documented changes explain the activity"
+        ],
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "svc_backup",
+            "justification": "The account was successfully compromised through a brute force attack, indicating a potential security breach.",
+            "reversible": true,
+            "evidence": [
+              "E1",
+              "E2"
+            ]
+          }
+        ]
+      },
+      "input_tokens": 3008,
+      "output_tokens": 355,
+      "elapsed_ms": 24931
+    }
+  ]
+}

@@ -1,14 +1,22 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Protocol
 
 from pydantic import BaseModel
 
 from agent.llm import ToolSpec
-from contracts.models import Event, EvidenceClass, Finding, Incident, LiveAlert
+from contracts.models import (
+    ChangeWindow,
+    Event,
+    EvidenceClass,
+    Finding,
+    Incident,
+    Inventory,
+    LiveAlert,
+)
 
 
 class HostHistory(Protocol):
@@ -28,6 +36,14 @@ class ToolContext:
     incident: Incident
     events: list[Event]
     history: HostHistory | None = None
+    inventory: Inventory | None = None
+    changes: list[ChangeWindow] = field(default_factory=list)
+
+
+def source_ip(event: Event) -> str:
+    if event.network is None or event.network.src_ip is None:
+        return "unknown"
+    return event.network.src_ip
 
 
 @dataclass(frozen=True)

@@ -11,17 +11,19 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from agent.llm import FinalAnswer, LLMClient, Message, ToolCall
-from agent.tools import TOOLS, HostHistory, Tool, ToolContext
+from agent.tools import TOOLS, HostHistory, Tool, ToolContext, ToolResult
 from contracts.models import (
     ActionType,
     Alert,
     AttackChainStep,
+    ChangeWindow,
     Classification,
     EntityType,
     EvaluationArm,
     Event,
     EvidenceItem,
     Incident,
+    Inventory,
     InvestigationStopReason,
     ProposedAction,
     Recommendation,
@@ -32,6 +34,7 @@ MAX_TOOL_CALLS = 6
 MAX_STEPS = 10
 MAX_STEP_CHARS = 300
 MAX_MESSAGE_ALERTS = 20
+HIDDEN_FIELDS = {"case_id"}
 SYSTEM_PROMPT = (Path(__file__).parent / "prompts" / "system.md").read_text(encoding="utf-8")
 PC_PROMPT = (Path(__file__).parent / "prompts" / "pc.md").read_text(encoding="utf-8")
 
@@ -91,22 +94,34 @@ def investigate(
     max_tool_calls: int = MAX_TOOL_CALLS,
     system_prompt: str = SYSTEM_PROMPT,
     history: HostHistory | None = None,
+    inventory: Inventory | None = None,
+    changes: list[ChangeWindow] | None = None,
 ) -> tuple[Verdict, list[EvidenceItem]]:
     started = time.perf_counter()
-    context = ToolContext(incident=incident, events=events, history=history)
+    context = ToolContext(
+        incident=incident,
+        events=events,
+        history=history,
+        inventory=inventory,
+        changes=list(changes or []),
+    )
     specs = [tool.spec() for tool in tools.values()]
     messages = [
         Message("system", system_prompt.replace("{max_tool_calls}", str(max_tool_calls))),
-        Message("user", _incident_message(incident, alerts)),
+        Message("user", incident_message(incident, alerts)),
     ]
     evidence: list[EvidenceItem] = []
     refs: dict[str, str] = {}
     draft: VerdictDraft | None = None
+    input_tokens = output_tokens = model_ms = 0
 
     while True:
         response = llm.complete(messages, specs)
+        input_tokens += response.input_tokens
+        output_tokens += response.output_tokens
+        model_ms += response.elapsed_ms
         if isinstance(response, FinalAnswer):
-            draft = _parse_draft(response.payload, refs)
+            draft = parse_draft(response.payload, refs)
             stop = (
                 InvestigationStopReason.VERDICT_REACHED
                 if draft
@@ -128,16 +143,7 @@ def investigate(
         query = params.model_dump(mode="json")
         result = tool.run(params, context)
         ref = f"E{len(evidence) + 1}"
-        item = EvidenceItem(
-            incident_id=incident.incident_id,
-            evidence_class=tool.evidence_class,
-            tool_name=tool.name,
-            tool_query=query,
-            retrieved_at=now(),
-            summary=result.summary,
-            content=result.content,
-            source_event_ids=result.source_event_ids,
-        )
+        item = evidence_item(tool, query, result, incident, now)
         evidence.append(item)
         refs[ref] = item.evidence_id
         messages.append(Message("assistant", "", tool_call=ToolCall(tool=tool.name, args=query)))
@@ -156,22 +162,43 @@ def investigate(
         "produced_at": now(),
         "model_name": llm.model_name,
         "tool_calls_made": len(evidence),
-        "latency_ms": int((time.perf_counter() - started) * 1000),
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "latency_ms": model_ms if model_ms > 0 else int((time.perf_counter() - started) * 1000),
         "stop_reason": stop,
     }
     if draft is None:
-        return _fallback(stop, common), evidence
-    return _verdict(draft, refs, common), evidence
+        return fallback_verdict(stop, common), evidence
+    return build_verdict(draft, refs, common), evidence
 
 
-def _incident_message(incident: Incident, alerts: list[Alert]) -> str:
-    data: dict[str, Any] = {"incident": incident.model_dump(mode="json")}
+def evidence_item(
+    tool: Tool,
+    query: dict[str, Any],
+    result: ToolResult,
+    incident: Incident,
+    now: Callable[[], datetime],
+) -> EvidenceItem:
+    return EvidenceItem(
+        incident_id=incident.incident_id,
+        evidence_class=tool.evidence_class,
+        tool_name=tool.name,
+        tool_query=query,
+        retrieved_at=now(),
+        summary=result.summary,
+        content=result.content,
+        source_event_ids=result.source_event_ids,
+    )
+
+
+def incident_message(incident: Incident, alerts: list[Alert]) -> str:
+    data: dict[str, Any] = {"incident": incident.model_dump(mode="json", exclude=HIDDEN_FIELDS)}
     if len(alerts) <= MAX_MESSAGE_ALERTS:
-        data["alerts"] = [alert.model_dump(mode="json") for alert in alerts]
+        data["alerts"] = [alert.model_dump(mode="json", exclude=HIDDEN_FIELDS) for alert in alerts]
     else:
         half = MAX_MESSAGE_ALERTS // 2
         shown = [*alerts[:half], *alerts[-half:]]
-        data["alerts"] = [alert.model_dump(mode="json") for alert in shown]
+        data["alerts"] = [alert.model_dump(mode="json", exclude=HIDDEN_FIELDS) for alert in shown]
         data["alert_count"] = len(alerts)
         data["alerts_by_rule"] = dict(Counter(alert.rule_id for alert in alerts).most_common())
     return (
@@ -180,7 +207,7 @@ def _incident_message(incident: Incident, alerts: list[Alert]) -> str:
     )
 
 
-def _parse_draft(payload: dict[str, Any], refs: dict[str, str]) -> VerdictDraft | None:
+def parse_draft(payload: dict[str, Any], refs: dict[str, str]) -> VerdictDraft | None:
     try:
         draft = VerdictDraft.model_validate(payload)
     except ValidationError:
@@ -198,7 +225,7 @@ def _parse_draft(payload: dict[str, Any], refs: dict[str, str]) -> VerdictDraft 
     return draft
 
 
-def _verdict(draft: VerdictDraft, refs: dict[str, str], common: dict[str, Any]) -> Verdict:
+def build_verdict(draft: VerdictDraft, refs: dict[str, str], common: dict[str, Any]) -> Verdict:
     return Verdict(
         classification=draft.classification,
         confidence=draft.confidence,
@@ -252,7 +279,7 @@ def _recommendation(advice: RecommendationDraft, refs: dict[str, str]) -> Recomm
     )
 
 
-def _fallback(stop: InvestigationStopReason, common: dict[str, Any]) -> Verdict:
+def fallback_verdict(stop: InvestigationStopReason, common: dict[str, Any]) -> Verdict:
     return Verdict(
         classification=Classification.INCONCLUSIVE,
         confidence=0.0,

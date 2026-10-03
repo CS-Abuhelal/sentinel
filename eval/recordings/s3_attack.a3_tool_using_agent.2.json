@@ -1,0 +1,98 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "tool_call",
+      "tool": "auth_history",
+      "args": {
+        "account": "msmith",
+        "lookback_hours": 24
+      },
+      "input_tokens": 1864,
+      "output_tokens": 30,
+      "elapsed_ms": 3290
+    },
+    {
+      "type": "tool_call",
+      "tool": "source_ip_history",
+      "args": {
+        "lookback_hours": 24,
+        "ip": "10.77.0.61"
+      },
+      "input_tokens": 2402,
+      "output_tokens": 36,
+      "elapsed_ms": 3340
+    },
+    {
+      "type": "tool_call",
+      "tool": "account_context",
+      "args": {
+        "account": "msmith"
+      },
+      "input_tokens": 2843,
+      "output_tokens": 20,
+      "elapsed_ms": 1912
+    },
+    {
+      "type": "tool_call",
+      "tool": "change_windows",
+      "args": {
+        "account": "msmith",
+        "hours_around": 2
+      },
+      "input_tokens": 2927,
+      "output_tokens": 26,
+      "elapsed_ms": 1862
+    },
+    {
+      "type": "final",
+      "payload": {
+        "classification": "malicious",
+        "confidence": 0.9,
+        "summary": "The account msmith experienced 11 failed login attempts from the IP 10.77.0.61, followed by a successful login. This IP had no prior successful logins for this account, and the activity aligns with a brute force attack. The account is not privileged, but the pattern of failed attempts followed by a successful login suggests a potential compromise.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "The attacker used brute force to guess the password for the msmith account, as evidenced by the 11 failed login attempts followed by a successful login from the IP 10.77.0.61.",
+            "evidence": [
+              "E1",
+              "E2"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1",
+          "E2"
+        ],
+        "risk_factors": [
+          "Brute force attack detected",
+          "Unusual source IP activity",
+          "Successful login after multiple failures"
+        ],
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "msmith",
+            "justification": "The account msmith experienced a brute force attack, indicating a potential compromise. Disabling the account will prevent further unauthorized access.",
+            "reversible": true,
+            "evidence": [
+              "E1",
+              "E2"
+            ]
+          }
+        ]
+      },
+      "input_tokens": 3104,
+      "output_tokens": 368,
+      "elapsed_ms": 25163
+    }
+  ]
+}

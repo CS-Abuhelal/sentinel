@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import json
+from datetime import timedelta
 from typing import Any
 
 import pytest
@@ -18,11 +19,15 @@ from agent.llm import (
 )
 from contracts.models import (
     ActionType,
+    ChangeWindow,
     Classification,
     EvaluationArm,
+    EvidenceClass,
     InvestigationStopReason,
+    Scenario,
 )
 from pipeline.grouping import new_incident
+from pipeline.run import run_incident
 from tests.conftest import REPO, S1_RECORDING, S1Case, make_wazuh_alert
 
 AUTH_CALL = {"type": "tool_call", "tool": "auth_history", "args": {"account": "jdoe"}}
@@ -168,6 +173,77 @@ def test_benign_verdict_without_citations_is_accepted(s1) -> None:
     assert evidence == []
 
 
+def test_usage_is_summed_into_the_verdict(s1: S1Case) -> None:
+    model = _client(
+        {**AUTH_CALL, "input_tokens": 100, "output_tokens": 10, "elapsed_ms": 1000},
+        {**_final(), "input_tokens": 200, "output_tokens": 30, "elapsed_ms": 2000},
+    )
+    verdict, _ = investigate(s1.incident, s1.alerts, s1.events, model)
+    assert verdict.stop_reason is InvestigationStopReason.VERDICT_REACHED
+    assert verdict.input_tokens == 300
+    assert verdict.output_tokens == 40
+    assert verdict.latency_ms == 3000
+
+
+def test_usage_is_summed_when_the_investigation_falls_back(s1: S1Case) -> None:
+    model = _client(
+        {**AUTH_CALL, "input_tokens": 100, "output_tokens": 10, "elapsed_ms": 1000},
+        {
+            "type": "final",
+            "payload": {},
+            "input_tokens": 50,
+            "output_tokens": 5,
+            "elapsed_ms": 400,
+        },
+    )
+    verdict, _ = investigate(s1.incident, s1.alerts, s1.events, model)
+    assert verdict.stop_reason is InvestigationStopReason.INVALID_OUTPUT
+    assert verdict.input_tokens == 150
+    assert verdict.output_tokens == 15
+    assert verdict.latency_ms == 1400
+
+
+def test_latency_is_the_wall_time_when_the_model_reports_none(s1: S1Case) -> None:
+    verdict, _ = investigate(s1.incident, s1.alerts, s1.events, _client(AUTH_CALL, _final()))
+    assert verdict.input_tokens == 0
+    assert verdict.output_tokens == 0
+    assert verdict.latency_ms >= 0
+
+
+def test_run_incident_gives_the_agent_the_scenario_changes(s1: S1Case) -> None:
+    window = ChangeWindow(
+        change_id="CHG-7",
+        title="Rotate jdoe credentials",
+        start=s1.incident.window_start - timedelta(hours=2),
+        end=s1.incident.window_end + timedelta(hours=2),
+        accounts=["jdoe"],
+    )
+    scenario = Scenario(
+        title="t",
+        description="d",
+        expected_classification=Classification.BENIGN,
+        changes=[window],
+    )
+    model = _client(
+        {"type": "tool_call", "tool": "change_windows", "args": {"account": "jdoe"}},
+        _final(classification="benign", cited_evidence=["E1"]),
+    )
+    run = run_incident(
+        "s1_attack",
+        s1.events,
+        s1.alerts,
+        s1.incident.model_copy(deep=True),
+        s1.inventory,
+        model,
+        scenario=scenario,
+    )
+    [item] = run.evidence
+    assert item.tool_name == "change_windows"
+    assert item.evidence_class is EvidenceClass.CHANGE_WINDOW
+    assert [c["change_id"] for c in item.content["changes"]] == ["CHG-7"]
+    assert run.verdict.classification is Classification.BENIGN
+
+
 def test_exhausted_replay_raises(s1) -> None:
     incident, alerts, events = s1.incident, s1.alerts, s1.events
     with pytest.raises(ReplayExhausted):
@@ -286,16 +362,31 @@ def _incident_message_sent(incident, alerts) -> str:
     return model.calls[0][1].content
 
 
-def test_the_lab_incident_message_is_unchanged(s1: S1Case) -> None:
+def test_the_lab_incident_message_is_the_incident_and_alerts_without_the_case_id(
+    s1: S1Case,
+) -> None:
     assert len(s1.alerts) <= 20
+    assert s1.incident.case_id == "s1_attack"
     expected = LAB_MESSAGE_PREFIX + json.dumps(
         {
-            "incident": s1.incident.model_dump(mode="json"),
-            "alerts": [alert.model_dump(mode="json") for alert in s1.alerts],
+            "incident": s1.incident.model_dump(mode="json", exclude={"case_id"}),
+            "alerts": [alert.model_dump(mode="json", exclude={"case_id"}) for alert in s1.alerts],
         },
         indent=2,
     )
-    assert _incident_message_sent(s1.incident, s1.alerts) == expected
+    message = _incident_message_sent(s1.incident, s1.alerts)
+    assert message == expected
+    assert "case_id" not in message
+    assert "s1_attack" not in message
+
+
+def test_a_long_incident_message_leaves_out_the_case_id_too() -> None:
+    lives = [make_wazuh_alert(f"42.{n}", n)[0] for n in range(25)]
+    alerts = [live.alert.model_copy(update={"case_id": "s9_secret"}) for live in lives]
+    incident = new_incident(lives[0]).model_copy(update={"case_id": "s9_secret"})
+    message = _incident_message_sent(incident, alerts)
+    assert "s9_secret" not in message
+    assert "case_id" not in message
 
 
 def test_twenty_alerts_are_sent_whole() -> None:

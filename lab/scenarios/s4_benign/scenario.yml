@@ -1,0 +1,17 @@
+title: Users fail to log in after the VPN egress address moves
+description: >-
+  A documented change (CHG-2070) moves the VPN egress to 10.80.0.15 and resets VPN passwords.
+  jdoe, who normally logs in from 10.77.0.50, now connects through the VPN. The saved password is
+  stale, so there are 12 failed attempts from 10.80.0.15, 20 seconds apart, before jdoe logs in
+  with the new password at 09:12.
+expected_classification: benign
+required_evidence: [auth_history, change_window]
+changes:
+  - change_id: CHG-2070
+    title: Move VPN egress to 10.80.0.15 and reset VPN passwords
+    start: "2026-09-28T06:00:00Z"
+    end: "2026-09-28T18:00:00Z"
+    source_ips: [10.80.0.15]
+    description: >-
+      VPN users connect from 10.80.0.15 from today. Their passwords were reset, so saved passwords
+      fail until updated.

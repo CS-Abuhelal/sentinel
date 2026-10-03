@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Protocol
 
 import yaml
 
@@ -20,8 +21,10 @@ from contracts.models import (
     Approval,
     AuditKind,
     AuditRecord,
+    ChangeWindow,
     Classification,
     Event,
+    EvidenceItem,
     ExecutionResult,
     ExecutionStatus,
     Incident,
@@ -72,6 +75,23 @@ def dry_run_everywhere() -> RunnerFor:
     return lambda host: runner
 
 
+class Investigator(Protocol):
+    def __call__(
+        self,
+        incident: Incident,
+        alerts: list[Alert],
+        events: list[Event],
+        llm: LLMClient,
+        *,
+        tools: dict[str, Tool],
+        now: Callable[[], datetime],
+        system_prompt: str,
+        history: HostHistory | None,
+        inventory: Inventory | None,
+        changes: list[ChangeWindow],
+    ) -> tuple[Verdict, list[EvidenceItem]]: ...
+
+
 def run_pipeline(
     lines: list[str],
     case_id: str,
@@ -83,6 +103,7 @@ def run_pipeline(
     approvals: list[ApprovalEntry] | None = None,
     approval_source: str = "approvals",
     runner_for: RunnerFor | None = None,
+    investigator: Investigator = investigate,
 ) -> IncidentRun:
     events = parse_auth_log(lines, case_id)
     alerts = detect(events, rules or load_rules(RULES_DIR), case_id)
@@ -102,6 +123,7 @@ def run_pipeline(
         approvals=approvals,
         approval_source=approval_source,
         runner_for=runner_for,
+        investigator=investigator,
     )
     return run.model_copy(update={"alerts": alerts})
 
@@ -122,9 +144,10 @@ def run_incident(
     approvals: list[ApprovalEntry] | None = None,
     approval_source: str = "approvals",
     runner_for: RunnerFor | None = None,
+    investigator: Investigator = investigate,
 ) -> IncidentRun:
     incident.status = IncidentStatus.INVESTIGATING
-    verdict, evidence = investigate(
+    verdict, evidence = investigator(
         incident,
         alerts,
         events,
@@ -133,6 +156,8 @@ def run_incident(
         now=now,
         system_prompt=system_prompt,
         history=history,
+        inventory=inventory,
+        changes=scenario.changes if scenario else [],
     )
     vetted = [check_advice(advice) for advice in verdict.recommendations]
     verdict = verdict.model_copy(

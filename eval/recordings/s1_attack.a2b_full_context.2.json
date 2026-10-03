@@ -1,0 +1,51 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "final",
+      "payload": {
+        "classification": "malicious",
+        "confidence": 0.9,
+        "summary": "The incident involves a brute force attack on the account 'jdoe' from the IP address '10.66.0.10', which is highly suspicious as this source had no prior successful logins in the 30 days before the incident. The successful login occurred after 24 consecutive failed attempts, indicating a potential compromise.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "The attacker used brute force techniques to guess the password of the account 'jdoe' from the IP address '10.66.0.10'.",
+            "evidence": [
+              "E1"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1"
+        ],
+        "risk_factors": [
+          "Brute force attack on a non-privileged account",
+          "Unusual source IP with no prior successful logins"
+        ],
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "jdoe",
+            "justification": "The account 'jdoe' was the target of a brute force attack, indicating a potential compromise. Disabling the account will prevent further unauthorized access.",
+            "reversible": true,
+            "evidence": [
+              "E1"
+            ]
+          }
+        ]
+      },
+      "input_tokens": 3285,
+      "output_tokens": 350,
+      "elapsed_ms": 26631
+    }
+  ]
+}

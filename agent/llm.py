@@ -18,6 +18,9 @@ class ToolSpec:
 class ToolCall:
     tool: str
     args: dict[str, Any]
+    input_tokens: int = 0
+    output_tokens: int = 0
+    elapsed_ms: int = 0
 
 
 @dataclass(frozen=True)
@@ -30,6 +33,9 @@ class Message:
 @dataclass(frozen=True)
 class FinalAnswer:
     payload: dict[str, Any]
+    input_tokens: int = 0
+    output_tokens: int = 0
+    elapsed_ms: int = 0
 
 
 LLMResponse = ToolCall | FinalAnswer
@@ -54,11 +60,17 @@ class RecordedToolCall(_Strict):
     type: Literal["tool_call"]
     tool: str
     args: dict[str, Any] = Field(default_factory=dict)
+    input_tokens: int = Field(default=0, ge=0)
+    output_tokens: int = Field(default=0, ge=0)
+    elapsed_ms: int = Field(default=0, ge=0)
 
 
 class RecordedFinal(_Strict):
     type: Literal["final"]
     payload: dict[str, Any]
+    input_tokens: int = Field(default=0, ge=0)
+    output_tokens: int = Field(default=0, ge=0)
+    elapsed_ms: int = Field(default=0, ge=0)
 
 
 class Recording(_Strict):
@@ -89,8 +101,19 @@ class ReplayClient:
         recorded = responses[self._position]
         self._position += 1
         if isinstance(recorded, RecordedToolCall):
-            return ToolCall(tool=recorded.tool, args=dict(recorded.args))
-        return FinalAnswer(payload=recorded.payload)
+            return ToolCall(
+                tool=recorded.tool,
+                args=dict(recorded.args),
+                input_tokens=recorded.input_tokens,
+                output_tokens=recorded.output_tokens,
+                elapsed_ms=recorded.elapsed_ms,
+            )
+        return FinalAnswer(
+            payload=recorded.payload,
+            input_tokens=recorded.input_tokens,
+            output_tokens=recorded.output_tokens,
+            elapsed_ms=recorded.elapsed_ms,
+        )
 
 
 class RecordingClient:
@@ -106,10 +129,25 @@ class RecordingClient:
         response = self._inner.complete(messages, tools)
         if isinstance(response, ToolCall):
             self._responses.append(
-                RecordedToolCall(type="tool_call", tool=response.tool, args=response.args)
+                RecordedToolCall(
+                    type="tool_call",
+                    tool=response.tool,
+                    args=response.args,
+                    input_tokens=response.input_tokens,
+                    output_tokens=response.output_tokens,
+                    elapsed_ms=response.elapsed_ms,
+                )
             )
         else:
-            self._responses.append(RecordedFinal(type="final", payload=response.payload))
+            self._responses.append(
+                RecordedFinal(
+                    type="final",
+                    payload=response.payload,
+                    input_tokens=response.input_tokens,
+                    output_tokens=response.output_tokens,
+                    elapsed_ms=response.elapsed_ms,
+                )
+            )
         return response
 
     def recording(self) -> Recording:

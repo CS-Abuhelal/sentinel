@@ -1,0 +1,32 @@
+2026-09-21T14:00:27.466572+00:00 victim-web-01 sshd[2258]: Accepted password for svc_deploy from 10.77.0.30 port 46548 ssh2
+2026-09-21T14:00:27.470180+00:00 victim-web-01 sshd[2258]: pam_unix(sshd:session): session opened for user svc_deploy(uid=1003) by svc_deploy(uid=0)
+2026-09-21T14:30:27.466572+00:00 victim-web-01 sshd[2258]: pam_unix(sshd:session): session closed for user svc_deploy
+2026-09-22T14:00:14.324840+00:00 victim-web-01 sshd[2295]: Accepted password for svc_deploy from 10.77.0.30 port 46555 ssh2
+2026-09-22T14:00:14.330777+00:00 victim-web-01 sshd[2295]: pam_unix(sshd:session): session opened for user svc_deploy(uid=1003) by svc_deploy(uid=0)
+2026-09-22T14:30:14.324840+00:00 victim-web-01 sshd[2295]: pam_unix(sshd:session): session closed for user svc_deploy
+2026-09-23T14:00:30.326684+00:00 victim-web-01 sshd[2329]: Accepted password for svc_deploy from 10.77.0.30 port 46562 ssh2
+2026-09-23T14:00:30.332225+00:00 victim-web-01 sshd[2329]: pam_unix(sshd:session): session opened for user svc_deploy(uid=1003) by svc_deploy(uid=0)
+2026-09-23T14:30:30.326684+00:00 victim-web-01 sshd[2329]: pam_unix(sshd:session): session closed for user svc_deploy
+2026-09-24T14:00:28.363637+00:00 victim-web-01 sshd[2353]: Accepted password for svc_deploy from 10.77.0.30 port 46569 ssh2
+2026-09-24T14:00:28.367182+00:00 victim-web-01 sshd[2353]: pam_unix(sshd:session): session opened for user svc_deploy(uid=1003) by svc_deploy(uid=0)
+2026-09-24T14:30:28.363637+00:00 victim-web-01 sshd[2353]: pam_unix(sshd:session): session closed for user svc_deploy
+2026-09-25T14:00:36.169958+00:00 victim-web-01 sshd[2369]: Accepted password for svc_deploy from 10.77.0.30 port 46582 ssh2
+2026-09-25T14:00:36.174146+00:00 victim-web-01 sshd[2369]: pam_unix(sshd:session): session opened for user svc_deploy(uid=1003) by svc_deploy(uid=0)
+2026-09-25T14:30:36.169958+00:00 victim-web-01 sshd[2369]: pam_unix(sshd:session): session closed for user svc_deploy
+2026-09-26T14:00:04.431325+00:00 victim-web-01 sshd[2409]: Accepted password for svc_deploy from 10.77.0.30 port 46595 ssh2
+2026-09-26T14:00:04.435376+00:00 victim-web-01 sshd[2409]: pam_unix(sshd:session): session opened for user svc_deploy(uid=1003) by svc_deploy(uid=0)
+2026-09-26T14:30:04.431325+00:00 victim-web-01 sshd[2409]: pam_unix(sshd:session): session closed for user svc_deploy
+2026-09-27T14:00:05.444816+00:00 victim-web-01 sshd[2430]: Failed password for svc_deploy from 10.77.0.30 port 46608 ssh2
+2026-09-27T14:00:35.473859+00:00 victim-web-01 sshd[2431]: Failed password for svc_deploy from 10.77.0.30 port 46610 ssh2
+2026-09-27T14:01:05.122336+00:00 victim-web-01 sshd[2432]: Failed password for svc_deploy from 10.77.0.30 port 46613 ssh2
+2026-09-27T14:01:35.192601+00:00 victim-web-01 sshd[2433]: Failed password for svc_deploy from 10.77.0.30 port 46616 ssh2
+2026-09-27T14:02:05.235904+00:00 victim-web-01 sshd[2434]: Failed password for svc_deploy from 10.77.0.30 port 46619 ssh2
+2026-09-27T14:02:35.450191+00:00 victim-web-01 sshd[2435]: Failed password for svc_deploy from 10.77.0.30 port 46621 ssh2
+2026-09-27T14:03:05.130581+00:00 victim-web-01 sshd[2436]: Failed password for svc_deploy from 10.77.0.30 port 46622 ssh2
+2026-09-27T14:03:35.172198+00:00 victim-web-01 sshd[2437]: Failed password for svc_deploy from 10.77.0.30 port 46624 ssh2
+2026-09-27T14:04:05.250647+00:00 victim-web-01 sshd[2438]: Failed password for svc_deploy from 10.77.0.30 port 46625 ssh2
+2026-09-27T14:04:35.366332+00:00 victim-web-01 sshd[2439]: Failed password for svc_deploy from 10.77.0.30 port 46627 ssh2
+2026-09-27T14:05:05.435499+00:00 victim-web-01 sshd[2440]: Failed password for svc_deploy from 10.77.0.30 port 46630 ssh2
+2026-09-27T14:05:35.150223+00:00 victim-web-01 sshd[2441]: Failed password for svc_deploy from 10.77.0.30 port 46633 ssh2
+2026-09-27T14:20:00.146693+00:00 victim-web-01 sshd[2442]: Accepted password for svc_deploy from 10.77.0.30 port 46636 ssh2
+2026-09-27T14:20:00.150729+00:00 victim-web-01 sshd[2442]: pam_unix(sshd:session): session opened for user svc_deploy(uid=1003) by svc_deploy(uid=0)

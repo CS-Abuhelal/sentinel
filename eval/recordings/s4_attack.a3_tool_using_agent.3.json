@@ -1,0 +1,99 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "tool_call",
+      "tool": "auth_history",
+      "args": {
+        "account": "jdoe",
+        "lookback_hours": 24
+      },
+      "input_tokens": 1907,
+      "output_tokens": 31,
+      "elapsed_ms": 4443
+    },
+    {
+      "type": "tool_call",
+      "tool": "source_ip_history",
+      "args": {
+        "ip": "198.51.100.77",
+        "lookback_hours": 24
+      },
+      "input_tokens": 2457,
+      "output_tokens": 39,
+      "elapsed_ms": 3232
+    },
+    {
+      "type": "tool_call",
+      "tool": "account_context",
+      "args": {
+        "account": "jdoe"
+      },
+      "input_tokens": 2800,
+      "output_tokens": 21,
+      "elapsed_ms": 1781
+    },
+    {
+      "type": "tool_call",
+      "tool": "change_windows",
+      "args": {
+        "account": "jdoe",
+        "hours_around": 2
+      },
+      "input_tokens": 2886,
+      "output_tokens": 27,
+      "elapsed_ms": 1895
+    },
+    {
+      "type": "final",
+      "payload": {
+        "classification": "malicious",
+        "confidence": 0.9,
+        "summary": "The account 'jdoe' experienced a successful login following 13 consecutive failed attempts from the IP address '198.51.100.77', which had no prior successful logins in the last 30 days. This pattern is consistent with a brute-force attack, and no documented changes explain this activity.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "The attacker used brute-force techniques to guess the password of the account 'jdoe' from the IP address '198.51.100.77'.",
+            "evidence": [
+              "E1",
+              "E2"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1",
+          "E2",
+          "E3",
+          "E4"
+        ],
+        "risk_factors": [
+          "Brute-force attack pattern",
+          "Unusual source IP with no prior successful logins"
+        ],
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "jdoe",
+            "justification": "The account 'jdoe' was successfully accessed following a brute-force attack, indicating a potential compromise.",
+            "reversible": true,
+            "evidence": [
+              "E1",
+              "E2"
+            ]
+          }
+        ]
+      },
+      "input_tokens": 3065,
+      "output_tokens": 357,
+      "elapsed_ms": 23414
+    }
+  ]
+}

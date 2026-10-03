@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from typing import Any
 
 import httpx
@@ -38,6 +39,9 @@ class OllamaClient:
     def model_name(self) -> str:
         return f"ollama:{self._model}{' thinking' if self._think else ''}"
 
+    def close(self) -> None:
+        self._http.close()
+
     def complete(self, messages: list[Message], tools: list[ToolSpec]) -> LLMResponse:
         body = {
             "model": self._model,
@@ -47,18 +51,26 @@ class OllamaClient:
             "think": self._think,
             "options": {"temperature": 0, "num_ctx": 16384, "num_predict": MAX_OUTPUT_TOKENS},
         }
+        started = time.perf_counter()
         response = self._http.post("/api/chat", json=body)
+        elapsed_ms = int((time.perf_counter() - started) * 1000)
         if response.status_code != 200:
             raise OllamaError(f"Ollama returned {response.status_code}: {response.text[:300]}")
-        message = response.json().get("message") or {}
+        data = response.json()
+        usage = {
+            "input_tokens": int(data.get("prompt_eval_count") or 0),
+            "output_tokens": int(data.get("eval_count") or 0),
+            "elapsed_ms": elapsed_ms,
+        }
+        message = data.get("message") or {}
         calls = message.get("tool_calls") or []
         if calls:
             function = calls[0].get("function") or {}
             arguments = function.get("arguments") or {}
             if isinstance(arguments, str):
                 arguments = _json_object(arguments) or {}
-            return ToolCall(tool=str(function.get("name", "")), args=arguments)
-        return FinalAnswer(payload=_json_object(str(message.get("content") or "")) or {})
+            return ToolCall(tool=str(function.get("name", "")), args=arguments, **usage)
+        return FinalAnswer(payload=_json_object(str(message.get("content") or "")) or {}, **usage)
 
 
 def model_state(

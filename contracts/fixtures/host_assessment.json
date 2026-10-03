@@ -1,7 +1,7 @@
 {
   "assessment_id": "asm_1e4f7a2c9b30",
   "host": "my-pc",
-  "contract_version": "1.7.0",
+  "contract_version": "1.8.0",
   "created_at": "2026-09-27T09:30:00Z",
   "synced_at": "2026-09-27T09:28:00Z",
   "findings": [
