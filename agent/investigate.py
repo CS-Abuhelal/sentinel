@@ -11,7 +11,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from agent.llm import FinalAnswer, LLMClient, Message, ToolCall
-from agent.tools import TOOLS, HostHistory, Tool, ToolContext
+from agent.tools import TOOLS, HostHistory, Tool, ToolContext, ToolResult
 from contracts.models import (
     ActionType,
     Alert,
@@ -107,7 +107,7 @@ def investigate(
     specs = [tool.spec() for tool in tools.values()]
     messages = [
         Message("system", system_prompt.replace("{max_tool_calls}", str(max_tool_calls))),
-        Message("user", _incident_message(incident, alerts)),
+        Message("user", incident_message(incident, alerts)),
     ]
     evidence: list[EvidenceItem] = []
     refs: dict[str, str] = {}
@@ -120,7 +120,7 @@ def investigate(
         output_tokens += response.output_tokens
         model_ms += response.elapsed_ms
         if isinstance(response, FinalAnswer):
-            draft = _parse_draft(response.payload, refs)
+            draft = parse_draft(response.payload, refs)
             stop = (
                 InvestigationStopReason.VERDICT_REACHED
                 if draft
@@ -142,16 +142,7 @@ def investigate(
         query = params.model_dump(mode="json")
         result = tool.run(params, context)
         ref = f"E{len(evidence) + 1}"
-        item = EvidenceItem(
-            incident_id=incident.incident_id,
-            evidence_class=tool.evidence_class,
-            tool_name=tool.name,
-            tool_query=query,
-            retrieved_at=now(),
-            summary=result.summary,
-            content=result.content,
-            source_event_ids=result.source_event_ids,
-        )
+        item = evidence_item(tool, query, result, incident, now)
         evidence.append(item)
         refs[ref] = item.evidence_id
         messages.append(Message("assistant", "", tool_call=ToolCall(tool=tool.name, args=query)))
@@ -176,11 +167,30 @@ def investigate(
         "stop_reason": stop,
     }
     if draft is None:
-        return _fallback(stop, common), evidence
-    return _verdict(draft, refs, common), evidence
+        return fallback_verdict(stop, common), evidence
+    return build_verdict(draft, refs, common), evidence
 
 
-def _incident_message(incident: Incident, alerts: list[Alert]) -> str:
+def evidence_item(
+    tool: Tool,
+    query: dict[str, Any],
+    result: ToolResult,
+    incident: Incident,
+    now: Callable[[], datetime],
+) -> EvidenceItem:
+    return EvidenceItem(
+        incident_id=incident.incident_id,
+        evidence_class=tool.evidence_class,
+        tool_name=tool.name,
+        tool_query=query,
+        retrieved_at=now(),
+        summary=result.summary,
+        content=result.content,
+        source_event_ids=result.source_event_ids,
+    )
+
+
+def incident_message(incident: Incident, alerts: list[Alert]) -> str:
     data: dict[str, Any] = {"incident": incident.model_dump(mode="json")}
     if len(alerts) <= MAX_MESSAGE_ALERTS:
         data["alerts"] = [alert.model_dump(mode="json") for alert in alerts]
@@ -196,7 +206,7 @@ def _incident_message(incident: Incident, alerts: list[Alert]) -> str:
     )
 
 
-def _parse_draft(payload: dict[str, Any], refs: dict[str, str]) -> VerdictDraft | None:
+def parse_draft(payload: dict[str, Any], refs: dict[str, str]) -> VerdictDraft | None:
     try:
         draft = VerdictDraft.model_validate(payload)
     except ValidationError:
@@ -214,7 +224,7 @@ def _parse_draft(payload: dict[str, Any], refs: dict[str, str]) -> VerdictDraft 
     return draft
 
 
-def _verdict(draft: VerdictDraft, refs: dict[str, str], common: dict[str, Any]) -> Verdict:
+def build_verdict(draft: VerdictDraft, refs: dict[str, str], common: dict[str, Any]) -> Verdict:
     return Verdict(
         classification=draft.classification,
         confidence=draft.confidence,
@@ -268,7 +278,7 @@ def _recommendation(advice: RecommendationDraft, refs: dict[str, str]) -> Recomm
     )
 
 
-def _fallback(stop: InvestigationStopReason, common: dict[str, Any]) -> Verdict:
+def fallback_verdict(stop: InvestigationStopReason, common: dict[str, Any]) -> Verdict:
     return Verdict(
         classification=Classification.INCONCLUSIVE,
         confidence=0.0,
