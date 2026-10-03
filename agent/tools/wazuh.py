@@ -15,6 +15,7 @@ MAX_MATCHES = 25
 MAX_SOURCES = 200
 MAX_DETAIL_CHARS = 600
 MAX_HISTORY = 2000
+MAX_FINDINGS = 15
 NO_HISTORY = ToolResult(
     summary="There is no alert history for this host.", content={}, source_event_ids=[]
 )
@@ -36,6 +37,10 @@ class ProcessActivityParams(_Params):
 
 class RuleContextParams(_Params):
     rule_id: str = Field(pattern=r"^(wazuh-)?\d{1,6}$")
+
+
+class HostPostureParams(_Params):
+    package: str | None = Field(default=None, min_length=1, max_length=128)
 
 
 def related_alerts(params: RelatedAlertsParams, context: ToolContext) -> ToolResult:
@@ -173,6 +178,39 @@ def rule_context(params: RuleContextParams, context: ToolContext) -> ToolResult:
     )
 
 
+def host_posture(params: HostPostureParams, context: ToolContext) -> ToolResult:
+    if context.history is None:
+        return NO_HISTORY
+    found = context.history.findings(params.package)
+    shown = found[:MAX_FINDINGS]
+    scope = f" for packages matching {params.package!r}" if params.package else ""
+    top = "; ".join(f"{f.title} (priority {f.priority})" for f in shown[:3])
+    summary = f"{len(found)} open weak spots on this PC{scope}." + (
+        f" Top: {top}." if top else ""
+    )
+    return ToolResult(
+        summary=summary,
+        content={
+            "package": params.package,
+            "open_findings": len(found),
+            "findings": [
+                {
+                    "finding_id": f.finding_id,
+                    "kind": f.kind.value,
+                    "title": f.title,
+                    "severity": f.severity.value,
+                    "priority": f.priority,
+                    "cve": f.cve,
+                    "package": f.package,
+                    "installed_version": f.installed_version,
+                }
+                for f in shown
+            ],
+        },
+        source_event_ids=[],
+    )
+
+
 def _groups(live: LiveAlert) -> list[str]:
     return rule_groups(live.event.raw)
 
@@ -235,4 +273,15 @@ RULE_CONTEXT = Tool(
     params=RuleContextParams,
     evidence_class=EvidenceClass.BASELINE_COMPARISON,
     run=rule_context,
+)
+
+HOST_POSTURE = Tool(
+    name="host_posture",
+    description=(
+        "Open weak spots on this PC that Wazuh found: vulnerable programs (CVEs) and failed CIS "
+        "security checks, most important first. Optionally filter by package name."
+    ),
+    params=HostPostureParams,
+    evidence_class=EvidenceClass.ENTITY_CONTEXT,
+    run=host_posture,
 )

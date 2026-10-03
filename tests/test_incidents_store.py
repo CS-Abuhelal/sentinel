@@ -11,6 +11,7 @@ import backend.app.incidents as incidents_module
 from agent.tools.base import ToolContext
 from agent.tools.wazuh import MAX_HISTORY, RELATED_ALERTS, RULE_CONTEXT
 from backend.app.db import wazuh_alerts
+from backend.app.findings import upsert_findings
 from backend.app.incidents import (
     HISTORY_LIMIT,
     StoreHistory,
@@ -38,7 +39,7 @@ from contracts.models import Entity, EntityType, Incident, IncidentRun, Incident
 from ingest.wazuh import live_alert
 from pipeline.grouping import new_incident
 from pipeline.worker import investigation_events
-from tests.conftest import RECEIVED_AT, REPO, make_wazuh_alert
+from tests.conftest import RECEIVED_AT, REPO, make_finding, make_wazuh_alert
 
 NOW = datetime(2026, 9, 27, 10, 0, tzinfo=UTC)
 
@@ -341,3 +342,10 @@ def test_rule_sample_ignores_alerts_after_the_incident(db: Engine) -> None:
     assert sample is not None and sample.alert.rule_name == "During"
     unbounded = StoreHistory(db, "my-pc", since).rule_sample("wazuh-60204", [])
     assert unbounded is not None and unbounded.alert.rule_name == "Next day"
+
+
+def test_store_history_reads_open_findings(db: Engine) -> None:
+    since = NOW - timedelta(days=30)
+    upsert_findings(db, "my-pc", [make_finding("x", package="7-Zip")], NOW)
+    assert [f.key for f in StoreHistory(db, "my-pc", since).findings("7-zip")] == ["x"]
+    assert StoreHistory(db, "other-pc", since).findings(None) == []

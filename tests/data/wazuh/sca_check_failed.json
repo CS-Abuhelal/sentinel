@@ -1,0 +1,100 @@
+{
+  "id": "1790551050.1297967",
+  "data": {
+    "sca": {
+      "type": "check",
+      "check": {
+        "id": "26138",
+        "title": "Ensure 'Windows Firewall: Public: Logging: Log successful connections' is set to 'Yes'.",
+        "result": "failed",
+        "registry": [
+          "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\WindowsFirewall\\PublicProfile\\Logging"
+        ],
+        "rationale": "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users.",
+        "compliance": {
+          "cis": "9.3.9",
+          "soc_2": "CC5.2,CC6.6,CC7.2",
+          "cmmc_v2": {
+            "0": "AC.L1-3.1.20,AU.L2-3.3.1,CM.L2-3.4.7,SC.L1-3.13.1,SC.L2-3.13.6"
+          },
+          "cis_csc_v7": "6.3,9.4",
+          "cis_csc_v8": "4.5,8.5",
+          "pci_dss_v3": {
+            "2": {
+              "1": "1.1.4,1.4,10.1,10.2.2,10.2.4,10.2.5,10.3"
+            }
+          },
+          "pci_dss_v4": {
+            "0": "1.2.1,10.2,10.2.1,10.2.1.2,10.2.1.5,9.4.5"
+          },
+          "iso_27001-2013": "A.12.4.1,A.13.1.1",
+          "nist_sp_800-53": "AU-3(1),AU-7,SC-7(5)"
+        },
+        "description": "Use this option to log when Windows Firewall with Advanced Security allows an inbound connection. The log records why and when the connection was formed. Look for entries with the word ALLOW in the action column of the log. The recommended state for this setting is: Yes.",
+        "remediation": "To establish the recommended configuration via GP, set the following UI path to Yes. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Logging Customize\\Log successful connections."
+      },
+      "policy": "CIS Microsoft Windows 11 Enterprise Benchmark v3.0.0",
+      "scan_id": "92896254"
+    }
+  },
+  "rule": {
+    "id": "19007",
+    "cis": [
+      "9.3.9"
+    ],
+    "tsc": [
+      "CC7.1",
+      "CC7.2"
+    ],
+    "gdpr": [
+      "IV_35.7.d"
+    ],
+    "mail": false,
+    "level": 7,
+    "soc_2": [
+      "CC5.2",
+      "CC6.6",
+      "CC7.2"
+    ],
+    "groups": [
+      "sca"
+    ],
+    "pci_dss": [
+      "2.2"
+    ],
+    "cis_csc_v7": [
+      "6.3",
+      "9.4"
+    ],
+    "cis_csc_v8": [
+      "4.5",
+      "8.5"
+    ],
+    "firedtimes": 80,
+    "description": "CIS Microsoft Windows 11 Enterprise Benchmark v3.0.0: Ensure 'Windows Firewall: Public: Logging: Log successful connections' is set to 'Yes'.",
+    "nist_800_53": [
+      "CM.1"
+    ],
+    "iso_27001-2013": [
+      "A.12.4.1",
+      "A.13.1.1"
+    ],
+    "nist_sp_800-53": [
+      "AU-3(1)",
+      "AU-7",
+      "SC-7(5)"
+    ]
+  },
+  "agent": {
+    "id": "001",
+    "name": "my-pc"
+  },
+  "decoder": {
+    "name": "sca"
+  },
+  "manager": {
+    "name": "wazuh.manager"
+  },
+  "location": "sca",
+  "timestamp": "2026-09-27T23:17:30.577+0000"
+}

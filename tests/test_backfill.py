@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
+import threading
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -19,6 +20,7 @@ from backend.app.backfill import (
 )
 from backend.app.main import app
 from backend.app.store import alert_count, insert_alert
+from backend.app.sync import SYNC_INTERVAL, SyncRunner
 from contracts.models import ServiceState
 from tests.conftest import make_live_alert
 
@@ -198,6 +200,7 @@ def test_startup_without_an_indexer_says_so(monkeypatch: pytest.MonkeyPatch) -> 
             )
     finally:
         del app.state.backfill
+        del app.state.sync
 
 
 def test_startup_with_a_broken_engine_reports_it(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -206,11 +209,22 @@ def test_startup_with_a_broken_engine_reports_it(monkeypatch: pytest.MonkeyPatch
     def broken_engine() -> Engine:
         raise RuntimeError("no database")
 
+    scheduled: list[timedelta] = []
+    started = threading.Event()
+
+    def every(self: SyncRunner, interval: timedelta, stop: threading.Event) -> None:
+        scheduled.append(interval)
+        started.set()
+
     monkeypatch.setattr("backend.app.main.get_engine", broken_engine)
+    monkeypatch.setattr("backend.app.sync.SyncRunner.every", every)
     try:
         with TestClient(app):
             assert app.state.backfill.reachable is False
             assert app.state.backfill.detail is not None
             assert app.state.backfill.detail.startswith("Backfill failed")
+            assert started.wait(5)
     finally:
         del app.state.backfill
+        del app.state.sync
+    assert scheduled == [SYNC_INTERVAL]

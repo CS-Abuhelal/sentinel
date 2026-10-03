@@ -41,7 +41,7 @@ from executor.audit import AuditLog, verify_chain
 from executor.core import RunnerFor, execute
 from executor.runners import DockerRunner, DryRunRunner
 from ingest.linux_auth import parse_auth_log
-from policy.advice import vet
+from policy.advice import check_advice
 from policy.engine import decide
 from policy.risk import score_risk
 
@@ -134,7 +134,7 @@ def run_incident(
         system_prompt=system_prompt,
         history=history,
     )
-    vetted = [vet(advice) for advice in verdict.recommendations]
+    vetted = [check_advice(advice) for advice in verdict.recommendations]
     verdict = verdict.model_copy(
         update={"recommendations": [advice for advice in vetted if advice is not None]}
     )

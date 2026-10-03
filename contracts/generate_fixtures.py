@@ -497,6 +497,7 @@ pc_feed = PcFeed(
         last_alert_at=WZ_T0,
         queue_length=0,
         model=ServiceState(reachable=True, detail="Ollama answered HTTP 200."),
+        sync=ServiceState(reachable=True, detail="Synced 2 open findings at 09:28:00 UTC."),
     ),
     alerts=[live_alert],
     incidents=[pc_incident_summary],

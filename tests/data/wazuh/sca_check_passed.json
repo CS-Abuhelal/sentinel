@@ -1,0 +1,87 @@
+{
+  "id": "1790551056.2852371",
+  "data": {
+    "sca": {
+      "type": "check",
+      "check": {
+        "id": "26481",
+        "title": "Ensure 'Enable optional updates' is set to 'Disabled'.",
+        "result": "passed",
+        "registry": [
+          "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate"
+        ],
+        "rationale": "Often, new features or enhancements that are enabled by default (before IT administrators are ready to manage them) can negatively impact the user experience or introduce bugs and security risks.",
+        "compliance": {
+          "cis": "18.10.92.4.4",
+          "soc_2": "CC7.1",
+          "cmmc_v2": {
+            "0": "SI.L1-3.14.1"
+          },
+          "cis_csc_v7": "3.4",
+          "cis_csc_v8": "7.3",
+          "pci_dss_v3": {
+            "2": {
+              "1": "6.2"
+            }
+          },
+          "nist_sp_800-53": "SI-2(2)"
+        },
+        "references": "https://techcommunity.microsoft.com/t5/windows-it-pro-blog/enable-and-control-optional-updates-for-your-organization/ba-p/3905218",
+        "description": "This policy setting controls whether devices are able to receive optional updates (including Controlled Feature Rollout (CFRs)). These optional updates can include non-security updates, feature enhancements, and other improvements. The recommended state for this setting is: Disabled.",
+        "remediation": "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Manage updates offered from Windows Update\\Enable optional updates This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsUpdate.admx/adml that is included with the Microsoft Windows 11 Release 23H2 Administrative Templates (or newer)."
+      },
+      "policy": "CIS Microsoft Windows 11 Enterprise Benchmark v3.0.0",
+      "scan_id": "92896254"
+    }
+  },
+  "rule": {
+    "id": "19008",
+    "cis": [
+      "18.10.92.4.4"
+    ],
+    "tsc": [
+      "CC7.1",
+      "CC7.2"
+    ],
+    "gdpr": [
+      "IV_35.7.d"
+    ],
+    "mail": false,
+    "level": 3,
+    "soc_2": [
+      "CC7.1"
+    ],
+    "groups": [
+      "sca"
+    ],
+    "pci_dss": [
+      "2.2"
+    ],
+    "cis_csc_v7": [
+      "3.4"
+    ],
+    "cis_csc_v8": [
+      "7.3"
+    ],
+    "firedtimes": 122,
+    "description": "CIS Microsoft Windows 11 Enterprise Benchmark v3.0.0: Ensure 'Enable optional updates' is set to 'Disabled'.",
+    "nist_800_53": [
+      "CM.1"
+    ],
+    "nist_sp_800-53": [
+      "SI-2(2)"
+    ]
+  },
+  "agent": {
+    "id": "001",
+    "name": "my-pc"
+  },
+  "decoder": {
+    "name": "sca"
+  },
+  "manager": {
+    "name": "wazuh.manager"
+  },
+  "location": "sca",
+  "timestamp": "2026-09-27T23:17:36.309+0000"
+}

@@ -89,6 +89,29 @@ personal PC.
 
 ![Risk, policy and execution on the PC](docs/screenshots/12-my-pc-boundary.png)
 
+**5. Weak spots, fix these first.**
+- **Sync.** SENTINEL also pulls the PC's weak spots from Wazuh on start, every 6 hours and on
+  Rescan: vulnerable programs, and CIS checks that fail. The latest real sync found 524: 173
+  vulnerabilities in installed programs and 351 failed CIS checks.
+- **Ranking.** A deterministic score ranks them. At the top were old versions of VS Code, Steam
+  and MongoDB.
+- **Fix steps.** The AI writes one fix per program, not one per CVE, for the top 10. Code tells
+  it the version that fixes every CVE of that program: "8.2.13 or newer" covers all 77 MongoDB
+  CVEs.
+- **Checker.** A deterministic checker drops any step that would weaken the PC or links to an
+  unknown site. It drops the whole fix when its title does, or when it mentions a CVE from
+  another program. It errs on the side of dropping.
+- **Honesty.** Reading the real output caught three model mistakes before they shipped:
+  - a version rule said backwards: code now states the safe version;
+  - `winget` suggested for npm libraries: the model is now told the package type;
+  - a safe firewall setting blocked as unsafe: fixed in the checker.
+
+  Each change has a test.
+
+![Weak spots ranked on the PC](docs/screenshots/13-my-pc-fixes.png)
+
+![Fix steps for the top weak spot](docs/screenshots/14-my-pc-fix-detail.png)
+
 ---
 
 ## What it does

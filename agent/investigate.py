@@ -233,16 +233,22 @@ def _verdict(draft: VerdictDraft, refs: dict[str, str], common: dict[str, Any]) 
     )
 
 
+def split_steps(steps: list[str]) -> tuple[list[str], list[str]]:
+    cleaned = [step.strip() for step in steps if step.strip()]
+    fitting = [step for step in cleaned if len(step) <= MAX_STEP_CHARS]
+    dropped = [f"Too long: {step}" for step in cleaned if len(step) > MAX_STEP_CHARS]
+    dropped += [f"Over the limit: {step}" for step in fitting[MAX_STEPS:]]
+    return fitting[:MAX_STEPS], dropped
+
+
 def _recommendation(advice: RecommendationDraft, refs: dict[str, str]) -> Recommendation:
-    steps = [step.strip() for step in advice.steps if step.strip()]
-    fitting = [step for step in steps if len(step) <= MAX_STEP_CHARS]
-    too_long = [f"Too long: {step}" for step in steps if len(step) > MAX_STEP_CHARS]
+    steps, dropped = split_steps(advice.steps)
     return Recommendation(
         title=advice.title,
         priority=advice.priority,
-        steps=fitting[:MAX_STEPS],
+        steps=steps,
         evidence_ids=[refs[ref] for ref in advice.evidence],
-        dropped_steps=too_long + [f"Over the limit: {step}" for step in fitting[MAX_STEPS:]],
+        dropped_steps=dropped,
     )
 
 

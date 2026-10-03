@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import json
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -11,15 +12,25 @@ from sqlalchemy.engine import Engine
 
 import pipeline.worker as worker_module
 from agent.llm import Recording, ReplayClient
+from backend.app.findings import (
+    ADVICE_FAILED,
+    ADVICE_READY,
+    advice_states,
+    assessment,
+    open_findings,
+    upsert_findings,
+)
 from backend.app.incidents import get_run, incident_status, incident_summaries, set_status
 from backend.app.store import insert_alert
 from contracts.models import (
     Classification,
+    Finding,
     IncidentStatus,
     InvestigationStopReason,
     PolicyOutcome,
     ServiceState,
 )
+from ingest.wazuh_findings import vulnerability_finding
 from pipeline.grouping import group_new_alerts
 from pipeline.worker import (
     acquire_worker_lock,
@@ -29,10 +40,13 @@ from pipeline.worker import (
     release_worker_lock,
     run_once,
 )
-from tests.conftest import REPO, make_wazuh_alert
+from policy.priority import prioritize
+from tests.conftest import REPO, make_finding, make_wazuh_alert, wazuh_payload
+from tests.test_investigate import Capturing
 
 NOW = datetime(2026, 9, 27, 12, 0, tzinfo=UTC)
 PC_RECORDING = REPO / "tests" / "data" / "pc_incident.qwen3-14b.json"
+FIX_RECORDING = REPO / "tests" / "data" / "fix_vulnerability.qwen3-14b.json"
 BURST = {"rule_id": "60204", "level": 10, "techniques": ["T1110"],
          "description": "Multiple Windows Logon Failures"}
 
@@ -94,7 +108,7 @@ def test_run_once_groups_and_investigates(db: Engine) -> None:
 def test_without_the_model_only_grouping_happens(db: Engine) -> None:
     _store(db, "11.1", 1, **BURST)
     result = run_once(db, _model(FINAL), lambda: NOW, model_ready=False)
-    assert result == {"grouped": 1, "investigated": None}
+    assert result == {"grouped": 1, "investigated": None, "advised": None}
     [summary] = incident_summaries(db)
     assert summary.incident.status is IncidentStatus.QUEUED
 
@@ -303,3 +317,187 @@ def test_an_empty_ollama_url_falls_back_to_localhost(monkeypatch: pytest.MonkeyP
     with pytest.raises(Stop):
         main(["--once"])
     assert seen["url"] == "http://localhost:11434"
+
+
+FIX = {"type": "final", "payload": {"title": "Update VS Code", "steps": ["Open VS Code."]}}
+
+
+def test_fix_steps_are_written_when_the_queue_is_empty(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [make_finding("a", priority=90, cve="CVE-2026-1")], NOW)
+    [finding] = open_findings(db, "my-pc")
+    result = run_once(db, _model(FIX), lambda: NOW, model_ready=True)
+    assert result == {"grouped": 0, "investigated": None, "advised": finding.finding_id}
+    assert advice_states(db, "my-pc") == {finding.finding_id: ADVICE_READY}
+    view = assessment(db, "my-pc", NOW)
+    assert view is not None
+    [advice] = view.recommendations
+    assert advice.steps == ["Open VS Code."]
+    assert advice.finding_ids == [finding.finding_id]
+
+
+def test_incidents_come_before_fix_steps(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [make_finding("a", priority=90)], NOW)
+    _store(db, "15.1", 1, **BURST)
+    result = run_once(db, _model(FINAL), lambda: NOW, model_ready=True)
+    assert result["investigated"] is not None
+    assert result["advised"] is None
+
+
+def test_advice_about_another_cve_is_rejected(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [make_finding("a", priority=90, cve="CVE-2026-1")], NOW)
+    [finding] = open_findings(db, "my-pc")
+    bad = {"type": "final", "payload": {"title": "Patch CVE-2020-0001", "steps": ["Patch."]}}
+    run_once(db, _model(bad), lambda: NOW, model_ready=True)
+    assert advice_states(db, "my-pc") == {finding.finding_id: ADVICE_FAILED}
+
+
+def test_advice_covers_every_finding_in_the_program_and_accepts_its_other_cve(
+    db: Engine,
+) -> None:
+    upsert_findings(
+        db,
+        "my-pc",
+        [
+            make_finding("a", priority=90, cve="CVE-2026-1", package="MongoDB"),
+            make_finding("b", priority=80, cve="CVE-2026-2", package="MongoDB"),
+        ],
+        NOW,
+    )
+    [a, b] = open_findings(db, "my-pc")
+    fix = {
+        "type": "final",
+        "payload": {
+            "title": "Update MongoDB",
+            "steps": ["Update MongoDB to fix CVE-2026-1 and CVE-2026-2."],
+        },
+    }
+    result = run_once(db, _model(fix), lambda: NOW, model_ready=True)
+    assert result["advised"] == a.finding_id
+    assert advice_states(db, "my-pc") == {a.finding_id: ADVICE_READY}
+    view = assessment(db, "my-pc", NOW)
+    assert view is not None
+    [advice] = view.recommendations
+    assert advice.finding_ids == [a.finding_id, b.finding_id]
+
+
+def test_advice_about_a_cve_from_another_package_is_rejected(db: Engine) -> None:
+    upsert_findings(
+        db,
+        "my-pc",
+        [
+            make_finding("a", priority=90, cve="CVE-2026-1", package="MongoDB"),
+            make_finding("b", priority=80, cve="CVE-2026-2", package="MongoDB"),
+        ],
+        NOW,
+    )
+    [a, _b] = open_findings(db, "my-pc")
+    bad = {"type": "final", "payload": {"title": "Patch CVE-2020-0001", "steps": ["Patch."]}}
+    run_once(db, _model(bad), lambda: NOW, model_ready=True)
+    assert advice_states(db, "my-pc") == {a.finding_id: ADVICE_FAILED}
+
+
+def test_no_fix_steps_without_the_model(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [make_finding("a", priority=90)], NOW)
+    result = run_once(db, _model(FIX), lambda: NOW, model_ready=False)
+    assert result["advised"] is None
+    assert advice_states(db, "my-pc") == {}
+
+
+def test_the_recorded_qwen_fix_for_vs_code_replays(db: Engine) -> None:
+    finding = prioritize(vulnerability_finding(wazuh_payload("vulnerability_state"), NOW), 0)
+    upsert_findings(db, "my-pc", [finding], NOW)
+    [stored] = open_findings(db, "my-pc")
+    result = run_once(db, ReplayClient.from_file(FIX_RECORDING), lambda: NOW, model_ready=True)
+    assert result["advised"] == stored.finding_id
+    assert advice_states(db, "my-pc") == {stored.finding_id: ADVICE_READY}
+    view = assessment(db, "my-pc", NOW)
+    assert view is not None
+    [advice] = view.recommendations
+    assert advice.finding_ids == [stored.finding_id]
+    assert 1 <= len(advice.steps) <= 10
+    assert any("1.136.2" in step for step in advice.steps)
+    assert advice.official_remediation == "Package less than 1.136.2"
+    assert advice.dropped_steps == []
+
+
+MONGO_FIX = {"type": "final", "payload": {"title": "Update MongoDB", "steps": ["Update it."]}}
+
+
+def _mongo(key: str, priority: int, cve: str) -> Finding:
+    return make_finding(key, priority=priority, cve=cve, package="MongoDB")
+
+
+def _advise(db: Engine, when: datetime) -> object:
+    return run_once(db, _model(MONGO_FIX), lambda: when, model_ready=True)["advised"]
+
+
+def _covered(db: Engine, when: datetime) -> list[list[str]]:
+    view = assessment(db, "my-pc", when)
+    assert view is not None
+    return [r.finding_ids for r in view.recommendations]
+
+
+def test_a_new_cve_in_an_advised_program_is_advised_again(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [_mongo("a", 80, "CVE-2026-1")], NOW)
+    [a] = open_findings(db, "my-pc")
+    assert _advise(db, NOW) == a.finding_id
+    later = NOW + timedelta(hours=6)
+    upsert_findings(
+        db, "my-pc", [_mongo("a", 80, "CVE-2026-1"), _mongo("b", 95, "CVE-2026-2")], later
+    )
+    [b, _a] = open_findings(db, "my-pc")
+    assert _advise(db, later) == b.finding_id
+    assert advice_states(db, "my-pc") == {b.finding_id: ADVICE_READY}
+    assert _covered(db, later) == [[b.finding_id, a.finding_id]]
+    assert _advise(db, later) is None
+
+
+def test_when_the_lead_resolves_the_next_member_is_advised(db: Engine) -> None:
+    upsert_findings(
+        db, "my-pc", [_mongo("a", 90, "CVE-2026-1"), _mongo("b", 80, "CVE-2026-2")], NOW
+    )
+    [a, b] = open_findings(db, "my-pc")
+    assert _advise(db, NOW) == a.finding_id
+    later = NOW + timedelta(hours=6)
+    upsert_findings(db, "my-pc", [_mongo("b", 80, "CVE-2026-2")], later)
+    assert _advise(db, later) == b.finding_id
+    assert _covered(db, later) == [[b.finding_id]]
+
+
+def test_a_resolved_lead_that_returns_leaves_one_recommendation(db: Engine) -> None:
+    both = [_mongo("a", 90, "CVE-2026-1"), _mongo("b", 80, "CVE-2026-2")]
+    upsert_findings(db, "my-pc", both, NOW)
+    [a, b] = open_findings(db, "my-pc")
+    assert _advise(db, NOW) == a.finding_id
+    upsert_findings(db, "my-pc", [_mongo("b", 80, "CVE-2026-2")], NOW + timedelta(hours=6))
+    assert _advise(db, NOW + timedelta(hours=6)) == b.finding_id
+    back = NOW + timedelta(hours=12)
+    upsert_findings(db, "my-pc", both, back)
+    assert _advise(db, back) == a.finding_id
+    assert _covered(db, back) == [[a.finding_id, b.finding_id]]
+    assert advice_states(db, "my-pc") == {a.finding_id: ADVICE_READY}
+
+
+def test_a_crashing_model_call_stores_failed_advice(db: Engine) -> None:
+    upsert_findings(db, "my-pc", [make_finding("a", priority=90, cve="CVE-2026-1")], NOW)
+    [finding] = open_findings(db, "my-pc")
+    result = run_once(db, _model(), lambda: NOW, model_ready=True)
+    assert result["advised"] == finding.finding_id
+    assert advice_states(db, "my-pc") == {finding.finding_id: ADVICE_FAILED}
+
+
+def test_the_program_wide_version_fixes_every_open_cve(db: Engine) -> None:
+    lead = _mongo("a", 90, "CVE-2026-1").model_copy(
+        update={"official_remediation": "Package less than 8.2.9"}
+    )
+    other = _mongo("b", 80, "CVE-2026-2").model_copy(
+        update={"official_remediation": "Package less than or equal to 8.2.12"}
+    )
+    upsert_findings(db, "my-pc", [lead, other], NOW)
+    model = Capturing(_model(MONGO_FIX))
+    run_once(db, model, lambda: NOW, model_ready=True)
+    [call] = model.calls
+    body = json.loads(call[1].content.split("\n", 1)[1])
+    assert body["cve"] == "CVE-2026-1"
+    assert body["other_cves_in_this_program"] == ["CVE-2026-2"]
+    assert body["fixed_when"] == "a version newer than 8.2.12"

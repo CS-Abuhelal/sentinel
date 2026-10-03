@@ -15,6 +15,7 @@ from backend.app.backfill import IndexerSettings, backfill, backfill_cursor
 from backend.app.db import get_engine
 from backend.app.ingest import router as ingest_router
 from backend.app.pc import router as pc_router
+from backend.app.sync import SYNC_INTERVAL, SyncRunner
 from contracts.models import CONTRACT_VERSION, IncidentRun, ServiceState
 
 REPO = Path(__file__).resolve().parents[2]
@@ -41,6 +42,8 @@ def _backfill_in_background(
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = IndexerSettings.from_env()
+    app.state.sync = SyncRunner(settings.client if settings else None)
+    stop = threading.Event()
     if settings is None:
         app.state.backfill = ServiceState(reachable=False, detail="WAZUH_INDEXER_URL is not set.")
     else:
@@ -54,7 +57,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             threading.Thread(
                 target=_backfill_in_background, args=(app, settings, since), daemon=True
             ).start()
+        threading.Thread(
+            target=app.state.sync.every, args=(SYNC_INTERVAL, stop), daemon=True
+        ).start()
     yield
+    stop.set()
 
 
 app = FastAPI(title="SENTINEL API", version="0.1.0", lifespan=lifespan)

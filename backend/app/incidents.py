@@ -5,9 +5,7 @@ from datetime import datetime, timedelta
 from pydantic import TypeAdapter
 from sqlalchemy import (
     ColumnElement,
-    Text,
     and_,
-    cast,
     func,
     null,
     or_,
@@ -16,23 +14,24 @@ from sqlalchemy import (
     type_coerce,
     update,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, Insert, array, insert
+from sqlalchemy.dialects.postgresql import JSONB, Insert, insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.sql.dml import Update
 
 from backend.app.db import incidents, wazuh_alerts
-from backend.app.store import LIVE_COLUMNS, live_alert_from_row
+from backend.app.findings import open_findings
+from backend.app.store import IS_POSTURE, LIVE_COLUMNS, live_alert_from_row
 from contracts.models import (
     Classification,
     Event,
     EventCategory,
+    Finding,
     Incident,
     IncidentRun,
     IncidentStatus,
     LiveAlert,
     PcIncidentSummary,
 )
-from ingest.wazuh import POSTURE_GROUPS
 
 OPEN_STATUSES = (IncidentStatus.QUEUED.value, IncidentStatus.LOW_PRIORITY.value)
 HISTORY_LIMIT = 2000
@@ -225,12 +224,6 @@ def _host_window(host: str, start: datetime, end: datetime) -> list[ColumnElemen
 
 
 NEWEST_FIRST = (wazuh_alerts.c.alert_time.desc(), wazuh_alerts.c.wazuh_id.desc())
-IS_POSTURE = func.coalesce(
-    wazuh_alerts.c.payload["rule"]["groups"].has_any(
-        cast(array(sorted(POSTURE_GROUPS)), ARRAY(Text))
-    ),
-    False,
-)
 
 
 def host_alerts(
@@ -407,3 +400,6 @@ class StoreHistory:
         return rule_sample(
             self._engine, self._host, rule_id, preferred_alert_ids, self._since, self._until
         )
+
+    def findings(self, package: str | None) -> list[Finding]:
+        return open_findings(self._engine, self._host, package)

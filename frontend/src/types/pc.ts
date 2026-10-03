@@ -106,6 +106,7 @@ export interface PcStatus {
   last_alert_at: LastAlertAt;
   queue_length: QueueLength;
   model: ServiceState;
+  sync: ServiceState;
 }
 export interface ServiceState {
   reachable: Reachable;

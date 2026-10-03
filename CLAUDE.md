@@ -42,6 +42,20 @@ Read this file at the start of every session.
   `GET /api/pc/incidents/{id}` and `POST /api/pc/incidents/{id}/retry`; the dashboard shows them
   on the Incidents tab of `?view=pc`. A real `qwen3:14b` run is replayed from
   `tests/data/pc_incident.qwen3-14b.json`.
+- Live advisor, phase 3 (weak spots, D-15):
+  - The backend's `SyncRunner` (`backend/app/sync.py`) syncs findings from the Wazuh indexer
+    on start, every 6 h and on `POST /api/pc/rescan`: vulnerability states, and the newest SCA
+    check result per check.
+  - `ingest/wazuh_findings.py` converts them, `policy/priority.py` scores them, and
+    `backend/app/findings.py` stores them.
+  - When the incident queue is empty, the worker writes one fix per program ("advice unit")
+    for the top 10 units: `agent/fix.py`, `agent/prompts/fix.md`, with the strictest version
+    bound in the program.
+  - `policy/advice.py::check_fix` checks each fix: cited findings, no foreign CVEs, the
+    weakening deny-list, and the link allow-list.
+  - `GET /api/pc/assessment` returns a `HostAssessment`. The dashboard's "Fix these first" tab
+    shows it, and `?finding=` opens a finding directly.
+  - A real fix is replayed from `tests/data/fix_vulnerability.qwen3-14b.json`.
 
 Contract changes are allowed, but always: change the model in `contracts/`,
 bump the version, regenerate fixtures and schemas, keep tests green, and log it in DECISIONS.md.
