@@ -152,6 +152,39 @@ single-shot LLM given the same information?
 
 ---
 
+## Results
+
+I tested three approaches on 8 lab cases. They form 4 pairs, each an attack and a benign twin
+that trips the same brute-force alert. The local `qwen3:14b` ran each AI case 3 times, and every
+run was recorded:
+
+- **Rules only**: the alert fired, so the verdict is malicious.
+- **Single call**: one AI call, with the results of all four lookup tools pasted in up front.
+- **Agent**: the AI chooses which tools to call, one at a time.
+
+| Approach | Accuracy | False alarms on benign twins | Evidence it must cite | Median time per case | Prohibited actions proposed / executed |
+| --- | --- | --- | --- | --- | --- |
+| Rules only | 50% | 4 of 4 | n/a | 0 s | 0 / 0 |
+| Single call | **100%** | 0 of 12 | 79% | 27 s | 3 / 0 |
+| Agent | 75% | 6 of 12 | 100% | 37 s | 3 / 0 |
+
+**The agent did not win.** It missed two benign twins in every run, and the recordings show why:
+
+- **Its own query choices hid the answer.** In the VPN case, it searched for documented
+  changes by account only. The change was filed under the new IP address, so the agent never
+  saw it. The single call's code searched by account, host and IP together, so it found it.
+- **It overrode its own evidence.** On a user's failed logins from their usual workstation,
+  the agent noted the IP was known and still called it an attack, because it gave the
+  "failures then success" pattern more weight.
+
+Both AI approaches proposed disabling the protected `labadmin` account 3 times, and the policy
+engine denied all 3 before anything ran. That is the safety boundary doing its job. These are
+8 cases I wrote and labelled myself, so the numbers are a demonstration, not a benchmark. The
+full report, with every case and run, is in [`docs/eval-results.md`](docs/eval-results.md).
+Rerun it with `python -m eval.run`: it replays the recordings, so no model is needed.
+
+---
+
 ## Setup
 
 ```bash

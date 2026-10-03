@@ -56,6 +56,17 @@ Read this file at the start of every session.
   - `GET /api/pc/assessment` returns a `HostAssessment`. The dashboard's "Fix these first" tab
     shows it, and `?finding=` opens a finding directly.
   - A real fix is replayed from `tests/data/fix_vulnerability.qwen3-14b.json`.
+- Evaluation (D-17, `docs/superpowers/specs/2026-10-03-evaluation-design.md`):
+  - 8 hand-labelled lab cases in `lab/scenarios/` (s1 to s4, each an attack and a benign
+    twin). Each `scenario.yml` has `required_evidence` and its own change calendar
+    (`changes`).
+  - The lab agent's tools are `auth_history`, `account_context`, `source_ip_history` and
+    `change_windows`.
+  - The arms are rules only (`eval/arms.py`), a single call with the evidence bundled
+    (`agent/single_shot.py`), and the agent. They all run through `run_incident(..., investigator=...)`.
+  - `python -m eval.run --llm ollama` records runs to `eval/recordings/`; the default replays
+    them into `eval/results.json` and `docs/eval-results.md`. A test checks the committed report
+    against a replay. A model timeout is recorded as a miss.
 - Live advisor, phase 4 (report, public sample, accuracy, D-16):
   - The Report tab (`?view=pc&tab=report`, `ReportPanel.tsx`) prints a summary.
   - `python -m pipeline.sample` exports a `PcSample` from the live database. It keeps the
