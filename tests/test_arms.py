@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from agent.investigate import SYSTEM_PROMPT
 from agent.llm import LLMResponse, Message, Recording, ReplayClient, ToolSpec
 from agent.single_shot import SINGLE_SHOT_NOTE, bundle_queries, single_shot
 from contracts.models import (
@@ -232,12 +233,34 @@ def test_single_shot_tolerates_the_pipeline_keywords(s1: S1Case) -> None:
         s1.events,
         Spy(_final()),
         now=lambda: NOW,
-        system_prompt="ignored",
+        system_prompt=SYSTEM_PROMPT,
         history=None,
         inventory=s1.inventory,
         changes=[],
     )
     assert verdict.arm is EvaluationArm.A2B_FULL_CONTEXT
+
+
+def test_single_shot_uses_the_system_prompt_it_is_given(s1: S1Case) -> None:
+    spy = Spy(_final())
+    single_shot(
+        s1.incident,
+        s1.alerts,
+        s1.events,
+        spy,
+        system_prompt="Custom prompt with {max_tool_calls} tool calls.",
+    )
+    [(system, _)] = spy.messages
+    assert system.content == "Custom prompt with 0 tool calls.\n\n" + SINGLE_SHOT_NOTE
+
+
+def test_single_shot_defaults_to_the_agent_system_prompt(s1: S1Case) -> None:
+    spy = Spy(_final())
+    single_shot(s1.incident, s1.alerts, s1.events, spy)
+    [(system, _)] = spy.messages
+    assert system.content == SYSTEM_PROMPT.replace("{max_tool_calls}", "0") + "\n\n" + (
+        SINGLE_SHOT_NOTE
+    )
 
 
 def test_the_rules_only_arm_runs_through_the_real_pipeline(s1: S1Case) -> None:

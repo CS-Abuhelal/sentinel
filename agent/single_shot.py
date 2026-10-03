@@ -68,10 +68,10 @@ def single_shot(
     *,
     tools: dict[str, Tool] = TOOLS,
     now: Callable[[], datetime] = utcnow,
+    system_prompt: str = SYSTEM_PROMPT,
     history: HostHistory | None = None,
     inventory: Inventory | None = None,
     changes: list[ChangeWindow] | None = None,
-    **_: Any,
 ) -> tuple[Verdict, list[EvidenceItem]]:
     started = time.perf_counter()
     context = ToolContext(
@@ -103,7 +103,7 @@ def single_shot(
 
     messages = [
         Message(
-            "system", SYSTEM_PROMPT.replace("{max_tool_calls}", "0") + "\n\n" + SINGLE_SHOT_NOTE
+            "system", system_prompt.replace("{max_tool_calls}", "0") + "\n\n" + SINGLE_SHOT_NOTE
         ),
         Message(
             "user",
