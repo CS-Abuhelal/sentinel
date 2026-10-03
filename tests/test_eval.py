@@ -860,3 +860,43 @@ def test_the_defaults_point_at_the_committed_locations() -> None:
     assert args.recordings == REPO / "eval" / "recordings"
     assert args.results == REPO / "eval" / "results.json"
     assert args.report == REPO / "docs" / "eval-results.md"
+
+
+class _Stalls:
+    model_name = "ollama:stall-test"
+
+    def __init__(self, error: Exception) -> None:
+        self._error = error
+
+    def complete(self, messages: list[Message], tools: list[ToolSpec]) -> LLMResponse:
+        raise self._error
+
+
+def test_a_model_timeout_is_recorded_as_a_failed_answer() -> None:
+    import httpx
+
+    guard = eval_run.StallGuard(_Stalls(httpx.ReadTimeout("slow")), timeout_s=1200.0)
+    answer = guard.complete([], [])
+    assert isinstance(answer, FinalAnswer)
+    assert answer.elapsed_ms == 1_200_000
+    assert "did not answer within 1200 seconds" in answer.payload["error"]
+    assert guard.model_name == "ollama:stall-test"
+
+
+def test_a_model_timeout_counts_as_a_miss_in_the_run() -> None:
+    import httpx
+
+    lab = eval_run.Lab(load_inventory(INVENTORY_FILE), eval_run.load_rules(eval_run.RULES_DIR))
+    guard = eval_run.StallGuard(_Stalls(httpx.ReadTimeout("slow")), timeout_s=1200.0)
+    _, run = lab.run("s1_attack", eval_run.A2B, guard)
+    assert run.verdict.classification.value == "inconclusive"
+    assert run.verdict.stop_reason.value == "invalid_output"
+    assert run.verdict.latency_ms == 1_200_000
+
+
+def test_an_unreachable_model_still_stops_the_run() -> None:
+    import httpx
+
+    guard = eval_run.StallGuard(_Stalls(httpx.ConnectError("down")), timeout_s=1200.0)
+    with pytest.raises(httpx.ConnectError):
+        guard.complete([], [])

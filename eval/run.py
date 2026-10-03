@@ -9,8 +9,18 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+import httpx
+
 from agent.investigate import investigate
-from agent.llm import LLMClient, LLMResponse, Message, RecordingClient, ReplayClient, ToolSpec
+from agent.llm import (
+    FinalAnswer,
+    LLMClient,
+    LLMResponse,
+    Message,
+    RecordingClient,
+    ReplayClient,
+    ToolSpec,
+)
 from agent.ollama import DEFAULT_MODEL, OllamaClient
 from agent.single_shot import single_shot
 from contracts.models import EvaluationArm, IncidentRun, Inventory, Scenario
@@ -45,6 +55,7 @@ DEFAULT_RECORDINGS = REPO / "eval" / "recordings"
 DEFAULT_RESULTS = REPO / "eval" / "results.json"
 DEFAULT_REPORT = REPO / "docs" / "eval-results.md"
 EXIT_USAGE = 2
+MODEL_TIMEOUT_S = 1200.0
 
 
 class NoModel:
@@ -52,6 +63,27 @@ class NoModel:
 
     def complete(self, messages: list[Message], tools: list[ToolSpec]) -> LLMResponse:
         raise RuntimeError("the rules-only arm never calls a model")
+
+
+class StallGuard:
+    def __init__(self, inner: LLMClient, timeout_s: float) -> None:
+        self._inner = inner
+        self._timeout_s = timeout_s
+
+    @property
+    def model_name(self) -> str:
+        return self._inner.model_name
+
+    def complete(self, messages: list[Message], tools: list[ToolSpec]) -> LLMResponse:
+        try:
+            return self._inner.complete(messages, tools)
+        except httpx.TimeoutException:
+            return FinalAnswer(
+                payload={
+                    "error": f"The model did not answer within {self._timeout_s:.0f} seconds."
+                },
+                elapsed_ms=int(self._timeout_s * 1000),
+            )
 
 
 @dataclass(frozen=True)
@@ -164,7 +196,8 @@ def record_live(lab: Lab, cases: list[str], args: argparse.Namespace) -> None:
                     print(f"{label} skipped", flush=True)
                     continue
                 started = time.perf_counter()
-                recorder = RecordingClient(OllamaClient(model=args.model, base_url=args.ollama_url))
+                model = OllamaClient(model=args.model, base_url=args.ollama_url)
+                recorder = RecordingClient(StallGuard(model, MODEL_TIMEOUT_S))
                 _, run = lab.run(case_id, arm, recorder)
                 write_text(path, recorder.recording().model_dump_json(indent=2) + "\n")
                 seconds = time.perf_counter() - started
