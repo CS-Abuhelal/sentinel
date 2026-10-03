@@ -162,6 +162,22 @@ def test_unparseable_reply_becomes_empty_answer() -> None:
     assert fake.client().complete([], [SPEC]) == FinalAnswer(payload={})
 
 
+def test_a_closed_client_releases_its_connection_and_sends_nothing_more() -> None:
+    fake = FakeOllama(_text_reply("{}"), _text_reply("{}"))
+    client = fake.client()
+    client.complete([Message("user", "u")], [])
+    client.close()
+    with pytest.raises(RuntimeError, match="closed"):
+        client.complete([Message("user", "u")], [])
+    assert len(fake.requests) == 1
+
+
+def test_closing_twice_is_harmless() -> None:
+    client = FakeOllama().client()
+    client.close()
+    client.close()
+
+
 def test_http_error_raises() -> None:
     with pytest.raises(OllamaError, match="404"):
         FakeOllama(status=404).client().complete([], [SPEC])

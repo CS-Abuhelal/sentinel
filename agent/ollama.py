@@ -39,6 +39,9 @@ class OllamaClient:
     def model_name(self) -> str:
         return f"ollama:{self._model}{' thinking' if self._think else ''}"
 
+    def close(self) -> None:
+        self._http.close()
+
     def complete(self, messages: list[Message], tools: list[ToolSpec]) -> LLMResponse:
         body = {
             "model": self._model,

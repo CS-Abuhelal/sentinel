@@ -77,7 +77,7 @@ class StallGuard:
     def complete(self, messages: list[Message], tools: list[ToolSpec]) -> LLMResponse:
         try:
             return self._inner.complete(messages, tools)
-        except httpx.TimeoutException:
+        except httpx.ReadTimeout:
             return FinalAnswer(
                 payload={
                     "error": f"The model did not answer within {self._timeout_s:.0f} seconds."
@@ -196,9 +196,14 @@ def record_live(lab: Lab, cases: list[str], args: argparse.Namespace) -> None:
                     print(f"{label} skipped", flush=True)
                     continue
                 started = time.perf_counter()
-                model = OllamaClient(model=args.model, base_url=args.ollama_url)
+                model = OllamaClient(
+                    model=args.model, base_url=args.ollama_url, timeout=MODEL_TIMEOUT_S
+                )
                 recorder = RecordingClient(StallGuard(model, MODEL_TIMEOUT_S))
-                _, run = lab.run(case_id, arm, recorder)
+                try:
+                    _, run = lab.run(case_id, arm, recorder)
+                finally:
+                    model.close()
                 write_text(path, recorder.recording().model_dump_json(indent=2) + "\n")
                 seconds = time.perf_counter() - started
                 print(f"{label} {run.verdict.classification.value} {seconds:.1f}s", flush=True)

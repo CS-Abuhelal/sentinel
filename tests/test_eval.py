@@ -687,8 +687,13 @@ def test_main_rejects_an_unknown_case_and_a_bad_repeat_count(
 
 
 class Scripted:
-    def __init__(self, model: str) -> None:
+    def __init__(self, model: str, timeout: float) -> None:
         self._model = model
+        self.timeout = timeout
+        self.closed = False
+
+    def close(self) -> None:
+        self.closed = True
 
     @property
     def model_name(self) -> str:
@@ -718,12 +723,19 @@ class Scripted:
 
 
 @pytest.fixture
-def scripted(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, str]]:
+def clients() -> list[Scripted]:
+    return []
+
+
+@pytest.fixture
+def scripted(monkeypatch: pytest.MonkeyPatch, clients: list[Scripted]) -> list[tuple[str, str]]:
     created: list[tuple[str, str]] = []
 
-    def factory(*, model: str, base_url: str) -> Scripted:
+    def factory(*, model: str, base_url: str, timeout: float) -> Scripted:
         created.append((model, base_url))
-        return Scripted(model)
+        client = Scripted(model, timeout)
+        clients.append(client)
+        return client
 
     monkeypatch.setattr("eval.run.OllamaClient", factory)
     return created
@@ -817,19 +829,35 @@ def test_main_in_ollama_mode_resumes_and_skips_recordings_that_exist(
     assert results.read_text(encoding="utf-8") == first
 
 
+def test_each_live_run_gets_the_model_timeout_and_its_client_is_closed(
+    tmp_path: Path, scripted: list[tuple[str, str]], clients: list[Scripted]
+) -> None:
+    args = replay_args(tmp_path, "--cases", "s1_attack", "--repeats", "2", *LIVE)
+    assert eval_run.main(args) == 0
+    assert len(clients) == 4
+    assert [client.timeout for client in clients] == [eval_run.MODEL_TIMEOUT_S] * 4
+    assert all(client.closed for client in clients)
+
+
 def test_a_run_that_stopped_halfway_leaves_no_recording_to_resume_from(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     class Broken:
         model_name = "ollama:broken"
+        closed = False
+
+        def close(self) -> None:
+            self.closed = True
 
         def complete(self, messages: list[Message], tools: list[ToolSpec]) -> LLMResponse:
             raise RuntimeError("Ollama went away")
 
-    monkeypatch.setattr("eval.run.OllamaClient", lambda *, model, base_url: Broken())
+    broken = Broken()
+    monkeypatch.setattr("eval.run.OllamaClient", lambda *, model, base_url, timeout: broken)
     args = replay_args(tmp_path, "--cases", "s1_attack", "--repeats", "1", *LIVE)
     with pytest.raises(RuntimeError, match="went away"):
         eval_run.main(args)
+    assert broken.closed
     assert not list((tmp_path / "recordings").glob("*"))
     assert not (tmp_path / "out" / "results.json").exists()
 
@@ -901,6 +929,19 @@ def test_an_unreachable_model_still_stops_the_run() -> None:
     guard = eval_run.StallGuard(_Stalls(httpx.ConnectError("down")), timeout_s=1200.0)
     with pytest.raises(httpx.ConnectError):
         guard.complete([], [])
+
+
+@pytest.mark.parametrize(
+    "error_name", ["ConnectTimeout", "WriteTimeout", "PoolTimeout"], ids=lambda name: name
+)
+def test_a_timeout_that_is_not_the_model_being_slow_stops_the_run(error_name: str) -> None:
+    import httpx
+
+    error = getattr(httpx, error_name)("machine trouble")
+    guard = eval_run.StallGuard(_Stalls(error), timeout_s=1200.0)
+    with pytest.raises(httpx.TimeoutException) as raised:
+        guard.complete([], [])
+    assert raised.value is error
 
 
 def test_a_row_lists_the_tool_calls_the_run_made() -> None:
