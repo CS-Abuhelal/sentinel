@@ -1,0 +1,41 @@
+2026-09-20T01:00:02.137540+00:00 victim-web-01 sshd[3123]: Accepted password for svc_backup from 10.77.0.20 port 40240 ssh2
+2026-09-20T01:00:02.141950+00:00 victim-web-01 sshd[3123]: pam_unix(sshd:session): session opened for user svc_backup(uid=1002) by svc_backup(uid=0)
+2026-09-20T01:11:42.137540+00:00 victim-web-01 sshd[3123]: pam_unix(sshd:session): session closed for user svc_backup
+2026-09-21T01:00:02.138517+00:00 victim-web-01 sshd[3146]: Accepted password for svc_backup from 10.77.0.20 port 40247 ssh2
+2026-09-21T01:00:02.142927+00:00 victim-web-01 sshd[3146]: pam_unix(sshd:session): session opened for user svc_backup(uid=1002) by svc_backup(uid=0)
+2026-09-21T01:11:42.138517+00:00 victim-web-01 sshd[3146]: pam_unix(sshd:session): session closed for user svc_backup
+2026-09-22T01:00:02.139494+00:00 victim-web-01 sshd[3169]: Accepted password for svc_backup from 10.77.0.20 port 40254 ssh2
+2026-09-22T01:00:02.143904+00:00 victim-web-01 sshd[3169]: pam_unix(sshd:session): session opened for user svc_backup(uid=1002) by svc_backup(uid=0)
+2026-09-22T01:11:42.139494+00:00 victim-web-01 sshd[3169]: pam_unix(sshd:session): session closed for user svc_backup
+2026-09-23T01:00:02.140471+00:00 victim-web-01 sshd[3192]: Accepted password for svc_backup from 10.77.0.20 port 40261 ssh2
+2026-09-23T01:00:02.144881+00:00 victim-web-01 sshd[3192]: pam_unix(sshd:session): session opened for user svc_backup(uid=1002) by svc_backup(uid=0)
+2026-09-23T01:11:42.140471+00:00 victim-web-01 sshd[3192]: pam_unix(sshd:session): session closed for user svc_backup
+2026-09-24T01:00:02.141448+00:00 victim-web-01 sshd[3215]: Accepted password for svc_backup from 10.77.0.20 port 40268 ssh2
+2026-09-24T01:00:02.145858+00:00 victim-web-01 sshd[3215]: pam_unix(sshd:session): session opened for user svc_backup(uid=1002) by svc_backup(uid=0)
+2026-09-24T01:11:42.141448+00:00 victim-web-01 sshd[3215]: pam_unix(sshd:session): session closed for user svc_backup
+2026-09-25T01:00:02.301877+00:00 victim-web-01 sshd[3216]: Failed password for svc_backup from 10.77.0.20 port 40310 ssh2
+2026-09-25T01:00:02.512208+00:00 victim-web-01 sshd[3216]: Connection closed by authenticating user svc_backup 10.77.0.20 port 40310 [preauth]
+2026-09-25T01:00:32.301877+00:00 victim-web-01 sshd[3217]: Failed password for svc_backup from 10.77.0.20 port 40311 ssh2
+2026-09-25T01:00:32.512208+00:00 victim-web-01 sshd[3217]: Connection closed by authenticating user svc_backup 10.77.0.20 port 40311 [preauth]
+2026-09-25T01:01:02.305178+00:00 victim-web-01 sshd[3218]: Failed password for svc_backup from 10.77.0.20 port 40312 ssh2
+2026-09-25T01:01:02.515509+00:00 victim-web-01 sshd[3218]: Connection closed by authenticating user svc_backup 10.77.0.20 port 40312 [preauth]
+2026-09-25T01:01:32.311780+00:00 victim-web-01 sshd[3219]: Failed password for svc_backup from 10.77.0.20 port 40313 ssh2
+2026-09-25T01:01:32.522111+00:00 victim-web-01 sshd[3219]: Connection closed by authenticating user svc_backup 10.77.0.20 port 40313 [preauth]
+2026-09-25T01:02:02.321683+00:00 victim-web-01 sshd[3220]: Failed password for svc_backup from 10.77.0.20 port 40314 ssh2
+2026-09-25T01:02:02.532014+00:00 victim-web-01 sshd[3220]: Connection closed by authenticating user svc_backup 10.77.0.20 port 40314 [preauth]
+2026-09-25T01:02:32.334887+00:00 victim-web-01 sshd[3221]: Failed password for svc_backup from 10.77.0.20 port 40315 ssh2
+2026-09-25T01:02:32.545218+00:00 victim-web-01 sshd[3221]: Connection closed by authenticating user svc_backup 10.77.0.20 port 40315 [preauth]
+2026-09-25T01:03:02.351392+00:00 victim-web-01 sshd[3222]: Failed password for svc_backup from 10.77.0.20 port 40316 ssh2
+2026-09-25T01:03:02.561723+00:00 victim-web-01 sshd[3222]: Connection closed by authenticating user svc_backup 10.77.0.20 port 40316 [preauth]
+2026-09-25T01:03:32.371198+00:00 victim-web-01 sshd[3223]: Failed password for svc_backup from 10.77.0.20 port 40317 ssh2
+2026-09-25T01:03:32.581529+00:00 victim-web-01 sshd[3223]: Connection closed by authenticating user svc_backup 10.77.0.20 port 40317 [preauth]
+2026-09-25T01:04:02.374305+00:00 victim-web-01 sshd[3224]: Failed password for svc_backup from 10.77.0.20 port 40318 ssh2
+2026-09-25T01:04:02.584636+00:00 victim-web-01 sshd[3224]: Connection closed by authenticating user svc_backup 10.77.0.20 port 40318 [preauth]
+2026-09-25T01:04:32.380713+00:00 victim-web-01 sshd[3225]: Failed password for svc_backup from 10.77.0.20 port 40319 ssh2
+2026-09-25T01:04:32.591044+00:00 victim-web-01 sshd[3225]: Connection closed by authenticating user svc_backup 10.77.0.20 port 40319 [preauth]
+2026-09-25T01:05:02.390422+00:00 victim-web-01 sshd[3226]: Failed password for svc_backup from 10.77.0.20 port 40320 ssh2
+2026-09-25T01:05:02.600753+00:00 victim-web-01 sshd[3226]: Connection closed by authenticating user svc_backup 10.77.0.20 port 40320 [preauth]
+2026-09-25T01:05:32.403432+00:00 victim-web-01 sshd[3227]: Failed password for svc_backup from 10.77.0.20 port 40321 ssh2
+2026-09-25T01:05:32.613763+00:00 victim-web-01 sshd[3227]: Connection closed by authenticating user svc_backup 10.77.0.20 port 40321 [preauth]
+2026-09-25T01:14:09.055120+00:00 victim-web-01 sshd[3228]: Accepted password for svc_backup from 10.77.0.20 port 40325 ssh2
+2026-09-25T01:14:09.059100+00:00 victim-web-01 sshd[3228]: pam_unix(sshd:session): session opened for user svc_backup(uid=1002) by svc_backup(uid=0)

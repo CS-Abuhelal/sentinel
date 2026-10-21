@@ -1,0 +1,41 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "final",
+      "payload": {
+        "classification": "benign",
+        "confidence": 0.6,
+        "summary": "The incident involves a successful login after 13 failed attempts from an IP address that had no prior activity. However, there is a documented change during the same time window that may explain the activity. The account is a developer with no privileged access, and the successful login occurred after the failed attempts, which could be due to a legitimate attempt following a password change or a temporary issue.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "Multiple failed login attempts were made from the IP address 198.51.100.77 before a successful login occurred.",
+            "evidence": [
+              "E1"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1",
+          "E4"
+        ],
+        "risk_factors": [
+          "Multiple failed login attempts could indicate a brute force attack",
+          "The source IP had no prior successful logins"
+        ],
+        "proposed_actions": []
+      },
+      "input_tokens": 2974,
+      "output_tokens": 268,
+      "elapsed_ms": 21130
+    }
+  ]
+}

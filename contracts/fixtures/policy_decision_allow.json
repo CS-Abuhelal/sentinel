@@ -1,0 +1,14 @@
+{
+  "decision_id": "pol_1a2b3c4d5e6f",
+  "action_id": "act_bb11cc22dd33",
+  "incident_id": "inc_7c3e9f1a2b4d",
+  "outcome": "allow",
+  "autonomy_level": "act_with_approval",
+  "risk_score": 82,
+  "matched_rule": "POL-007: reversible network block on unprotected external IP above risk 70",
+  "reason": "Target is not a protected entity, the action is reversible, and risk exceeds the autonomous threshold.",
+  "target_is_protected": false,
+  "decided_at": "2026-03-14T02:21:40Z",
+  "approved_by": null,
+  "approved_at": null
+}

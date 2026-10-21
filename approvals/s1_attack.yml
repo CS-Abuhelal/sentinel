@@ -1,0 +1,6 @@
+approvals:
+  - action: disable_account
+    target: jdoe
+    decision: approve
+    by: Ahmed Helal
+    note: Approved in chat on 2026-09-25 after reviewing the S1 attack investigation.

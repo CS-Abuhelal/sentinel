@@ -1,0 +1,114 @@
+{
+  "status": {
+    "checked_at": "2026-09-27T09:30:05Z",
+    "wazuh_api": {
+      "reachable": true,
+      "detail": "Wazuh API answered HTTP 401."
+    },
+    "backfill": {
+      "reachable": true,
+      "detail": "Backfilled 0 of 0 alerts at 09:29:40 UTC."
+    },
+    "alert_count": 1,
+    "last_alert_at": "2026-09-27T09:30:00Z",
+    "queue_length": 0,
+    "model": {
+      "reachable": true,
+      "detail": "Ollama answered HTTP 200."
+    },
+    "sync": {
+      "reachable": true,
+      "detail": "Synced 2 open findings at 09:28:00 UTC."
+    }
+  },
+  "alerts": [
+    {
+      "wazuh_id": "1790501400.1042",
+      "received_at": "2026-09-27T09:30:02Z",
+      "level": 5,
+      "event": {
+        "event_id": "evt_wz_1790501400_1042",
+        "timestamp": "2026-09-27T09:30:00Z",
+        "ingested_at": null,
+        "source": "wazuh",
+        "category": "authentication",
+        "event_type": "wazuh:60122",
+        "host": "my-pc",
+        "user": "user1",
+        "outcome": "failure",
+        "process": null,
+        "network": {
+          "src_ip": "127.0.0.1",
+          "src_port": null,
+          "dst_ip": null,
+          "dst_port": null,
+          "protocol": null,
+          "bytes_sent": null,
+          "bytes_received": null,
+          "domain": null
+        },
+        "file_path": null,
+        "message": "Logon failure - Unknown user or bad password.",
+        "raw": {
+          "id": "1790501400.1042",
+          "rule": {
+            "id": "60122",
+            "level": 5
+          }
+        },
+        "case_id": null
+      },
+      "alert": {
+        "alert_id": "alr_wz_1790501400_1042",
+        "rule_id": "wazuh-60122",
+        "rule_name": "Logon failure - Unknown user or bad password.",
+        "rule_severity": "low",
+        "timestamp": "2026-09-27T09:30:00Z",
+        "host": "my-pc",
+        "user": "user1",
+        "src_ip": "127.0.0.1",
+        "description": "Logon failure - Unknown user or bad password.",
+        "event_ids": [
+          "evt_wz_1790501400_1042"
+        ],
+        "suggested_techniques": [
+          "T1531"
+        ],
+        "case_id": null
+      }
+    }
+  ],
+  "incidents": [
+    {
+      "incident": {
+        "incident_id": "inc_pc_5d1e8a2b7c40",
+        "title": "Multiple Windows Logon Failures on my-pc",
+        "status": "investigating",
+        "created_at": "2026-09-27T09:30:00Z",
+        "updated_at": null,
+        "window_start": "2026-09-27T09:30:00Z",
+        "window_end": "2026-09-27T09:32:00Z",
+        "alert_ids": [
+          "alr_wz_1790501400_1042"
+        ],
+        "entities": [
+          {
+            "entity_type": "host",
+            "value": "my-pc",
+            "is_protected": false
+          },
+          {
+            "entity_type": "account",
+            "value": "sentinel-test-nobody",
+            "is_protected": false
+          }
+        ],
+        "case_id": null
+      },
+      "alert_count": 11,
+      "max_level": 10,
+      "classification": "inconclusive",
+      "recommendation_count": 2
+    }
+  ]
+}

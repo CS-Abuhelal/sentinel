@@ -1,0 +1,13 @@
+services:
+  backend:
+    networks:
+      default: {}
+      sentinel-wazuh:
+        aliases:
+          - sentinel-backend
+    volumes:
+      - ${WAZUH_CERTS_DIR:?Set WAZUH_CERTS_DIR in .env}/root-ca.pem:/run/wazuh/root-ca.pem:ro
+
+networks:
+  sentinel-wazuh:
+    external: true

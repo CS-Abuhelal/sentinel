@@ -1,0 +1,241 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+import pytest
+
+from contracts.models import (
+    ActionType,
+    AutonomyLevel,
+    Classification,
+    Entity,
+    EntityType,
+    EvaluationArm,
+    HostRecord,
+    Incident,
+    Inventory,
+    InvestigationStopReason,
+    PolicyOutcome,
+    ProposedAction,
+    RiskScore,
+    Verdict,
+)
+from policy.engine import decide
+from policy.risk import severity_for
+
+NOW = datetime(2026, 9, 25, 2, 20, tzinfo=UTC)
+ACCOUNT = EntityType.ACCOUNT
+HOST = EntityType.HOST
+MALICIOUS = Classification.MALICIOUS
+
+
+def _verdict(incident_id: str, classification: Classification) -> Verdict:
+    return Verdict(
+        incident_id=incident_id,
+        arm=EvaluationArm.A3_TOOL_USING_AGENT,
+        classification=classification,
+        confidence=0.9,
+        summary="test",
+        produced_at=NOW,
+        stop_reason=InvestigationStopReason.VERDICT_REACHED,
+    )
+
+
+def _risk(incident_id: str, score: int) -> RiskScore:
+    return RiskScore(
+        incident_id=incident_id, score=score, severity=severity_for(score), computed_at=NOW
+    )
+
+
+def _action(action_type: ActionType, target_type: EntityType, value: str) -> ProposedAction:
+    return ProposedAction(
+        action_type=action_type, target_type=target_type, target_value=value, justification="t"
+    )
+
+
+def _decide(s1, action: ProposedAction, classification: Classification, score: int = 80):
+    incident = s1.incident
+    return decide(
+        action,
+        _verdict(incident.incident_id, classification),
+        incident,
+        _risk(incident.incident_id, score),
+        s1.inventory,
+        NOW,
+    )
+
+
+RULE_CASES = [
+    (ActionType.NO_ACTION, ACCOUNT, "jdoe", Classification.BENIGN, "allow", "no_action"),
+    (
+        ActionType.BLOCK_IP,
+        EntityType.IP_ADDRESS,
+        "10.66.0.10",
+        MALICIOUS,
+        "deny",
+        "not_in_executor_catalog",
+    ),
+    (
+        ActionType.KILL_PROCESS,
+        EntityType.PROCESS,
+        "1234",
+        MALICIOUS,
+        "deny",
+        "not_in_executor_catalog",
+    ),
+    (
+        ActionType.DISABLE_ACCOUNT,
+        HOST,
+        "victim-web-01",
+        MALICIOUS,
+        "deny",
+        "target_type_mismatch",
+    ),
+    (ActionType.DISABLE_ACCOUNT, ACCOUNT, "labadmin", MALICIOUS, "deny", "protected_target"),
+    (ActionType.ISOLATE_HOST, HOST, "mgmt-01", MALICIOUS, "deny", "protected_target"),
+    (
+        ActionType.DISABLE_ACCOUNT,
+        ACCOUNT,
+        "someone_else",
+        MALICIOUS,
+        "deny",
+        "target_not_in_incident",
+    ),
+    (
+        ActionType.DISABLE_ACCOUNT,
+        ACCOUNT,
+        "jdoe",
+        Classification.BENIGN,
+        "deny",
+        "verdict_not_malicious",
+    ),
+    (
+        ActionType.DISABLE_ACCOUNT,
+        ACCOUNT,
+        "jdoe",
+        Classification.INCONCLUSIVE,
+        "deny",
+        "verdict_not_malicious",
+    ),
+    (
+        ActionType.DISABLE_ACCOUNT,
+        ACCOUNT,
+        "jdoe",
+        MALICIOUS,
+        "require_approval",
+        "disable_account_requires_approval",
+    ),
+    (
+        ActionType.ISOLATE_HOST,
+        HOST,
+        "victim-web-01",
+        MALICIOUS,
+        "require_approval",
+        "isolate_host_requires_approval",
+    ),
+]
+
+
+@pytest.mark.parametrize("action_type,target_type,value,classification,outcome,rule", RULE_CASES)
+def test_policy_rules(s1, action_type, target_type, value, classification, outcome, rule) -> None:
+    action = _action(action_type, target_type, value)
+    decision = _decide(s1, action, classification)
+    assert (decision.outcome.value, decision.matched_rule) == (outcome, rule)
+    assert decision.action_id == action.action_id
+    assert decision.incident_id == s1.incident.incident_id
+    assert decision.autonomy_level is AutonomyLevel.ACT_WITH_APPROVAL
+    assert decision.risk_score == 80
+    assert decision.decided_at == NOW
+    assert decision.reason
+
+
+def test_protected_target_is_flagged(s1) -> None:
+    decision = _decide(s1, _action(ActionType.DISABLE_ACCOUNT, ACCOUNT, "labadmin"), MALICIOUS)
+    assert decision.target_is_protected is True
+
+
+@pytest.mark.parametrize("score", [0, 35, 80, 100])
+@pytest.mark.parametrize("classification", list(Classification))
+def test_disable_account_is_never_allowed(s1, score, classification) -> None:
+    action = _action(ActionType.DISABLE_ACCOUNT, ACCOUNT, "jdoe")
+    decision = _decide(s1, action, classification, score)
+    assert decision.outcome is not PolicyOutcome.ALLOW
+
+
+def test_targets_outside_the_inventory_are_denied(s1) -> None:
+    incident = s1.incident.model_copy(
+        update={
+            "entities": [
+                *s1.incident.entities,
+                Entity(entity_type=ACCOUNT, value="ghost"),
+                Entity(entity_type=HOST, value="unknown-host"),
+            ]
+        }
+    )
+    for action_type, target_type, value in [
+        (ActionType.DISABLE_ACCOUNT, ACCOUNT, "ghost"),
+        (ActionType.ISOLATE_HOST, HOST, "unknown-host"),
+    ]:
+        decision = decide(
+            _action(action_type, target_type, value),
+            _verdict(incident.incident_id, MALICIOUS),
+            incident,
+            _risk(incident.incident_id, 80),
+            s1.inventory,
+            NOW,
+        )
+        assert (decision.outcome, decision.matched_rule) == (
+            PolicyOutcome.DENY,
+            "target_not_in_inventory",
+        )
+
+
+PC_INVENTORY = Inventory(hosts={"my-pc": HostRecord(role="monitored PC", personal=True)})
+PC_INCIDENT = Incident(
+    incident_id="inc_pc",
+    title="Logon failures on my-pc",
+    created_at=NOW,
+    window_start=NOW,
+    window_end=NOW,
+    alert_ids=["alr_pc"],
+    entities=[
+        Entity(entity_type=HOST, value="my-pc"),
+        Entity(entity_type=ACCOUNT, value="sentinel-test-nobody"),
+    ],
+)
+
+
+@pytest.mark.parametrize(
+    ("action_type", "target_type", "value"),
+    [
+        (ActionType.ISOLATE_HOST, HOST, "my-pc"),
+        (ActionType.DISABLE_ACCOUNT, ACCOUNT, "sentinel-test-nobody"),
+        (ActionType.BLOCK_IP, EntityType.IP_ADDRESS, "127.0.0.1"),
+    ],
+)
+def test_nothing_runs_on_a_personal_host(
+    action_type: ActionType, target_type: EntityType, value: str
+) -> None:
+    decision = decide(
+        _action(action_type, target_type, value),
+        _verdict("inc_pc", MALICIOUS),
+        PC_INCIDENT,
+        _risk("inc_pc", 95),
+        PC_INVENTORY,
+        NOW,
+    )
+    assert decision.outcome is PolicyOutcome.DENY
+    assert decision.matched_rule == "personal_host_advice_only"
+    assert decision.reason == "Advice only: SENTINEL never acts on your own PC."
+
+
+def test_no_action_on_a_personal_host_is_still_allowed() -> None:
+    decision = decide(
+        _action(ActionType.NO_ACTION, HOST, "my-pc"),
+        _verdict("inc_pc", Classification.BENIGN),
+        PC_INCIDENT,
+        _risk("inc_pc", 10),
+        PC_INVENTORY,
+        NOW,
+    )
+    assert (decision.outcome, decision.matched_rule) == (PolicyOutcome.ALLOW, "no_action")

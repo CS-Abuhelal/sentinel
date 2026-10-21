@@ -1,0 +1,677 @@
+"""Generate sample JSON for every contract model, plus JSON Schema.
+
+Run from the repo root:  python -m contracts.generate_fixtures
+
+The fixtures describe one coherent S1 case (credential attack leading to account
+compromise) at every stage of the pipeline, so each stage can be built and tested on its
+own.
+"""
+
+from __future__ import annotations
+
+import json
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+
+from contracts.models import (
+    ActionType,
+    Alert,
+    Approval,
+    AttackChainStep,
+    AuditKind,
+    AuditRecord,
+    AutonomyLevel,
+    Classification,
+    CommandResult,
+    Entity,
+    EntityType,
+    EvaluationArm,
+    Event,
+    EventCategory,
+    EvidenceClass,
+    EvidenceItem,
+    ExecutionResult,
+    ExecutionStatus,
+    Finding,
+    FindingKind,
+    HostAssessment,
+    Incident,
+    IncidentRun,
+    IncidentStatus,
+    InvestigationStopReason,
+    LiveAlert,
+    NetworkInfo,
+    PcFeed,
+    PcIncidentSummary,
+    PcSample,
+    PcStatus,
+    PolicyDecision,
+    PolicyOutcome,
+    ProcessInfo,
+    ProposedAction,
+    Recommendation,
+    RiskScore,
+    Scenario,
+    ServiceState,
+    Severity,
+    TelemetrySource,
+    Verdict,
+)
+
+OUT = Path(__file__).parent
+T0 = datetime(2026, 3, 14, 2, 11, 0, tzinfo=UTC)
+CASE = "S1_dev_004"
+
+HOST = "WIN-FIN-07"
+USER = "m.alharbi"
+ATTACKER_IP = "10.13.37.24"
+
+failed_login = Event(
+    event_id="evt_a1b2c3d4e5f6",
+    timestamp=T0,
+    ingested_at=T0 + timedelta(seconds=3),
+    source=TelemetrySource.WINDOWS_SECURITY,
+    category=EventCategory.AUTHENTICATION,
+    event_type="4625_failed_logon",
+    host=HOST,
+    user=USER,
+    outcome="failure",
+    network=NetworkInfo(src_ip=ATTACKER_IP, dst_ip="10.20.0.7", dst_port=445, protocol="tcp"),
+    message="An account failed to log on. Logon type 3. Status 0xC000006A (bad password).",
+    raw={"EventID": 4625, "LogonType": 3, "SubStatus": "0xC000006A"},
+    case_id=CASE,
+)
+
+successful_login = Event(
+    event_id="evt_f6e5d4c3b2a1",
+    timestamp=T0 + timedelta(minutes=6, seconds=42),
+    ingested_at=T0 + timedelta(minutes=6, seconds=45),
+    source=TelemetrySource.WINDOWS_SECURITY,
+    category=EventCategory.AUTHENTICATION,
+    event_type="4624_successful_logon",
+    host=HOST,
+    user=USER,
+    outcome="success",
+    network=NetworkInfo(src_ip=ATTACKER_IP, dst_ip="10.20.0.7", dst_port=445, protocol="tcp"),
+    message="An account was successfully logged on. Logon type 3.",
+    raw={"EventID": 4624, "LogonType": 3},
+    case_id=CASE,
+)
+
+post_login_process = Event(
+    event_id="evt_9988776655aa",
+    timestamp=T0 + timedelta(minutes=8, seconds=15),
+    source=TelemetrySource.WINDOWS_SYSMON,
+    category=EventCategory.PROCESS,
+    event_type="sysmon_1_process_create",
+    host=HOST,
+    user=USER,
+    outcome="success",
+    process=ProcessInfo(
+        pid=6612,
+        name="powershell.exe",
+        command_line="powershell.exe -nop -w hidden -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBi",
+        parent_pid=884,
+        parent_name="services.exe",
+        user=USER,
+        hash_sha256="9f2b1c0e4a7d8e3f5b6c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a",
+    ),
+    message="Process created with encoded command line.",
+    case_id=CASE,
+)
+
+alert_bruteforce = Alert(
+    alert_id="alr_11aa22bb33cc",
+    rule_id="SIG-AUTH-0007",
+    rule_name="Multiple Failed Logons Followed By Success",
+    rule_severity=Severity.MEDIUM,
+    timestamp=T0 + timedelta(minutes=6, seconds=50),
+    host=HOST,
+    user=USER,
+    src_ip=ATTACKER_IP,
+    description=(
+        "23 failed logons for m.alharbi from 10.13.37.24 followed by a successful logon "
+        "within 7 minutes."
+    ),
+    event_ids=[failed_login.event_id, successful_login.event_id],
+    suggested_techniques=["T1110.001"],
+    case_id=CASE,
+)
+
+alert_encoded_ps = Alert(
+    alert_id="alr_44dd55ee66ff",
+    rule_id="SIG-PROC-0021",
+    rule_name="Encoded PowerShell Command Line",
+    rule_severity=Severity.HIGH,
+    timestamp=T0 + timedelta(minutes=8, seconds=20),
+    host=HOST,
+    user=USER,
+    src_ip=None,
+    description="powershell.exe launched with -enc and hidden window from an interactive session.",
+    event_ids=[post_login_process.event_id],
+    suggested_techniques=["T1059.001", "T1027"],
+    case_id=CASE,
+)
+
+incident = Incident(
+    incident_id="inc_7c3e9f1a2b4d",
+    title=f"Possible account compromise on {HOST} ({USER})",
+    status=IncidentStatus.INVESTIGATING,
+    created_at=T0 + timedelta(minutes=7),
+    updated_at=T0 + timedelta(minutes=9),
+    window_start=T0,
+    window_end=T0 + timedelta(minutes=10),
+    alert_ids=[alert_bruteforce.alert_id, alert_encoded_ps.alert_id],
+    entities=[
+        Entity(entity_type=EntityType.HOST, value=HOST, is_protected=False),
+        Entity(entity_type=EntityType.ACCOUNT, value=USER, is_protected=False),
+        Entity(entity_type=EntityType.IP_ADDRESS, value=ATTACKER_IP, is_protected=False),
+    ],
+    case_id=CASE,
+)
+
+evidence_auth_history = EvidenceItem(
+    evidence_id="evd_aa11bb22cc33",
+    incident_id=incident.incident_id,
+    evidence_class=EvidenceClass.AUTH_HISTORY,
+    tool_name="get_auth_history",
+    tool_query={"user": USER, "window_hours": 720},
+    retrieved_at=T0 + timedelta(minutes=9, seconds=30),
+    summary=(
+        f"{USER} has never authenticated from 10.13.37.0/24 in the previous 30 days; "
+        "all prior logons came from 10.20.4.0/24."
+    ),
+    content={
+        "total_logons_30d": 412,
+        "distinct_source_subnets": ["10.20.4.0/24"],
+        "first_seen_from_source": None,
+        "failed_logons_30d_baseline": 3,
+    },
+    source_event_ids=[failed_login.event_id, successful_login.event_id],
+    was_productive=True,
+)
+
+evidence_entity_context = EvidenceItem(
+    evidence_id="evd_dd44ee55ff66",
+    incident_id=incident.incident_id,
+    evidence_class=EvidenceClass.ENTITY_CONTEXT,
+    tool_name="get_entity_context",
+    tool_query={"entity_type": "account", "value": USER},
+    retrieved_at=T0 + timedelta(minutes=9, seconds=45),
+    summary=(
+        "m.alharbi is a standard finance user, not a service account and not a member of "
+        "any administrative group."
+    ),
+    content={
+        "account_type": "user",
+        "department": "Finance",
+        "groups": ["Domain Users", "Finance-RW"],
+        "is_service_account": False,
+        "privileged": False,
+    },
+    source_event_ids=[],
+    was_productive=True,
+)
+
+evidence_change_window = EvidenceItem(
+    evidence_id="evd_77aa88bb99cc",
+    incident_id=incident.incident_id,
+    evidence_class=EvidenceClass.CHANGE_WINDOW,
+    tool_name="get_change_window",
+    tool_query={"host": HOST, "at": (T0 + timedelta(minutes=6)).isoformat()},
+    retrieved_at=T0 + timedelta(minutes=10),
+    summary=(
+        "No scheduled maintenance or approved change covered this host at the time of the activity."
+    ),
+    content={"in_change_window": False, "nearest_window": None},
+    source_event_ids=[],
+    was_productive=True,
+)
+
+risk = RiskScore(
+    incident_id=incident.incident_id,
+    score=82,
+    severity=Severity.HIGH,
+    factors={
+        "credential_attack_confirmed": 25,
+        "novel_source_subnet": 20,
+        "post_compromise_execution": 25,
+        "outside_change_window": 7,
+        "non_privileged_target": 5,
+    },
+    computed_at=T0 + timedelta(minutes=10, seconds=5),
+)
+
+action_block = ProposedAction(
+    action_id="act_bb11cc22dd33",
+    action_type=ActionType.BLOCK_IP,
+    target_type=EntityType.IP_ADDRESS,
+    target_value=ATTACKER_IP,
+    justification=(
+        "Source of a successful credential attack with no legitimate history for this account."
+    ),
+    reversible=True,
+    evidence_ids=[evidence_auth_history.evidence_id],
+)
+
+action_disable = ProposedAction(
+    action_id="act_ee44ff55aa66",
+    action_type=ActionType.DISABLE_ACCOUNT,
+    target_type=EntityType.ACCOUNT,
+    target_value=USER,
+    justification=(
+        "Account credentials are presumed compromised; encoded PowerShell ran under this session."
+    ),
+    reversible=True,
+    evidence_ids=[evidence_auth_history.evidence_id, evidence_entity_context.evidence_id],
+)
+
+verdict = Verdict(
+    verdict_id="vrd_5f6a7b8c9d0e",
+    incident_id=incident.incident_id,
+    arm=EvaluationArm.A3_TOOL_USING_AGENT,
+    classification=Classification.MALICIOUS,
+    confidence=0.88,
+    summary=(
+        "A password-guessing attack from 10.13.37.24 succeeded against m.alharbi at "
+        "02:17 UTC. The source subnet has no authentication history for this account "
+        "across 30 days, the activity falls outside any approved change window, and an "
+        "encoded PowerShell process launched under the session 90 seconds after logon. "
+        "This is a genuine account compromise with post-access execution."
+    ),
+    attack_chain=[
+        AttackChainStep(
+            order=1,
+            tactic="Credential Access",
+            technique_id="T1110.001",
+            technique_name="Password Guessing",
+            description="23 failed logons against m.alharbi from a previously unseen subnet.",
+            evidence_ids=[evidence_auth_history.evidence_id],
+        ),
+        AttackChainStep(
+            order=2,
+            tactic="Initial Access",
+            technique_id="T1078",
+            technique_name="Valid Accounts",
+            description="Successful network logon using the guessed credentials.",
+            evidence_ids=[evidence_auth_history.evidence_id],
+        ),
+        AttackChainStep(
+            order=3,
+            tactic="Execution",
+            technique_id="T1059.001",
+            technique_name="PowerShell",
+            description="Encoded, hidden-window PowerShell launched under the compromised session.",
+            evidence_ids=[evidence_change_window.evidence_id],
+        ),
+    ],
+    techniques=["T1110.001", "T1078", "T1059.001", "T1027"],
+    cited_evidence_ids=[
+        evidence_auth_history.evidence_id,
+        evidence_entity_context.evidence_id,
+        evidence_change_window.evidence_id,
+    ],
+    risk_factors=[
+        "Source subnet never seen for this account in 30 days",
+        "Successful logon directly after sustained failures",
+        "Encoded PowerShell execution post-logon",
+        "Activity outside any approved change window",
+    ],
+    proposed_actions=[action_block, action_disable],
+    produced_at=T0 + timedelta(minutes=10, seconds=30),
+    model_name="frontier-llm-v1",
+    tool_calls_made=4,
+    input_tokens=11420,
+    output_tokens=903,
+    latency_ms=18734,
+    stop_reason=InvestigationStopReason.VERDICT_REACHED,
+)
+
+policy_allow = PolicyDecision(
+    decision_id="pol_1a2b3c4d5e6f",
+    action_id=action_block.action_id,
+    incident_id=incident.incident_id,
+    outcome=PolicyOutcome.ALLOW,
+    autonomy_level=AutonomyLevel.ACT_WITH_APPROVAL,
+    risk_score=risk.score,
+    matched_rule="POL-007: reversible network block on unprotected external IP above risk 70",
+    reason=(
+        "Target is not a protected entity, the action is reversible, and risk exceeds "
+        "the autonomous threshold."
+    ),
+    target_is_protected=False,
+    decided_at=T0 + timedelta(minutes=10, seconds=40),
+)
+
+policy_approval = PolicyDecision(
+    decision_id="pol_6f5e4d3c2b1a",
+    action_id=action_disable.action_id,
+    incident_id=incident.incident_id,
+    outcome=PolicyOutcome.REQUIRE_APPROVAL,
+    autonomy_level=AutonomyLevel.ACT_WITH_APPROVAL,
+    risk_score=risk.score,
+    matched_rule="POL-012: account disable always requires human approval",
+    reason=(
+        "Disabling a user account is disruptive to a real person and is never taken autonomously."
+    ),
+    target_is_protected=False,
+    decided_at=T0 + timedelta(minutes=10, seconds=41),
+)
+
+incident_run = IncidentRun(
+    run_id="run_0a1b2c3d4e5f",
+    case_id=CASE,
+    created_at=T0 + timedelta(minutes=10, seconds=45),
+    events=[failed_login, successful_login, post_login_process],
+    alerts=[alert_bruteforce, alert_encoded_ps],
+    incident=incident,
+    evidence=[evidence_auth_history, evidence_entity_context, evidence_change_window],
+    verdict=verdict,
+    risk_score=risk,
+    policy_decisions=[policy_allow, policy_approval],
+    scenario=Scenario(
+        title="Credential attack leading to account compromise",
+        description="An outside host guesses a user's password and signs in with it.",
+        expected_classification=Classification.MALICIOUS,
+    ),
+)
+
+approval = Approval(
+    approval_id="apr_9a8b7c6d5e4f",
+    decision_id=policy_approval.decision_id,
+    action_id=action_disable.action_id,
+    incident_id=incident.incident_id,
+    approved=True,
+    decided_by="analyst.demo",
+    decided_at=T0 + timedelta(minutes=14),
+    source="approvals/S1_dev_004.yml",
+    note="Guessed password used from an unknown source.",
+)
+
+execution_result = ExecutionResult(
+    execution_id="exe_1f2e3d4c5b6a",
+    decision_id=policy_approval.decision_id,
+    action_id=action_disable.action_id,
+    incident_id=incident.incident_id,
+    action_type=ActionType.DISABLE_ACCOUNT,
+    target_type=EntityType.ACCOUNT,
+    target_value=USER,
+    host=HOST,
+    status=ExecutionStatus.SUCCEEDED,
+    reason="Approved by analyst.demo.",
+    dry_run=True,
+    commands=[
+        CommandResult(argv=["usermod", "--lock", "--expiredate", "1", USER], exit_code=0),
+        CommandResult(argv=["pkill", "-KILL", "-u", USER], exit_code=0),
+    ],
+    verified=True,
+    verification=[
+        CommandResult(
+            argv=["passwd", "--status", USER],
+            exit_code=0,
+            output=f"{USER} L 03/14/2026 0 99999 7 -1",
+        ),
+    ],
+    started_at=T0 + timedelta(minutes=14, seconds=2),
+    finished_at=T0 + timedelta(minutes=14, seconds=3),
+)
+
+audit_record = AuditRecord(
+    sequence=0,
+    recorded_at=T0 + timedelta(minutes=10, seconds=41),
+    kind=AuditKind.DECISION,
+    incident_id=incident.incident_id,
+    subject_id=policy_approval.decision_id,
+    summary="disable_account m.alharbi -> require_approval",
+    payload={"outcome": "require_approval"},
+    prev_hash="0" * 64,
+    hash="0" * 64,
+)
+
+WZ_T0 = datetime(2026, 9, 27, 9, 30, 0, tzinfo=UTC)
+PC = "my-pc"
+
+wazuh_event = Event(
+    event_id="evt_wz_1790501400_1042",
+    timestamp=WZ_T0,
+    source=TelemetrySource.WAZUH,
+    category=EventCategory.AUTHENTICATION,
+    event_type="wazuh:60122",
+    host=PC,
+    user="user1",
+    outcome="failure",
+    network=NetworkInfo(src_ip="127.0.0.1"),
+    message="Logon failure - Unknown user or bad password.",
+    raw={"id": "1790501400.1042", "rule": {"id": "60122", "level": 5}},
+)
+
+wazuh_alert = Alert(
+    alert_id="alr_wz_1790501400_1042",
+    rule_id="wazuh-60122",
+    rule_name="Logon failure - Unknown user or bad password.",
+    rule_severity=Severity.LOW,
+    timestamp=WZ_T0,
+    host=PC,
+    user="user1",
+    src_ip="127.0.0.1",
+    description="Logon failure - Unknown user or bad password.",
+    event_ids=[wazuh_event.event_id],
+    suggested_techniques=["T1531"],
+)
+
+live_alert = LiveAlert(
+    wazuh_id="1790501400.1042",
+    received_at=WZ_T0 + timedelta(seconds=2),
+    level=5,
+    event=wazuh_event,
+    alert=wazuh_alert,
+)
+
+pc_incident = Incident(
+    incident_id="inc_pc_5d1e8a2b7c40",
+    title="Multiple Windows Logon Failures on my-pc",
+    status=IncidentStatus.INVESTIGATING,
+    created_at=WZ_T0,
+    window_start=WZ_T0,
+    window_end=WZ_T0 + timedelta(minutes=2),
+    alert_ids=[wazuh_alert.alert_id],
+    entities=[
+        Entity(entity_type=EntityType.HOST, value=PC),
+        Entity(entity_type=EntityType.ACCOUNT, value="sentinel-test-nobody"),
+    ],
+)
+
+pc_incident_summary = PcIncidentSummary(
+    incident=pc_incident,
+    alert_count=11,
+    max_level=10,
+    classification=Classification.INCONCLUSIVE,
+    recommendation_count=2,
+)
+
+pc_feed = PcFeed(
+    status=PcStatus(
+        checked_at=WZ_T0 + timedelta(seconds=5),
+        wazuh_api=ServiceState(reachable=True, detail="Wazuh API answered HTTP 401."),
+        backfill=ServiceState(reachable=True, detail="Backfilled 0 of 0 alerts at 09:29:40 UTC."),
+        alert_count=1,
+        last_alert_at=WZ_T0,
+        queue_length=0,
+        model=ServiceState(reachable=True, detail="Ollama answered HTTP 200."),
+        sync=ServiceState(reachable=True, detail="Synced 2 open findings at 09:28:00 UTC."),
+    ),
+    alerts=[live_alert],
+    incidents=[pc_incident_summary],
+)
+
+finding_vulnerability = Finding(
+    finding_id="fnd_3c9a1e7b2d40",
+    kind=FindingKind.VULNERABILITY,
+    key="cve:CVE-2025-55130:node.js",
+    host=PC,
+    title="Node.js 22.11.0 is affected by CVE-2025-55130",
+    severity=Severity.CRITICAL,
+    priority=91,
+    cve="CVE-2025-55130",
+    package="node.js",
+    installed_version="22.11.0",
+    cvss=9.1,
+    references=["https://nvd.nist.gov/vuln/detail/CVE-2025-55130"],
+    first_seen=WZ_T0 - timedelta(days=3),
+    last_seen=WZ_T0,
+)
+
+finding_configuration = Finding(
+    finding_id="fnd_8f21c04d6e11",
+    kind=FindingKind.CONFIGURATION,
+    key="sca:cis_win11_enterprise:26001",
+    host=PC,
+    title="Ensure 'Windows Firewall: Public: Firewall state' is set to 'On (recommended)'.",
+    severity=Severity.HIGH,
+    priority=70,
+    policy_id="cis_win11_enterprise",
+    check_id="26001",
+    rationale="With the public profile firewall off, the PC accepts unsolicited connections.",
+    official_remediation="Set Windows Defender Firewall public profile state to On.",
+    first_seen=WZ_T0 - timedelta(days=3),
+    last_seen=WZ_T0,
+)
+
+recommendation = Recommendation(
+    recommendation_id="rec_5b7d2e9a0c13",
+    title="Update Node.js",
+    priority=91,
+    steps=[
+        "Download the current Node.js LTS installer from nodejs.org.",
+        "Run it to replace version 22.11.0.",
+        "Run node --version to confirm the new version.",
+    ],
+    finding_ids=[finding_vulnerability.finding_id],
+)
+
+host_assessment = HostAssessment(
+    assessment_id="asm_1e4f7a2c9b30",
+    host=PC,
+    created_at=WZ_T0,
+    synced_at=WZ_T0 - timedelta(minutes=2),
+    findings=[finding_vulnerability, finding_configuration],
+    recommendations=[recommendation],
+    model_name="qwen3:14b",
+)
+
+pc_sample = PcSample(
+    created_at=WZ_T0,
+    note="Recorded sample.",
+    feed=pc_feed,
+    assessment=host_assessment,
+    runs=[incident_run],
+)
+
+FIXTURES = {
+    "event_failed_login": failed_login,
+    "event_successful_login": successful_login,
+    "event_process_create": post_login_process,
+    "alert_bruteforce": alert_bruteforce,
+    "alert_encoded_powershell": alert_encoded_ps,
+    "incident": incident,
+    "evidence_auth_history": evidence_auth_history,
+    "evidence_entity_context": evidence_entity_context,
+    "evidence_change_window": evidence_change_window,
+    "risk_score": risk,
+    "proposed_action_block_ip": action_block,
+    "proposed_action_disable_account": action_disable,
+    "verdict": verdict,
+    "policy_decision_allow": policy_allow,
+    "policy_decision_require_approval": policy_approval,
+    "incident_run": incident_run,
+    "approval": approval,
+    "execution_result": execution_result,
+    "audit_record": audit_record,
+    "live_alert": live_alert,
+    "pc_feed": pc_feed,
+    "pc_incident_summary": pc_incident_summary,
+    "pc_sample": pc_sample,
+    "finding_vulnerability": finding_vulnerability,
+    "finding_configuration": finding_configuration,
+    "recommendation": recommendation,
+    "host_assessment": host_assessment,
+}
+
+SCHEMA_MODELS = [
+    Event,
+    Alert,
+    Incident,
+    EvidenceItem,
+    Verdict,
+    ProposedAction,
+    PolicyDecision,
+    RiskScore,
+    IncidentRun,
+    PcFeed,
+    PcSample,
+    HostAssessment,
+]
+
+
+def main() -> None:
+    fixtures_dir = OUT / "fixtures"
+    schemas_dir = OUT / "schemas"
+    fixtures_dir.mkdir(exist_ok=True)
+    schemas_dir.mkdir(exist_ok=True)
+
+    for name, obj in FIXTURES.items():
+        path = fixtures_dir / f"{name}.json"
+        path.write_text(obj.model_dump_json(indent=2) + "\n", encoding="utf-8", newline="\n")
+        print(f"fixture  {path.relative_to(OUT.parent)}")
+
+    for model in SCHEMA_MODELS:
+        path = schemas_dir / f"{model.__name__}.schema.json"
+        path.write_text(
+            json.dumps(model.model_json_schema(mode="serialization"), indent=2, ensure_ascii=False)
+            + "\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        print(f"schema   {path.relative_to(OUT.parent)}")
+
+    bundle = fixtures_dir / "s1_full_case.json"
+    bundle.write_text(
+        json.dumps(
+            {
+                "case_id": CASE,
+                "scenario": "S1 — credential attack leading to account compromise",
+                "ground_truth_classification": "malicious",
+                "events": [
+                    json.loads(e.model_dump_json())
+                    for e in (failed_login, successful_login, post_login_process)
+                ],
+                "alerts": [
+                    json.loads(a.model_dump_json()) for a in (alert_bruteforce, alert_encoded_ps)
+                ],
+                "incident": json.loads(incident.model_dump_json()),
+                "evidence": [
+                    json.loads(e.model_dump_json())
+                    for e in (
+                        evidence_auth_history,
+                        evidence_entity_context,
+                        evidence_change_window,
+                    )
+                ],
+                "risk_score": json.loads(risk.model_dump_json()),
+                "verdict": json.loads(verdict.model_dump_json()),
+                "policy_decisions": [
+                    json.loads(p.model_dump_json()) for p in (policy_allow, policy_approval)
+                ],
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    print(f"bundle   {bundle.relative_to(OUT.parent)}")
+
+
+if __name__ == "__main__":
+    main()

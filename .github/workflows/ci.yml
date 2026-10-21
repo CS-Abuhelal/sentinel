@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  contracts:
+    name: Contracts and tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sentinel
+          POSTGRES_PASSWORD: sentinel_dev
+          POSTGRES_DB: sentinel_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sentinel"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Tests, including containment in real lab containers
+        env:
+          SENTINEL_DOCKER: docker
+          SENTINEL_TEST_DATABASE_URL: postgresql+psycopg://sentinel:sentinel_dev@localhost:5432/sentinel_test
+        run: pytest -q -rs
+
+      - name: Fixtures match the models
+        run: |
+          python -m contracts.generate_fixtures
+          git diff --exit-code contracts/fixtures contracts/schemas \
+            || (echo "::error::Fixtures are stale. Run: python -m contracts.generate_fixtures" && exit 1)
+
+  dashboard:
+    name: Dashboard
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Types match the contracts
+        run: |
+          npm run gen:types
+          git diff --exit-code src/types \
+            || (echo "::error::Frontend types are stale. Run: npm run gen:types" && exit 1)
+
+      - name: Typecheck and build
+        run: npm run build

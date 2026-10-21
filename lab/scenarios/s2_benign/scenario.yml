@@ -1,0 +1,17 @@
+title: Deploy job retrying with a rotated password during a change
+description: >-
+  During a documented change (CHG-2041) the svc_deploy password is rotated. The CI runner at
+  10.77.0.30, which logs in as svc_deploy every day at 14:00, keeps using the old password and
+  fails 12 times, 30 seconds apart, until its secret store syncs and it logs in at 14:20.
+expected_classification: benign
+required_evidence: [auth_history, change_window]
+changes:
+  - change_id: CHG-2041
+    title: Rotate svc_deploy credentials
+    start: "2026-09-27T13:55:00Z"
+    end: "2026-09-27T14:30:00Z"
+    accounts: [svc_deploy]
+    hosts: [victim-web-01]
+    source_ips: [10.77.0.30]
+    description: >-
+      Scheduled rotation. The CI runner keeps using the old password until its secret store syncs.

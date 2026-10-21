@@ -1,0 +1,27 @@
+services:
+  wazuh.manager:
+    networks:
+      - default
+      - sentinel-wazuh
+    volumes:
+      - ${SENTINEL_REPO:?Set SENTINEL_REPO in .env}/lab/wazuh/integrations/custom-sentinel:/var/ossec/integrations/custom-sentinel:ro
+      - ${SENTINEL_REPO}/lab/wazuh/integrations/custom-sentinel.py:/var/ossec/integrations/custom-sentinel.py:ro
+    ports: !override
+      - "127.0.0.1:1514:1514"
+      - "127.0.0.1:1515:1515"
+
+  wazuh.indexer:
+    networks:
+      - default
+      - sentinel-wazuh
+    environment:
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
+    ports: !reset []
+
+  wazuh.dashboard:
+    ports: !override
+      - "127.0.0.1:443:5601"
+
+networks:
+  sentinel-wazuh:
+    external: true

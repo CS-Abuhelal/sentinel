@@ -1,0 +1,52 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "final",
+      "payload": {
+        "classification": "malicious",
+        "confidence": 0.85,
+        "summary": "The incident involves a brute-force SSH attack on the account jdoe on the host victim-web-01 from the source IP 198.51.100.77. The attack included 13 failed login attempts followed by a successful login, which is highly suspicious given that the source IP had no prior successful logins in the 30 days before the incident. This activity aligns with a brute-force attack pattern.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "The attacker used brute-force techniques to guess the password for the account jdoe on the host victim-web-01 from the source IP 198.51.100.77.",
+            "evidence": [
+              "E1"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1"
+        ],
+        "risk_factors": [
+          "Brute-force attack pattern",
+          "Unusual source IP with no prior successful logins",
+          "Successful login after multiple failures"
+        ],
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "jdoe",
+            "justification": "The account jdoe was successfully logged into after multiple failed attempts from an unusual source IP, indicating a potential compromise.",
+            "reversible": true,
+            "evidence": [
+              "E1"
+            ]
+          }
+        ]
+      },
+      "input_tokens": 2971,
+      "output_tokens": 375,
+      "elapsed_ms": 28105
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "tool_call",
+      "tool": "rule_context",
+      "args": {
+        "rule_id": "wazuh-60204"
+      }
+    },
+    {
+      "type": "tool_call",
+      "tool": "auth_history",
+      "args": {
+        "account": "sentinel-test-nobody",
+        "lookback_hours": 24
+      }
+    },
+    {
+      "type": "tool_call",
+      "tool": "related_alerts",
+      "args": {
+        "hours": 24,
+        "rule_group": "windows_security"
+      }
+    },
+    {
+      "type": "tool_call",
+      "tool": "process_activity",
+      "args": {
+        "hours": 24,
+        "process": "svchost.exe"
+      }
+    },
+    {
+      "type": "final",
+      "payload": {
+        "classification": "benign",
+        "confidence": 0.6,
+        "summary": "The incident involves multiple failed logon attempts for the account 'sentinel-test-nobody' from the local IP '::1'. However, these attempts appear to be part of normal system activity, as the account has no prior successful logins and the failures are likely due to incorrect passwords or unknown usernames. No evidence of malicious activity was found.",
+        "techniques": [
+          "T1110"
+        ],
+        "attack_chain": [],
+        "cited_evidence": [
+          "E1",
+          "E2",
+          "E3",
+          "E4"
+        ],
+        "risk_factors": [
+          "Multiple failed logon attempts could indicate an attempted brute-force attack, but no successful logins were observed."
+        ],
+        "proposed_actions": [],
+        "recommendations": [
+          {
+            "title": "Check for unauthorized access",
+            "priority": 70,
+            "steps": [
+              "Verify that the account 'sentinel-test-nobody' is not being used for any legitimate purposes.",
+              "Ensure that the account has a strong password and is not shared with others."
+            ],
+            "evidence": [
+              "E2"
+            ]
+          },
+          {
+            "title": "Monitor for further suspicious activity",
+            "priority": 60,
+            "steps": [
+              "Keep an eye on the system for any additional failed logon attempts or unusual activity."
+            ],
+            "evidence": [
+              "E3"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

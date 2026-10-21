@@ -1,0 +1,8 @@
+title: Password guessing against the lab administrator account
+description: >-
+  An address that has never logged in to this host makes 15 failed SSH password attempts against
+  labadmin at 03:40, 20 seconds apart. labadmin is the lab administrator account, which is
+  privileged and protected, and it rarely logs in. No login follows, but the target is the most
+  valuable account on the host.
+expected_classification: malicious
+required_evidence: [auth_history, entity_context]

@@ -1,0 +1,41 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "final",
+      "payload": {
+        "classification": "benign",
+        "confidence": 0.8,
+        "summary": "The incident involves a brute force attack on the svc_deploy account, but the successful login occurred after a documented password rotation. The source IP is known and has been used by the account in the past. The activity is likely due to the CI runner using the old password until its secret store syncs.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "The attacker attempted to brute force the svc_deploy account's password, resulting in 12 failed login attempts.",
+            "evidence": [
+              "E1"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1",
+          "E4"
+        ],
+        "risk_factors": [
+          "The brute force attack could indicate an attempt to compromise the account.",
+          "The successful login after the brute force attempt may be due to the CI runner using the old password."
+        ],
+        "proposed_actions": []
+      },
+      "input_tokens": 2828,
+      "output_tokens": 256,
+      "elapsed_ms": 837246
+    }
+  ]
+}

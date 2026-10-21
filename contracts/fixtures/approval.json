@@ -1,0 +1,11 @@
+{
+  "approval_id": "apr_9a8b7c6d5e4f",
+  "decision_id": "pol_6f5e4d3c2b1a",
+  "action_id": "act_ee44ff55aa66",
+  "incident_id": "inc_7c3e9f1a2b4d",
+  "approved": true,
+  "decided_by": "analyst.demo",
+  "decided_at": "2026-03-14T02:25:00Z",
+  "source": "approvals/S1_dev_004.yml",
+  "note": "Guessed password used from an unknown source."
+}

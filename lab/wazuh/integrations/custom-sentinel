@@ -1,0 +1,3 @@
+#!/bin/sh
+WAZUH_PATH="$(cd "$(dirname "$0")/.." && pwd -P)"
+exec "${WAZUH_PATH}/framework/python/bin/python3" "${WAZUH_PATH}/integrations/custom-sentinel.py" "$@"

@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-09-27T09:40:00.000+0000",
+  "rule": {
+    "level": 12,
+    "description": "Powershell process spawned with an encoded command.",
+    "id": "92052",
+    "mitre": {"id": ["T1059.001"], "tactic": ["Execution"], "technique": ["PowerShell"]},
+    "groups": ["windows", "sysmon", "sysmon_event1"]
+  },
+  "agent": {"id": "001", "name": "my-pc", "ip": "127.0.0.1"},
+  "id": "1790502000.2001",
+  "data": {
+    "win": {
+      "system": {"eventID": "1", "channel": "Microsoft-Windows-Sysmon/Operational"},
+      "eventdata": {
+        "image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "commandLine": "powershell.exe -NoProfile -EncodedCommand ZQBjAGgAbwAgAGgAaQA=",
+        "parentImage": "C:\\Windows\\explorer.exe",
+        "user": "MY-PC\\user1"
+      }
+    }
+  },
+  "location": "EventChannel"
+}

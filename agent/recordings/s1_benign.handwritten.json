@@ -1,0 +1,26 @@
+{
+  "source": "handwritten",
+  "model_name": "replay:handwritten",
+  "responses": [
+    {
+      "type": "tool_call",
+      "tool": "auth_history",
+      "args": {"account": "svc_backup", "lookback_hours": 168}
+    },
+    {
+      "type": "final",
+      "payload": {
+        "classification": "benign",
+        "confidence": 0.8,
+        "summary": "All 12 failures came from 10.77.0.20, the only source svc_backup has ever logged in from, at the same 01:00 time it logs in every night. They arrive at a steady 30-second interval and stop with a normal login from the same host at 01:14. This matches a scheduled job retrying with an outdated password, not password guessing.",
+        "techniques": [],
+        "attack_chain": [],
+        "cited_evidence": ["E1"],
+        "risk_factors": [
+          "Repeated failed logins, although from the account's usual source"
+        ],
+        "proposed_actions": []
+      }
+    }
+  ]
+}

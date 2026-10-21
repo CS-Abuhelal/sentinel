@@ -1,0 +1,8 @@
+title: A colleague's workstation guesses another user's password
+description: >-
+  10.77.0.61 is the workstation kpatel logs in from every morning. At 22:15 it makes 11 failed
+  SSH password attempts against msmith, 25 seconds apart, then logs in as msmith. msmith has only
+  ever logged in from 10.77.0.64. A workstation that normally belongs to one user is now being
+  used to sign in as someone else, which looks like lateral movement from a compromised machine.
+expected_classification: malicious
+required_evidence: [auth_history, network_activity]

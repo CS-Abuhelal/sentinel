@@ -1,0 +1,24 @@
+{
+  "evidence_id": "evd_dd44ee55ff66",
+  "incident_id": "inc_7c3e9f1a2b4d",
+  "evidence_class": "entity_context",
+  "tool_name": "get_entity_context",
+  "tool_query": {
+    "entity_type": "account",
+    "value": "m.alharbi"
+  },
+  "retrieved_at": "2026-03-14T02:20:45Z",
+  "summary": "m.alharbi is a standard finance user, not a service account and not a member of any administrative group.",
+  "content": {
+    "account_type": "user",
+    "department": "Finance",
+    "groups": [
+      "Domain Users",
+      "Finance-RW"
+    ],
+    "is_service_account": false,
+    "privileged": false
+  },
+  "source_event_ids": [],
+  "was_productive": true
+}

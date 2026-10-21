@@ -1,0 +1,23 @@
+{
+  "finding_id": "fnd_8f21c04d6e11",
+  "kind": "configuration",
+  "key": "sca:cis_win11_enterprise:26001",
+  "host": "my-pc",
+  "title": "Ensure 'Windows Firewall: Public: Firewall state' is set to 'On (recommended)'.",
+  "severity": "high",
+  "priority": 70,
+  "status": "open",
+  "cve": null,
+  "package": null,
+  "installed_version": null,
+  "cvss": null,
+  "policy_id": "cis_win11_enterprise",
+  "check_id": "26001",
+  "rationale": "With the public profile firewall off, the PC accepts unsolicited connections.",
+  "official_remediation": "Set Windows Defender Firewall public profile state to On.",
+  "references": [],
+  "related_alert_count": 0,
+  "first_seen": "2026-09-24T09:30:00Z",
+  "last_seen": "2026-09-27T09:30:00Z",
+  "raw": {}
+}

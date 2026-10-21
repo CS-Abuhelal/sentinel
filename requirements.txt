@@ -1,0 +1,17 @@
+pydantic>=2.9
+fastapi>=0.115
+uvicorn[standard]>=0.32
+sqlalchemy>=2.0
+alembic>=1.16
+psycopg[binary]>=3.2
+python-dotenv>=1.0
+pyyaml>=6.0
+httpx>=0.28
+
+pytest>=8.3
+pytest-asyncio>=0.24
+
+# Pinned exactly. A floating linter means CI and a local checkout can disagree
+# about what "clean" is, and a lint rule added upstream turns main red for no
+# reason. Bump this deliberately, as its own change.
+ruff==0.16.4

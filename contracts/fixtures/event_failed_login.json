@@ -1,0 +1,30 @@
+{
+  "event_id": "evt_a1b2c3d4e5f6",
+  "timestamp": "2026-03-14T02:11:00Z",
+  "ingested_at": "2026-03-14T02:11:03Z",
+  "source": "windows_security",
+  "category": "authentication",
+  "event_type": "4625_failed_logon",
+  "host": "WIN-FIN-07",
+  "user": "m.alharbi",
+  "outcome": "failure",
+  "process": null,
+  "network": {
+    "src_ip": "10.13.37.24",
+    "src_port": null,
+    "dst_ip": "10.20.0.7",
+    "dst_port": 445,
+    "protocol": "tcp",
+    "bytes_sent": null,
+    "bytes_received": null,
+    "domain": null
+  },
+  "file_path": null,
+  "message": "An account failed to log on. Logon type 3. Status 0xC000006A (bad password).",
+  "raw": {
+    "EventID": 4625,
+    "LogonType": 3,
+    "SubStatus": "0xC000006A"
+  },
+  "case_id": "S1_dev_004"
+}

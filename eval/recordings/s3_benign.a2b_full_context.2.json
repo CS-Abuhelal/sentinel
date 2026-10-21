@@ -1,0 +1,51 @@
+{
+  "source": "recorded",
+  "model_name": "ollama:qwen3:14b",
+  "responses": [
+    {
+      "type": "final",
+      "payload": {
+        "classification": "malicious",
+        "confidence": 0.85,
+        "summary": "The account msmith on host victim-web-01 experienced a brute force attack from IP 10.77.0.64, which is a known source for the account. The attack involved 10 failed login attempts followed by a successful login, suggesting a potential compromise.",
+        "techniques": [
+          "T1110.001"
+        ],
+        "attack_chain": [
+          {
+            "order": 1,
+            "tactic": "Initial Access",
+            "technique_id": "T1110.001",
+            "technique_name": "Brute Force",
+            "description": "An attacker used brute force techniques to guess the password for the account msmith on host victim-web-01 from IP 10.77.0.64.",
+            "evidence": [
+              "E1"
+            ]
+          }
+        ],
+        "cited_evidence": [
+          "E1"
+        ],
+        "risk_factors": [
+          "Brute force attack indicates potential unauthorized access",
+          "Successful login after multiple failures suggests compromise"
+        ],
+        "proposed_actions": [
+          {
+            "action_type": "disable_account",
+            "target_type": "account",
+            "target_value": "msmith",
+            "justification": "The account msmith experienced a brute force attack, indicating a potential compromise. Disabling the account will prevent further unauthorized access.",
+            "reversible": true,
+            "evidence": [
+              "E1"
+            ]
+          }
+        ]
+      },
+      "input_tokens": 2601,
+      "output_tokens": 328,
+      "elapsed_ms": 24622
+    }
+  ]
+}
